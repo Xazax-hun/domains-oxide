@@ -177,7 +177,6 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
                         continue;
                     }
                     if self.match_char('*') {
-                        let mut closed = false;
                         loop {
                             while self.peek() != '*' && !self.is_at_end() {
                                 self.advance();
@@ -193,13 +192,10 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
                             self.advance();
                             if self.peek() == '/' {
                                 self.advance();
-                                closed = true;
                                 break;
                             }
                         }
-                        if closed {
-                            continue;
-                        }
+                        continue;
                     }
                     self.diagnostic_emitter.error(
                         self.line_num,
@@ -249,7 +245,7 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
             self.advance();
         }
 
-        let value = i32::from_str_radix(&self.source[self.start..self.current], 10).unwrap();
+        let value = self.source[self.start..self.current].parse::<i32>().unwrap();
 
         Some(Token {
             value: Number(value),
@@ -273,7 +269,7 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
         }
     }
 
-    fn is_at_end(&mut self) -> bool {
+    fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
     }
 
@@ -283,7 +279,7 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
         prev
     }
 
-    fn peek(&mut self) -> char {
+    fn peek(&self) -> char {
         if let Some(ch) = self.source.chars().nth(self.current) {
             ch
         } else {
