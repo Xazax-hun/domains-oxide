@@ -27,6 +27,18 @@ pub enum TokenValue {
 
 use TokenValue::*;
 
+fn from_char(c: char) -> Option<TokenValue> {
+    match c {
+        '(' => Some(LeftParen),
+        ')' => Some(RightParen),
+        '{' => Some(LeftBrace),
+        '}' => Some(RightBrace),
+        ',' => Some(Comma),
+        ';' => Some(Semicolon),
+        _ => None,
+    }
+}
+
 impl fmt::Display for TokenValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -76,16 +88,16 @@ impl fmt::Display for Token {
 }
 
 pub struct Lexer<'a, W: std::io::Write> {
-    source: String,
+    source: &'a str,
     start: usize,
     current: usize,
     line_num: u32,
-    has_error: bool,
+    has_error: bool, // TODO: can we get rid of this?
     diagnostic_emitter: &'a mut DiagnosticEmitter<W>,
 }
 
 impl<'a, W: std::io::Write> Lexer<'a, W> {
-    pub fn new(src: String, diag: &'a mut DiagnosticEmitter<W>) -> Lexer<W> {
+    pub fn new(src: &'a str, diag: &'a mut DiagnosticEmitter<W>) -> Lexer<'a, W> {
         Lexer {
             source: src,
             start: 0,
@@ -121,42 +133,11 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
             }
 
             self.start = self.current;
-            let c = self.advance();
-            match c {
+            match self.advance() {
                 // Unambiguous single character tokens.
-                '(' => {
+                c @ ('(' | ')' | '{' | '}' | ',' | ';') => {
                     return Some(Token {
-                        value: LeftParen,
-                        line_num: self.line_num,
-                    })
-                }
-                ')' => {
-                    return Some(Token {
-                        value: RightParen,
-                        line_num: self.line_num,
-                    })
-                }
-                '{' => {
-                    return Some(Token {
-                        value: LeftBrace,
-                        line_num: self.line_num,
-                    })
-                }
-                '}' => {
-                    return Some(Token {
-                        value: RightBrace,
-                        line_num: self.line_num,
-                    })
-                }
-                ',' => {
-                    return Some(Token {
-                        value: Comma,
-                        line_num: self.line_num,
-                    })
-                }
-                ';' => {
-                    return Some(Token {
-                        value: Semicolon,
+                        value: from_char(c).unwrap(),
                         line_num: self.line_num,
                     })
                 }
@@ -164,23 +145,19 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
                 // Whitespace
                 '\n' => {
                     self.line_num += 1;
-                    break;
+                    continue;
                 }
                 ' ' | '\t' | '\r' => continue,
 
                 // Comments
                 '/' => {
                     if self.match_char('/') {
-                        while self.peek() != '\n' && !self.is_at_end() {
-                            self.advance();
-                        }
+                        while self.advance() != '\n' && !self.is_at_end() {}
                         continue;
                     }
                     if self.match_char('*') {
                         loop {
-                            while self.peek() != '*' && !self.is_at_end() {
-                                self.advance();
-                            }
+                            while self.advance() != '*' && !self.is_at_end() {}
 
                             if self.is_at_end() {
                                 self.diagnostic_emitter
@@ -189,9 +166,7 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
                                 return None;
                             }
 
-                            self.advance();
-                            if self.peek() == '/' {
-                                self.advance();
+                            if self.advance() == '/' {
                                 break;
                             }
                         }
@@ -210,20 +185,20 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
 
                 // Negative numbers
                 '-' => {
-                    if let Some(num) = self.lex_number() {
-                        return Some(num);
+                    if let n @ Some(_) = self.lex_number() {
+                        return n;
                     }
                     self.diagnostic_emitter
                         .error(self.line_num, "Expected number after '-'.");
                     self.has_error = true;
                     return None;
                 }
-                _ => {
+                c => {
                     if c.is_digit(10) {
                         return self.lex_number();
                     }
-                    if let Some(kw) = self.lex_keyword() {
-                        return Some(kw);
+                    if let kw @ Some(_) = self.lex_keyword() {
+                        return kw;
                     }
                     self.diagnostic_emitter.error(
                         self.line_num,
@@ -237,7 +212,6 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
                 }
             }
         }
-        None
     }
 
     fn lex_number(&mut self) -> Option<Token> {
@@ -245,7 +219,9 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
             self.advance();
         }
 
-        let value = self.source[self.start..self.current].parse::<i32>().unwrap();
+        let value = self.source[self.start..self.current]
+            .parse::<i32>()
+            .ok()?;
 
         Some(Token {
             value: Number(value),
@@ -273,18 +249,18 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
         self.current >= self.source.len()
     }
 
-    fn advance(&mut self) -> char {
-        let prev = self.peek();
-        self.current += 1;
-        prev
-    }
-
     fn peek(&self) -> char {
         if let Some(ch) = self.source.chars().nth(self.current) {
             ch
         } else {
             '\0'
         }
+    }
+
+    fn advance(&mut self) -> char {
+        let prev = self.peek();
+        self.current += 1;
+        prev
     }
 
     fn match_char(&mut self, expected: char) -> bool {
@@ -294,102 +270,5 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
             self.current += 1;
             true
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    struct LexResult {
-        output: String,
-        tokens: Vec<Token>,
-    }
-
-    fn lex_string(source: &str) -> LexResult {
-        let errors: Vec<u8> = Vec::new();
-        let regular: Vec<u8> = Vec::new();
-        let mut diag = DiagnosticEmitter::new(regular, errors);
-        let mut lexer = Lexer::new(source.to_string(), &mut diag);
-        let tokens = lexer.lex_all();
-        let out = std::str::from_utf8(diag.out.buffer()).unwrap();
-        let err = std::str::from_utf8(diag.err.buffer()).unwrap();
-        LexResult {
-            output: out.to_string() + &err.to_string(),
-            tokens,
-        }
-    }
-
-    fn to_token_values(tokens: Vec<Token>) -> Vec<TokenValue> {
-        tokens.into_iter().map(|tok| tok.value).collect()
-    }
-
-    #[test]
-    fn test_empty_input() {
-        let result = lex_string("");
-        let expected = vec![EndOfFile];
-
-        assert_eq!(to_token_values(result.tokens), expected);
-        assert_eq!(result.output, "");
-
-        let result = lex_string("  \n\t\n");
-        let expected = vec![EndOfFile];
-
-        assert_eq!(to_token_values(result.tokens), expected);
-        assert_eq!(result.output, "");
-    }
-
-    #[test]
-    fn test_all_tokens() {
-        let result = lex_string("{}(),;50 init translation rotation iter or");
-        let expected = vec![
-            LeftBrace,
-            RightBrace,
-            LeftParen,
-            RightParen,
-            Comma,
-            Semicolon,
-            Number(50),
-            Init,
-            Translation,
-            Rotation,
-            Iter,
-            Or,
-            EndOfFile,
-        ];
-
-        assert_eq!(to_token_values(result.tokens), expected);
-        assert_eq!(result.output, "");
-    }
-
-    #[test]
-    fn test_numbers() {
-        let result = lex_string("0 50 -0 -50");
-        let expected = vec![Number(0), Number(50), Number(0), Number(-50), EndOfFile];
-
-        assert_eq!(to_token_values(result.tokens), expected);
-        assert_eq!(result.output, "");
-    }
-
-    #[test]
-    fn test_comments() {
-        let result = lex_string("0 // the rest is ignored\n\n//so is this\n  // and this");
-        let expected = vec![Number(0), EndOfFile];
-
-        assert_eq!(to_token_values(result.tokens), expected);
-        assert_eq!(result.output, "");
-
-        let result = lex_string("/* foo */ 0 /* the rest * is */  /* ignored\n\n so is this\n  // and this */");
-        let expected = vec![Number(0), EndOfFile];
-
-        assert_eq!(to_token_values(result.tokens), expected);
-        assert_eq!(result.output, "");
-    }
-
-    #[test]
-    fn test_error_messages() {
-        let result = lex_string("|");
-        assert!(result.tokens.is_empty());
-        assert_eq!(result.output, "[line 1] Error : Unexpected token: '|'.\n");
     }
 }
