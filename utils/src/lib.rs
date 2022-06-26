@@ -8,7 +8,7 @@ pub struct DiagnosticEmitter<W: std::io::Write> {
 }
 
 impl<W: std::io::Write> DiagnosticEmitter<W> {
-    pub fn new(out: W, err: W) -> DiagnosticEmitter<W> {
+    pub fn new(out: W, err: W) -> Self {
         DiagnosticEmitter {
             out: BufWriter::new(out),
             err: BufWriter::new(err),

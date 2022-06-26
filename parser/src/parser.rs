@@ -13,7 +13,7 @@ pub struct Parser<'a, W: std::io::Write> {
 }
 
 impl<'a, W: std::io::Write> Parser<'a, W> {
-    pub fn new(tokens: Vec<Token>, diag: &'a mut DiagnosticEmitter<W>) -> Parser<'a, W> {
+    pub fn new(tokens: Vec<Token>, diag: &'a mut DiagnosticEmitter<W>) -> Self {
         Parser {
             ctx: ASTContext::new(),
             tokens,
@@ -22,14 +22,14 @@ impl<'a, W: std::io::Write> Parser<'a, W> {
         }
     }
 
-    pub fn parse(&mut self) -> (Option<Node>, ASTContext) {
-        let result = self.sequence(true);
+    pub fn parse(&mut self) -> Option<ASTContext> {
+        self.sequence(true)?;
         let ctx = std::mem::replace(&mut self.ctx, ASTContext::new());
         if !self.is_at_end() {
             self.error(self.peek(), "end of file expected.");
-            return (None, ctx);
+            return None;
         }
-        (result, ctx)
+        Some(ctx)
     }
 
     pub fn get_context(&self) -> &ASTContext {
@@ -64,16 +64,16 @@ impl<'a, W: std::io::Write> Parser<'a, W> {
             self.sequence(false)?
         };
 
-        self.consume(TokenValue::RightBrace, "'}' expected.")?;
-        let kw = self.consume(TokenValue::Or, "'or' expected.")?;
-        self.consume(TokenValue::LeftBrace, "'{' expected.")?;
+        self.consume(TokenValue::RightBrace, "")?;
+        let kw = self.consume(TokenValue::Or, "")?;
+        self.consume(TokenValue::LeftBrace, "")?;
 
         let rhs = if self.check(TokenValue::RightBrace) {
             self.ctx.make_sequence(Sequence { nodes: Vec::new() })
         } else {
             self.sequence(false)?
         };
-        self.consume(TokenValue::RightBrace, "'}' expected.")?;
+        self.consume(TokenValue::RightBrace, "")?;
 
         if let (NodeRef::Sequence(lhs_seq), NodeRef::Sequence(rhs_seq)) =
             (self.ctx.node_to_ref(lhs), self.ctx.node_to_ref(rhs))
@@ -91,7 +91,7 @@ impl<'a, W: std::io::Write> Parser<'a, W> {
 
     fn loop_(&mut self) -> Option<Node> {
         let kw = self.previous();
-        self.consume(TokenValue::LeftBrace, "'{' expected.")?;
+        self.consume(TokenValue::LeftBrace, "")?;
 
         if self.match_tokens(&[TokenValue::RightBrace]) {
             self.error(kw, "the body of 'iter' must not be empty.");
@@ -99,7 +99,7 @@ impl<'a, W: std::io::Write> Parser<'a, W> {
         }
 
         let body = self.sequence(false)?;
-        self.consume(TokenValue::RightBrace, "'}' expected.")?;
+        self.consume(TokenValue::RightBrace, "")?;
 
         Some(self.ctx.make_loop(Loop { kw, body }))
     }
@@ -107,15 +107,15 @@ impl<'a, W: std::io::Write> Parser<'a, W> {
     fn command(&mut self) -> Option<Node> {
         if self.match_tokens(&[TokenValue::Init]) {
             let kw = self.previous();
-            self.consume(TokenValue::LeftParen, "'(' expected.")?;
-            let bot_x = self.consume(TokenValue::Number(0), "number expected.")?;
-            self.consume(TokenValue::Comma, "',' expected.")?;
-            let bot_y = self.consume(TokenValue::Number(0), "number expected.")?;
-            self.consume(TokenValue::Comma, "',' expected.")?;
-            let width = self.consume(TokenValue::Number(0), "number expected.")?;
-            self.consume(TokenValue::Comma, "',' expected.")?;
-            let height = self.consume(TokenValue::Number(0), "number expected.")?;
-            self.consume(TokenValue::RightParen, "')' expected.")?;
+            self.consume(TokenValue::LeftParen, "")?;
+            let bot_x = self.consume(TokenValue::Number(0), "a number expected.")?;
+            self.consume(TokenValue::Comma, "")?;
+            let bot_y = self.consume(TokenValue::Number(0), "a number expected.")?;
+            self.consume(TokenValue::Comma, "")?;
+            let width = self.consume(TokenValue::Number(0), "a number expected.")?;
+            self.consume(TokenValue::Comma, "")?;
+            let height = self.consume(TokenValue::Number(0), "a number expected.")?;
+            self.consume(TokenValue::RightParen, "")?;
 
             if width.value.to_num() < 0 {
                 self.error(kw, "the width of the initial area cannot be negative.");
@@ -138,11 +138,11 @@ impl<'a, W: std::io::Write> Parser<'a, W> {
         }
         if self.match_tokens(&[TokenValue::Translation]) {
             let kw = self.previous();
-            self.consume(TokenValue::LeftParen, "'(' expected.")?;
-            let x = self.consume(TokenValue::Number(0), "number expected.")?;
-            self.consume(TokenValue::Comma, "',' expected.")?;
-            let y = self.consume(TokenValue::Number(0), "number expected.")?;
-            self.consume(TokenValue::RightParen, "')' expected.")?;
+            self.consume(TokenValue::LeftParen, "")?;
+            let x = self.consume(TokenValue::Number(0), "a number expected.")?;
+            self.consume(TokenValue::Comma, "")?;
+            let y = self.consume(TokenValue::Number(0), "a number expected.")?;
+            self.consume(TokenValue::RightParen, "")?;
 
             return Some(self.ctx.make_translation(Translation {
                 kw,
@@ -151,13 +151,13 @@ impl<'a, W: std::io::Write> Parser<'a, W> {
         }
         if self.match_tokens(&[TokenValue::Rotation]) {
             let kw = self.previous();
-            self.consume(TokenValue::LeftParen, "'(' expected.")?;
-            let x = self.consume(TokenValue::Number(0), "number expected.")?;
-            self.consume(TokenValue::Comma, "',' expected.")?;
-            let y = self.consume(TokenValue::Number(0), "number expected.")?;
-            self.consume(TokenValue::Comma, "',' expected.")?;
-            let deg = self.consume(TokenValue::Number(0), "number expected.")?;
-            self.consume(TokenValue::RightParen, "')' expected.")?;
+            self.consume(TokenValue::LeftParen, "")?;
+            let x = self.consume(TokenValue::Number(0), "a number expected.")?;
+            self.consume(TokenValue::Comma, "")?;
+            let y = self.consume(TokenValue::Number(0), "a number expected.")?;
+            self.consume(TokenValue::Comma, "")?;
+            let deg = self.consume(TokenValue::Number(0), "a number expected.")?;
+            self.consume(TokenValue::RightParen, "")?;
 
             return Some(self.ctx.make_rotation(Rotation {
                 kw,
@@ -218,7 +218,12 @@ impl<'a, W: std::io::Write> Parser<'a, W> {
         if self.check(tok_val) {
             return Some(self.advance());
         }
-        self.error(self.peek(), s);
+        let msg = if s.is_empty() {
+            format!("'{}' expected.", tok_val)
+        } else {
+            s.to_owned()
+        };
+        self.error(self.peek(), &msg);
         None
     }
 

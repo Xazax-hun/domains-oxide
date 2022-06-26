@@ -68,7 +68,7 @@ pub struct ASTContext {
 }
 
 impl<'a> ASTContext {
-    pub fn new() -> ASTContext {
+    pub fn new() -> Self {
         ASTContext {
             inits: Vec::new(),
             translations: Vec::new(),
@@ -77,6 +77,10 @@ impl<'a> ASTContext {
             branches: Vec::new(),
             loops: Vec::new(),
         }
+    }
+
+    pub fn get_root(&self) -> Node {
+        Node::Sequence((self.sequences.len() - 1) as u32)
     }
 
     pub fn make_init(&mut self, n: Init) -> Node {
@@ -130,7 +134,7 @@ pub struct Annotations {
 }
 
 impl Annotations {
-    pub fn new() -> Annotations {
+    pub fn new() -> Self {
         Annotations {
             pre_annotations: HashMap::new(),
             post_annotations: HashMap::new(),

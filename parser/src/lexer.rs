@@ -106,7 +106,7 @@ pub struct Lexer<'a, W: std::io::Write> {
 }
 
 impl<'a, W: std::io::Write> Lexer<'a, W> {
-    pub fn new(src: &'a str, diag: &'a mut DiagnosticEmitter<W>) -> Lexer<'a, W> {
+    pub fn new(src: &'a str, diag: &'a mut DiagnosticEmitter<W>) -> Self {
         Lexer {
             source: src,
             start: 0,
@@ -122,7 +122,7 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
 
         while !self.is_at_end() {
             if let Some(tok) = self.lex() {
-                result.push(tok)
+                result.push(tok);
             } else if self.has_error {
                 return Vec::new();
             }
@@ -257,11 +257,7 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
     }
 
     fn peek(&self) -> char {
-        if let Some(ch) = self.source.chars().nth(self.current) {
-            ch
-        } else {
-            '\0'
-        }
+        self.source.chars().nth(self.current).map_or('\0', |x| x)
     }
 
     fn advance(&mut self) -> char {
@@ -271,11 +267,11 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
     }
 
     fn match_char(&mut self, expected: char) -> bool {
-        if self.source.chars().nth(self.current) != Some(expected) {
-            false
-        } else {
+        if self.source.chars().nth(self.current) == Some(expected) {
             self.current += 1;
             true
+        } else {
+            false
         }
     }
 }
