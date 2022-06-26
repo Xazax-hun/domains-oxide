@@ -3,5 +3,6 @@
 members = [
   "domains-driver",
   "domains-lib",
+  "analysis",
   "utils"
 ]

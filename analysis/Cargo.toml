@@ -1,11 +1,8 @@
 [package]
-name = "domains-lib"
+name = "analysis"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-utils = { path = "../utils"}
-analysis = { path = "../analysis"}
-lazy_static = "1.4.0"
