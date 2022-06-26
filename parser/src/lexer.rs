@@ -39,6 +39,15 @@ fn from_char(c: char) -> Option<TokenValue> {
     }
 }
 
+impl TokenValue {
+    pub fn to_num(self) -> i32 {
+        match self {
+            Number(n) => n,
+            _ => panic!(),
+        }
+    }
+}
+
 impl fmt::Display for TokenValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -71,7 +80,7 @@ lazy_static! {
     };
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Token {
     pub value: TokenValue,
 
@@ -219,9 +228,7 @@ impl<'a, W: std::io::Write> Lexer<'a, W> {
             self.advance();
         }
 
-        let value = self.source[self.start..self.current]
-            .parse::<i32>()
-            .ok()?;
+        let value = self.source[self.start..self.current].parse::<i32>().ok()?;
 
         Some(Token {
             value: Number(value),

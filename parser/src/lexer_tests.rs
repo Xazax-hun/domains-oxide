@@ -75,7 +75,8 @@ fn test_numbers() {
 
 #[test]
 fn test_comments() {
-    let LexResult { output, tokens } = lex_string("0 // the rest is ignored\n\n//so is this\n  // and this");
+    let LexResult { output, tokens } =
+        lex_string("0 // the rest is ignored\n\n//so is this\n  // and this");
     let expected = vec![Number(0), EndOfFile];
 
     assert_eq!(to_token_values(tokens), expected);
@@ -94,6 +95,11 @@ fn test_error_messages() {
     let LexResult { output, tokens } = lex_string("|");
     assert!(tokens.is_empty());
     assert_eq!(output, "[line 1] Error : Unexpected token: '|'.\n");
+
+    let LexResult { output, tokens } = lex_string("/iter");
+    assert!(tokens.is_empty());
+    assert_eq!(output, "[line 1] Error : Unexpected token: '/'.\n");
+
     let LexResult { output, tokens } = lex_string("-iter");
     assert!(tokens.is_empty());
     assert_eq!(output, "[line 1] Error : Expected number after '-'.\n");
