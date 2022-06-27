@@ -69,7 +69,7 @@ pub struct ASTContext {
 
 impl<'a> ASTContext {
     pub fn new() -> Self {
-        ASTContext {
+        Self {
             inits: Vec::new(),
             translations: Vec::new(),
             rotations: Vec::new(),
@@ -141,7 +141,7 @@ pub struct Annotations {
 
 impl Annotations {
     pub fn new() -> Self {
-        Annotations {
+        Self {
             pre_annotations: HashMap::new(),
             post_annotations: HashMap::new(),
         }

@@ -8,7 +8,7 @@ pub struct DiagnosticEmitter {
 
 impl DiagnosticEmitter {
     pub fn new(out: Box<dyn std::io::Write>, err: Box<dyn std::io::Write>) -> Self {
-        DiagnosticEmitter {
+        Self {
             out: BufWriter::new(out),
             err: BufWriter::new(err),
         }
@@ -48,9 +48,9 @@ pub struct Vec2 {
 }
 
 impl std::ops::Add<Vec2> for Vec2 {
-    type Output = Vec2;
+    type Output = Self;
 
-    fn add(self, rhs: Vec2) -> Vec2 {
+    fn add(self, rhs: Self) -> Self {
         Vec2 {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
@@ -59,15 +59,15 @@ impl std::ops::Add<Vec2> for Vec2 {
 }
 
 impl std::ops::AddAssign<Vec2> for Vec2 {
-    fn add_assign(&mut self, rhs: Vec2) {
+    fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
 }
 
 impl std::ops::Sub<Vec2> for Vec2 {
-    type Output = Vec2;
+    type Output = Self;
 
-    fn sub(self, rhs: Vec2) -> Vec2 {
+    fn sub(self, rhs: Self) -> Self {
         Vec2 {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
@@ -76,7 +76,7 @@ impl std::ops::Sub<Vec2> for Vec2 {
 }
 
 impl std::ops::SubAssign<Vec2> for Vec2 {
-    fn sub_assign(&mut self, rhs: Vec2) {
+    fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
 }

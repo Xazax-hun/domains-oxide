@@ -27,7 +27,7 @@ pub struct BasicBlock {
 
 impl BasicBlock {
     pub fn new() -> Self {
-        BasicBlock {
+        Self {
             operations: Vec::new(),
             succs: Vec::new(),
             preds: Vec::new(),
