@@ -14,8 +14,8 @@ struct EvalResult {
 }
 
 fn eval_string(source: &str) -> Option<EvalResult> {
-    let errors: Vec<u8> = Vec::new();
-    let regular: Vec<u8> = Vec::new();
+    let errors: Box<Vec<u8>> = Box::new(Vec::new());
+    let regular: Box<Vec<u8>> = Box::new(Vec::new());
     let mut diag = DiagnosticEmitter::new(regular, errors);
     let mut lexer = Lexer::new(source, &mut diag);
     let tokens = lexer.lex_all();
@@ -23,8 +23,8 @@ fn eval_string(source: &str) -> Option<EvalResult> {
     let ctx = parser.parse()?;
     let cfg = Cfg::new(&ctx);
     let walk = create_random_walk(&cfg, &ctx, 1);
-    let out = std::str::from_utf8(diag.out.buffer()).unwrap();
-    let err = std::str::from_utf8(diag.err.buffer()).unwrap();
+    let out = std::str::from_utf8(diag.out_buffer()).unwrap();
+    let err = std::str::from_utf8(diag.err_buffer()).unwrap();
     Some(EvalResult {
         output: out.to_string() + err,
         ctx,

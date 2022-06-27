@@ -1,18 +1,33 @@
 use std::io::BufWriter;
 use std::io::Write;
 
-pub struct DiagnosticEmitter<W: std::io::Write> {
-    #[allow(dead_code)]
-    pub out: BufWriter<W>,
-    pub err: BufWriter<W>,
+pub struct DiagnosticEmitter {
+    out: BufWriter<Box<dyn std::io::Write>>,
+    err: BufWriter<Box<dyn std::io::Write>>,
 }
 
-impl<W: std::io::Write> DiagnosticEmitter<W> {
-    pub fn new(out: W, err: W) -> Self {
+impl DiagnosticEmitter {
+    pub fn new(out: Box<dyn std::io::Write>, err: Box<dyn std::io::Write>) -> Self {
         DiagnosticEmitter {
             out: BufWriter::new(out),
             err: BufWriter::new(err),
         }
+    }
+
+    pub fn to_out(&mut self, msg: &str) {
+        self.out.write_all(msg.as_bytes()).unwrap();
+    }
+
+    pub fn to_err(&mut self, msg: &str) {
+        self.err.write_all(msg.as_bytes()).unwrap();
+    }
+
+    pub fn out_buffer(&self) -> &[u8] {
+        self.out.buffer()
+    }
+
+    pub fn err_buffer(&self) -> &[u8] {
+        self.err.buffer()
     }
 
     pub fn error(&mut self, line: u32, message: &str) {

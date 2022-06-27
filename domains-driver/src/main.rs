@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use domains_lib::cfg::*;
 use domains_lib::eval::*;
 use domains_lib::lexer::*;
@@ -36,9 +34,7 @@ struct Opt {
 
 fn main() {
     let opt = Opt::from_args();
-    // TODO: figure out how to use both stderr and stdout in DiagnosticEmitter without
-    // too much ceremony.
-    let mut diag = DiagnosticEmitter::new(std::io::stdout(), std::io::stdout());
+    let mut diag = DiagnosticEmitter::new(Box::new(std::io::stdout()), Box::new(std::io::stderr()));
     let contents = std::fs::read_to_string(opt.filename).unwrap();
     let mut lexer = Lexer::new(&contents, &mut diag);
     let mut parser = Parser::new(lexer.lex_all(), &mut diag);
@@ -47,7 +43,7 @@ fn main() {
 
     if opt.dump_cfg {
         let cfg_dump = domains_lib::cfg::print(&cfg, &ctxt);
-        diag.out.write(cfg_dump.as_bytes()).unwrap();
+        diag.to_out(&cfg_dump);
         return;
     }
 
@@ -56,19 +52,15 @@ fn main() {
         walks.push(create_random_walk(&cfg, &ctxt, opt.loopiness));
 
         if opt.executions > 1 {
-            diag.out
-                .write(format!("{}. execution:\n", i).as_bytes())
-                .unwrap();
+            diag.to_out(&format!("{}. execution:\n", i));
         }
         for step in walks.last().unwrap() {
-            diag.out
-                .write(format!("{{ x: {}, y: {} }}\n", step.pos.x, step.pos.y).as_bytes())
-                .unwrap();
+            diag.to_out(&format!("{{ x: {}, y: {} }}\n", step.pos.x, step.pos.y));
         }
     }
     if opt.annotate_trace {
         let anns = annotate_with_walks(&walks);
         let out = domains_lib::ast::print(ctxt.get_root(), &ctxt, &anns);
-        diag.out.write(out.as_bytes()).unwrap();
+        diag.to_out(&out);
     }
 }

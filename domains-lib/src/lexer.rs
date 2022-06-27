@@ -96,17 +96,17 @@ impl fmt::Display for Token {
     }
 }
 
-pub struct Lexer<'a, W: std::io::Write> {
+pub struct Lexer<'a> {
     source: &'a str,
     start: usize,
     current: usize,
     line_num: u32,
     has_error: bool, // TODO: can we get rid of this?
-    diagnostic_emitter: &'a mut DiagnosticEmitter<W>,
+    diagnostic_emitter: &'a mut DiagnosticEmitter,
 }
 
-impl<'a, W: std::io::Write> Lexer<'a, W> {
-    pub fn new(src: &'a str, diag: &'a mut DiagnosticEmitter<W>) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new(src: &'a str, diag: &'a mut DiagnosticEmitter) -> Self {
         Lexer {
             source: src,
             start: 0,

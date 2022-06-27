@@ -107,7 +107,7 @@ pub fn annotate_with_walks(walks: &[Walk]) -> Annotations {
         }
     }
 
-    fn print_set(v: &Vec<Vec2>) -> String {
+    fn print_set(v: &[Vec2]) -> String {
         let mut result = "{".to_owned();
 
         let positions: Vec<String> = v

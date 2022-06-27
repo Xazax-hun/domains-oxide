@@ -128,6 +128,12 @@ impl<'a> ASTContext {
     }
 }
 
+impl<'a> Default for ASTContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct Annotations {
     pub pre_annotations: HashMap<Node, Vec<String>>,
     pub post_annotations: HashMap<Node, Vec<String>>,
@@ -139,6 +145,12 @@ impl Annotations {
             pre_annotations: HashMap::new(),
             post_annotations: HashMap::new(),
         }
+    }
+}
+
+impl<'a> Default for Annotations {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

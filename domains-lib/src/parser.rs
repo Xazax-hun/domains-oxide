@@ -5,15 +5,15 @@ use crate::{
     lexer::{Token, TokenValue},
 };
 
-pub struct Parser<'a, W: std::io::Write> {
+pub struct Parser<'a> {
     ctx: ASTContext,
     tokens: Vec<Token>,
     current: usize,
-    diag: &'a mut DiagnosticEmitter<W>,
+    diag: &'a mut DiagnosticEmitter,
 }
 
-impl<'a, W: std::io::Write> Parser<'a, W> {
-    pub fn new(tokens: Vec<Token>, diag: &'a mut DiagnosticEmitter<W>) -> Self {
+impl<'a> Parser<'a> {
+    pub fn new(tokens: Vec<Token>, diag: &'a mut DiagnosticEmitter) -> Self {
         Parser {
             ctx: ASTContext::new(),
             tokens,

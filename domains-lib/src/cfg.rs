@@ -9,12 +9,12 @@ pub enum Operation {
     Rotation(u32),
 }
 
-impl Into<Node> for &Operation {
-    fn into(self) -> Node {
-        match self {
-            Operation::Init(id) => Node::Init(*id),
-            Operation::Translation(id) => Node::Translation(*id),
-            Operation::Rotation(id) => Node::Rotation(*id),
+impl From<&Operation> for Node {
+    fn from(op: &Operation) -> Self {
+        match *op {
+            Operation::Init(id) => Node::Init(id),
+            Operation::Translation(id) => Node::Translation(id),
+            Operation::Rotation(id) => Node::Rotation(id),
         }
     }
 }
@@ -32,6 +32,12 @@ impl BasicBlock {
             succs: Vec::new(),
             preds: Vec::new(),
         }
+    }
+}
+
+impl Default for BasicBlock {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -109,7 +115,7 @@ impl Cfg {
             }
             (_, NodeRef::Sequence(seq_ref)) => {
                 for child in &seq_ref.nodes {
-                    current_block = self.add_ast_node(current_block, child.clone(), ctx);
+                    current_block = self.add_ast_node(current_block, *child, ctx);
                 }
                 current_block
             }
@@ -144,22 +150,18 @@ pub fn print(cfg: &Cfg, ctx: &ASTContext) -> String {
     let mut output = String::new();
     output.push_str("digraph CFG {\n");
     let anns = Annotations::new();
-    let mut counter = 0;
-    for block in &cfg.basic_blocks {
+    for (counter, block) in cfg.basic_blocks.iter().enumerate() {
         output.push_str(&format!("  Node_{}[label=\"", counter));
         for op in block.operations() {
             output.push_str(&format!("{}\\n", crate::ast::print(op.into(), ctx, &anns)));
         }
         output.push_str("\"]\n");
-        counter += 1;
     }
     output.push('\n');
-    let mut counter = 0;
-    for block in &cfg.basic_blocks {
+    for (counter, block) in cfg.basic_blocks.iter().enumerate() {
         for next in block.successors() {
             output.push_str(&format!("  Node_{} -> Node_{}\n", counter, next))
         }
-        counter += 1;
     }
     output.push_str("}\n");
     output
