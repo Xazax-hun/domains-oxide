@@ -2,6 +2,7 @@ use analysis::cfg::*;
 
 use crate::ast::*;
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
     Init(u32),
     Translation(u32),

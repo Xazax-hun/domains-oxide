@@ -217,9 +217,9 @@ impl<const PRE: bool> RenderAnnotations for IsPre<PRE> {
             if !annotations.is_empty() {
                 let mut result = "".to_owned();
                 result.push_str(if PRE { "" } else { " " });
-                result.push_str("/*");
+                result.push_str("/* ");
                 result.push_str(&annotations.join(" "));
-                result.push_str("*/");
+                result.push_str(" */");
                 result.push_str(if PRE { " " } else { "" });
                 return result;
             }
