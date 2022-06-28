@@ -79,8 +79,8 @@ pub fn create_random_walk(cfg: &Cfg, ctx: &ASTContext, loopiness: u32) -> Walk {
         if cfg.blocks()[current].successors().is_empty() {
             break;
         }
-        visited.insert(current);
         back_edges.extend(detect_back_edges(cfg, current, &visited));
+        visited.insert(current);
         current = get_next_block(&mut rng, cfg, current, &mut back_edges, loopiness);
     }
 
@@ -162,7 +162,7 @@ fn get_next_block(
     loopiness: u32,
 ) -> usize {
     let succs = cfg.blocks()[current].successors();
-    let (regular_edges, back_edges): (Vec<usize>, Vec<usize>) = succs
+    let (back_edges, regular_edges): (Vec<usize>, Vec<usize>) = succs
         .into_iter()
         .partition(|succ| back_edges.contains(&(current, *succ)));
     let max = regular_edges.len() + back_edges.len() * (loopiness as usize);
