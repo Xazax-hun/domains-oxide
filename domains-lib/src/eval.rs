@@ -146,7 +146,7 @@ fn detect_back_edges(
 
     let mut result: HashSet<(usize, usize)> = HashSet::new();
     for succ in cfg.blocks()[current].successors() {
-        if visited.contains(&succ) {
+        if visited.contains(&succ) || current == succ {
             result.insert((current, succ));
         }
     }
