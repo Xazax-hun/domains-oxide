@@ -228,7 +228,7 @@ impl<'a> Lexer<'a> {
             self.advance();
         }
 
-        let value = self.source[self.start..self.current].parse::<i32>().ok()?;
+        let value: i32 = self.source[self.start..self.current].parse().ok()?;
 
         Some(Token {
             value: Number(value),
