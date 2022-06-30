@@ -19,6 +19,8 @@ impl From<&Operation> for Node {
     }
 }
 
+// TODO: Should this have a phantom lifetime to express
+//       its dependency on the CFG? 
 pub struct BasicBlock {
     operations: Vec<Operation>,
     succs: Vec<usize>,
@@ -57,6 +59,8 @@ impl CfgBlock for BasicBlock {
     }
 }
 
+// TODO: Either introduce phantom lifetime to make the connection to ASTContext
+//       explicit, or make it own the AST Context.
 pub struct Cfg {
     basic_blocks: Vec<BasicBlock>,
 }
@@ -93,8 +97,7 @@ impl Cfg {
     }
 
     fn add_ast_node(&mut self, mut current_block: usize, n: Node, ctx: &ASTContext) -> usize {
-        let node_ref = ctx.node_to_ref(n);
-        match (n, node_ref) {
+        match (n, ctx.node_to_ref(n)) {
             (Node::Init(init), _) => {
                 self.basic_blocks[current_block]
                     .operations
@@ -147,8 +150,7 @@ impl Cfg {
 }
 
 pub fn print(cfg: &Cfg, ctx: &ASTContext) -> String {
-    let mut output = String::new();
-    output.push_str("digraph CFG {\n");
+    let mut output = "digraph CFG {\n".to_owned();
     let anns = Annotations::new();
     for (counter, block) in cfg.basic_blocks.iter().enumerate() {
         output.push_str(&format!("  Node_{}[label=\"", counter));

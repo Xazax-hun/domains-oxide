@@ -67,7 +67,7 @@ pub struct ASTContext {
     loops: Vec<Loop>,
 }
 
-impl<'a> ASTContext {
+impl ASTContext {
     pub fn new() -> Self {
         Self {
             inits: Vec::new(),
@@ -128,7 +128,7 @@ impl<'a> ASTContext {
     }
 }
 
-impl<'a> Default for ASTContext {
+impl Default for ASTContext {
     fn default() -> Self {
         Self::new()
     }
@@ -148,7 +148,7 @@ impl Annotations {
     }
 }
 
-impl<'a> Default for Annotations {
+impl Default for Annotations {
     fn default() -> Self {
         Self::new()
     }
@@ -164,7 +164,7 @@ fn indent(indent: u32) -> String {
 
 fn print_impl(ind: u32, n: Node, ctx: &ASTContext, ann: &Annotations) -> String {
     let node_ref = ctx.node_to_ref(n);
-    let mut result = "".to_owned();
+    let mut result = String::new();
     if !matches!(n, Node::Sequence(_)) {
         result.push_str(&indent(ind));
     }
@@ -217,7 +217,7 @@ fn print_impl(ind: u32, n: Node, ctx: &ASTContext, ann: &Annotations) -> String 
 // TODO: Unfortunately, it looks like I cannot specialize
 // functions in Rust yet. Remove this workaround once that
 // language feature is added.
-struct IsPre<const B: bool>;
+struct IsPre<const PRE: bool>;
 
 trait RenderAnnotations {
     fn render_annotations(n: Node, ann: &HashMap<Node, Vec<String>>) -> String;
@@ -227,8 +227,7 @@ impl<const PRE: bool> RenderAnnotations for IsPre<PRE> {
     fn render_annotations(n: Node, ann: &HashMap<Node, Vec<String>>) -> String {
         if let Some(annotations) = ann.get(&n) {
             if !annotations.is_empty() {
-                let mut result = "".to_owned();
-                result.push_str(if PRE { "" } else { " " });
+                let mut result = (if PRE { "" } else { " " }).to_owned();
                 result.push_str("/* ");
                 result.push_str(&annotations.join(" "));
                 result.push_str(" */");
@@ -236,7 +235,7 @@ impl<const PRE: bool> RenderAnnotations for IsPre<PRE> {
                 return result;
             }
         }
-        "".to_owned()
+        String::new()
     }
 }
 

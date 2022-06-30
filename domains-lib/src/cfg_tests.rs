@@ -1,8 +1,8 @@
-use super::ast::*;
+use super::ast::ASTContext;
 use super::cfg::*;
 
-use super::lexer::*;
-use super::parser::*;
+use super::lexer::Lexer;
+use super::parser::Parser;
 use utils::DiagnosticEmitter;
 
 struct ParseResult {
@@ -20,10 +20,8 @@ fn parse_string(source: &str) -> Option<ParseResult> {
     let mut parser = Parser::new(tokens, &mut diag);
     let ctx = parser.parse()?;
     let cfg = Cfg::new(&ctx);
-    let out = std::str::from_utf8(diag.out_buffer()).unwrap();
-    let err = std::str::from_utf8(diag.err_buffer()).unwrap();
     Some(ParseResult {
-        output: out.to_string() + err,
+        output: diag.out_buffer().to_string() + diag.err_buffer(),
         ctx,
         cfg,
     })
@@ -42,7 +40,7 @@ iter {
 }";
     let ParseResult { output, ctx, cfg } = parse_string(source).unwrap();
     assert!(output.is_empty());
-    let pretty_printed = crate::cfg::print(&cfg, &ctx);
+    let pretty_printed = print(&cfg, &ctx);
     let expected = r#"digraph CFG {
   Node_0[label="init(50, 50, 50, 50)\ntranslation(10, 0)\n"]
   Node_1[label=""]
@@ -85,7 +83,7 @@ iter {
 }";
     let ParseResult { output, ctx, cfg } = parse_string(source).unwrap();
     assert!(output.is_empty());
-    let pretty_printed = crate::cfg::print(&cfg, &ctx);
+    let pretty_printed = print(&cfg, &ctx);
     let expected = r#"digraph CFG {
   Node_0[label="init(50, 50, 50, 50)\ntranslation(10, 0)\n"]
   Node_1[label=""]

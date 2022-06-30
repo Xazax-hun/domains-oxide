@@ -2,12 +2,12 @@ use std::io::BufWriter;
 use std::io::Write;
 
 pub struct DiagnosticEmitter {
-    out: BufWriter<Box<dyn std::io::Write>>,
-    err: BufWriter<Box<dyn std::io::Write>>,
+    out: BufWriter<Box<dyn Write>>,
+    err: BufWriter<Box<dyn Write>>,
 }
 
 impl DiagnosticEmitter {
-    pub fn new(out: Box<dyn std::io::Write>, err: Box<dyn std::io::Write>) -> Self {
+    pub fn new(out: Box<dyn Write>, err: Box<dyn Write>) -> Self {
         Self {
             out: BufWriter::new(out),
             err: BufWriter::new(err),
@@ -26,12 +26,12 @@ impl DiagnosticEmitter {
             .expect("Failed to write to error buffer.");
     }
 
-    pub fn out_buffer(&self) -> &[u8] {
-        self.out.buffer()
+    pub fn out_buffer(&self) -> &str {
+        std::str::from_utf8(self.out.buffer()).expect("Failed to create string from bytes.")
     }
 
-    pub fn err_buffer(&self) -> &[u8] {
-        self.err.buffer()
+    pub fn err_buffer(&self) -> &str {
+        std::str::from_utf8(self.err.buffer()).expect("Failed to create string from bytes.")
     }
 
     pub fn error(&mut self, line: u32, message: &str) {

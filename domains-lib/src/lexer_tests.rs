@@ -1,8 +1,6 @@
 use super::lexer::*;
 use utils::DiagnosticEmitter;
 
-use TokenValue::*;
-
 struct LexResult {
     output: String,
     tokens: Vec<Token>,
@@ -14,10 +12,8 @@ fn lex_string(source: &str) -> LexResult {
     let mut diag = DiagnosticEmitter::new(regular, errors);
     let mut lexer = Lexer::new(source, &mut diag);
     let tokens = lexer.lex_all();
-    let out = std::str::from_utf8(diag.out_buffer()).unwrap();
-    let err = std::str::from_utf8(diag.err_buffer()).unwrap();
     LexResult {
-        output: out.to_string() + err,
+        output: diag.out_buffer().to_string() + diag.err_buffer(),
         tokens,
     }
 }
@@ -25,6 +21,8 @@ fn lex_string(source: &str) -> LexResult {
 fn to_token_values(tokens: Vec<Token>) -> Vec<TokenValue> {
     tokens.into_iter().map(|tok| tok.value).collect()
 }
+
+use TokenValue::*;
 
 #[test]
 fn test_empty_input() {

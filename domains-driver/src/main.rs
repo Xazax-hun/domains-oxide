@@ -1,7 +1,7 @@
 use domains_lib::cfg::*;
 use domains_lib::eval::*;
-use domains_lib::lexer::*;
-use domains_lib::parser::*;
+use domains_lib::lexer::Lexer;
+use domains_lib::parser::Parser;
 use structopt::StructOpt;
 use utils::DiagnosticEmitter;
 
@@ -35,7 +35,7 @@ struct Opt {
 fn main() {
     let opt = Opt::from_args();
     let mut diag = DiagnosticEmitter::new(Box::new(std::io::stdout()), Box::new(std::io::stderr()));
-    let contents = std::fs::read_to_string(opt.filename).unwrap();
+    let contents = std::fs::read_to_string(opt.filename).expect("Failed to read input file.");
     let mut lexer = Lexer::new(&contents, &mut diag);
     let mut parser = Parser::new(lexer.lex_all(), &mut diag);
     let ctxt = parser.parse().unwrap();

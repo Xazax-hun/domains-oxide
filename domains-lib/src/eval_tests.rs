@@ -1,9 +1,9 @@
-use super::ast::*;
+use super::ast::ASTContext;
 use super::cfg::*;
 use super::eval::*;
 
-use super::lexer::*;
-use super::parser::*;
+use super::lexer::Lexer;
+use super::parser::Parser;
 use utils::DiagnosticEmitter;
 
 struct EvalResult {
@@ -23,10 +23,8 @@ fn eval_string(source: &str) -> Option<EvalResult> {
     let ctx = parser.parse()?;
     let cfg = Cfg::new(&ctx);
     let walk = create_random_walk(&cfg, &ctx, 1);
-    let out = std::str::from_utf8(diag.out_buffer()).unwrap();
-    let err = std::str::from_utf8(diag.err_buffer()).unwrap();
     Some(EvalResult {
-        output: out.to_string() + err,
+        output: diag.out_buffer().to_string() + diag.err_buffer(),
         ctx,
         cfg,
         walk,

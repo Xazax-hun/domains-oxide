@@ -1,7 +1,7 @@
 use super::ast::*;
 
-use super::lexer::*;
-use super::parser::*;
+use super::lexer::Lexer;
+use super::parser::Parser;
 use utils::DiagnosticEmitter;
 
 struct ParseResult {
@@ -17,10 +17,8 @@ fn parse_string(source: &str) -> ParseResult {
     let tokens = lexer.lex_all();
     let mut parser = Parser::new(tokens, &mut diag);
     let ctx = parser.parse();
-    let out = std::str::from_utf8(diag.out_buffer()).unwrap();
-    let err = std::str::from_utf8(diag.err_buffer()).unwrap();
     ParseResult {
-        output: out.to_string() + err,
+        output: diag.out_buffer().to_string() + diag.err_buffer(),
         ctx,
     }
 }

@@ -12,6 +12,8 @@ pub struct Parser<'a> {
     diag: &'a mut DiagnosticEmitter,
 }
 
+use TokenValue::*;
+
 impl<'a> Parser<'a> {
     pub fn new(tokens: Vec<Token>, diag: &'a mut DiagnosticEmitter) -> Self {
         Parser {
@@ -37,7 +39,7 @@ impl<'a> Parser<'a> {
     }
 
     fn sequence(&mut self, root: bool) -> Option<Node> {
-        if root && !self.check(TokenValue::Init) {
+        if root && !self.check(Init) {
             self.error(
                 self.peek(),
                 "'init' expected at the beginning of the program.",
@@ -49,7 +51,7 @@ impl<'a> Parser<'a> {
             let com = self.command()?;
             commands.push(com);
 
-            if !self.match_tokens(&[TokenValue::Semicolon]) {
+            if !self.match_tokens(&[Semicolon]) {
                 break;
             }
         }
@@ -58,22 +60,22 @@ impl<'a> Parser<'a> {
 
     fn branch(&mut self) -> Option<Node> {
         // Allow empty sequences in alternatives.
-        let lhs = if self.check(TokenValue::RightBrace) {
+        let lhs = if self.check(RightBrace) {
             self.ctx.make_sequence(Sequence { nodes: Vec::new() })
         } else {
             self.sequence(false)?
         };
 
-        self.consume(TokenValue::RightBrace, "")?;
-        let kw = self.consume(TokenValue::Or, "")?;
-        self.consume(TokenValue::LeftBrace, "")?;
+        self.consume(RightBrace, "")?;
+        let kw = self.consume(Or, "")?;
+        self.consume(LeftBrace, "")?;
 
-        let rhs = if self.check(TokenValue::RightBrace) {
+        let rhs = if self.check(RightBrace) {
             self.ctx.make_sequence(Sequence { nodes: Vec::new() })
         } else {
             self.sequence(false)?
         };
-        self.consume(TokenValue::RightBrace, "")?;
+        self.consume(RightBrace, "")?;
 
         if let (NodeRef::Sequence(lhs_seq), NodeRef::Sequence(rhs_seq)) =
             (self.ctx.node_to_ref(lhs), self.ctx.node_to_ref(rhs))
@@ -91,31 +93,31 @@ impl<'a> Parser<'a> {
 
     fn loop_(&mut self) -> Option<Node> {
         let kw = self.previous();
-        self.consume(TokenValue::LeftBrace, "")?;
+        self.consume(LeftBrace, "")?;
 
-        if self.match_tokens(&[TokenValue::RightBrace]) {
+        if self.match_tokens(&[RightBrace]) {
             self.error(kw, "the body of 'iter' must not be empty.");
             return None;
         }
 
         let body = self.sequence(false)?;
-        self.consume(TokenValue::RightBrace, "")?;
+        self.consume(RightBrace, "")?;
 
         Some(self.ctx.make_loop(Loop { kw, body }))
     }
 
     fn command(&mut self) -> Option<Node> {
-        if self.match_tokens(&[TokenValue::Init]) {
+        if self.match_tokens(&[Init]) {
             let kw = self.previous();
-            self.consume(TokenValue::LeftParen, "")?;
-            let bot_x = self.consume(TokenValue::Number(0), "a number expected.")?;
-            self.consume(TokenValue::Comma, "")?;
-            let bot_y = self.consume(TokenValue::Number(0), "a number expected.")?;
-            self.consume(TokenValue::Comma, "")?;
-            let width = self.consume(TokenValue::Number(0), "a number expected.")?;
-            self.consume(TokenValue::Comma, "")?;
-            let height = self.consume(TokenValue::Number(0), "a number expected.")?;
-            self.consume(TokenValue::RightParen, "")?;
+            self.consume(LeftParen, "")?;
+            let bot_x = self.consume(Number(0), "a number expected.")?;
+            self.consume(Comma, "")?;
+            let bot_y = self.consume(Number(0), "a number expected.")?;
+            self.consume(Comma, "")?;
+            let width = self.consume(Number(0), "a number expected.")?;
+            self.consume(Comma, "")?;
+            let height = self.consume(Number(0), "a number expected.")?;
+            self.consume(RightParen, "")?;
 
             if width.value.to_num() < 0 {
                 self.error(kw, "the width of the initial area cannot be negative.");
@@ -127,7 +129,7 @@ impl<'a> Parser<'a> {
                 return None;
             }
 
-            return Some(self.ctx.make_init(Init {
+            return Some(self.ctx.make_init(crate::ast::Init {
                 kw,
                 bottom_left: NumPair { x: bot_x, y: bot_y },
                 size: NumPair {
@@ -136,43 +138,43 @@ impl<'a> Parser<'a> {
                 },
             }));
         }
-        if self.match_tokens(&[TokenValue::Translation]) {
+        if self.match_tokens(&[Translation]) {
             let kw = self.previous();
-            self.consume(TokenValue::LeftParen, "")?;
-            let x = self.consume(TokenValue::Number(0), "a number expected.")?;
-            self.consume(TokenValue::Comma, "")?;
-            let y = self.consume(TokenValue::Number(0), "a number expected.")?;
-            self.consume(TokenValue::RightParen, "")?;
+            self.consume(LeftParen, "")?;
+            let x = self.consume(Number(0), "a number expected.")?;
+            self.consume(Comma, "")?;
+            let y = self.consume(Number(0), "a number expected.")?;
+            self.consume(RightParen, "")?;
 
-            return Some(self.ctx.make_translation(Translation {
+            return Some(self.ctx.make_translation(crate::ast::Translation {
                 kw,
                 vector: NumPair { x, y },
             }));
         }
-        if self.match_tokens(&[TokenValue::Rotation]) {
+        if self.match_tokens(&[Rotation]) {
             let kw = self.previous();
-            self.consume(TokenValue::LeftParen, "")?;
-            let x = self.consume(TokenValue::Number(0), "a number expected.")?;
-            self.consume(TokenValue::Comma, "")?;
-            let y = self.consume(TokenValue::Number(0), "a number expected.")?;
-            self.consume(TokenValue::Comma, "")?;
-            let deg = self.consume(TokenValue::Number(0), "a number expected.")?;
-            self.consume(TokenValue::RightParen, "")?;
+            self.consume(LeftParen, "")?;
+            let x = self.consume(Number(0), "a number expected.")?;
+            self.consume(Comma, "")?;
+            let y = self.consume(Number(0), "a number expected.")?;
+            self.consume(Comma, "")?;
+            let deg = self.consume(Number(0), "a number expected.")?;
+            self.consume(RightParen, "")?;
 
-            return Some(self.ctx.make_rotation(Rotation {
+            return Some(self.ctx.make_rotation(crate::ast::Rotation {
                 kw,
                 origin: NumPair { x, y },
                 deg,
             }));
         }
-        if self.match_tokens(&[TokenValue::Iter]) {
+        if self.match_tokens(&[Iter]) {
             return self.loop_();
         }
-        if self.match_tokens(&[TokenValue::LeftBrace]) {
+        if self.match_tokens(&[LeftBrace]) {
             return self.branch();
         }
 
-        if self.is_at_end() || self.check(TokenValue::RightBrace) {
+        if self.is_at_end() || self.check(RightBrace) {
             self.error(self.peek(), "redundant semicolon?");
         }
 
@@ -188,7 +190,7 @@ impl<'a> Parser<'a> {
     }
 
     fn is_at_end(&self) -> bool {
-        matches!(self.peek().value, TokenValue::EndOfFile)
+        matches!(self.peek().value, EndOfFile)
     }
 
     fn check(&self, tok_val: TokenValue) -> bool {
@@ -228,7 +230,7 @@ impl<'a> Parser<'a> {
     }
 
     fn error(&mut self, tok: Token, s: &str) {
-        if tok.value == TokenValue::EndOfFile {
+        if tok.value == EndOfFile {
             self.diag.report(tok.line_num, "at end of file", s)
         } else {
             self.diag.report(tok.line_num, &format!("at '{}'", tok), s)
