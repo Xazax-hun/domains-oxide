@@ -2,6 +2,8 @@ use analysis::cfg::*;
 
 use crate::ast::*;
 
+use std::fmt::Write;
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
     Init(u32),
@@ -153,16 +155,16 @@ pub fn print(cfg: &Cfg, ctx: &ASTContext) -> String {
     let mut output = "digraph CFG {\n".to_owned();
     let anns = Annotations::new();
     for (counter, block) in cfg.basic_blocks.iter().enumerate() {
-        output.push_str(&format!("  Node_{}[label=\"", counter));
+        write!(output, "  Node_{}[label=\"", counter).unwrap();
         for op in block.operations() {
-            output.push_str(&format!("{}\\n", crate::ast::print(op.into(), ctx, &anns)));
+            write!(output, "{}\\n", crate::ast::print(op.into(), ctx, &anns)).unwrap();
         }
         output.push_str("\"]\n");
     }
     output.push('\n');
     for (counter, block) in cfg.basic_blocks.iter().enumerate() {
         for next in block.successors() {
-            output.push_str(&format!("  Node_{} -> Node_{}\n", counter, next))
+            writeln!(output, "  Node_{} -> Node_{}", counter, next).unwrap();
         }
     }
     output.push_str("}\n");

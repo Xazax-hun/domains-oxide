@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::HashMap, hash::Hash, fmt::Write};
 
 use crate::lexer::Token;
 
@@ -171,22 +171,22 @@ fn print_impl(ind: u32, n: Node, ctx: &ASTContext, ann: &Annotations) -> String 
     result.push_str(&render_pre_annotations(n, ann));
     match node_ref {
         NodeRef::Init(init) => {
-            result.push_str(&format!(
+            write!(result,
                 "init({}, {}, {}, {})",
                 init.bottom_left.x, init.bottom_left.y, init.size.x, init.size.y
-            ));
+            ).unwrap();
         }
         NodeRef::Translation(trans) => {
-            result.push_str(&format!(
+            write!(result,
                 "translation({}, {})",
                 trans.vector.x, trans.vector.y
-            ));
+            ).unwrap();
         }
         NodeRef::Rotation(rot) => {
-            result.push_str(&format!(
+            write!(result,
                 "rotation({}, {}, {})",
                 rot.origin.x, rot.origin.y, rot.deg
-            ));
+            ).unwrap();
         }
         NodeRef::Sequence(seq) => {
             let v: Vec<String> = seq
@@ -200,14 +200,14 @@ fn print_impl(ind: u32, n: Node, ctx: &ASTContext, ann: &Annotations) -> String 
         NodeRef::Branch(branch) => {
             result.push_str("{\n");
             result.push_str(&print_impl(ind + 2, branch.lhs, ctx, ann));
-            result.push_str(&format!("\n{}}} or {{\n", &indent(ind)));
+            write!(result, "\n{}}} or {{\n", &indent(ind)).unwrap();
             result.push_str(&print_impl(ind + 2, branch.rhs, ctx, ann));
-            result.push_str(&format!("\n{}}}", &indent(ind)));
+            write!(result, "\n{}}}", &indent(ind)).unwrap();
         }
         NodeRef::Loop(l) => {
             result.push_str("iter {\n");
             result.push_str(&print_impl(ind + 2, l.body, ctx, ann));
-            result.push_str(&format!("\n{}}}", &indent(ind)));
+            write!(result, "\n{}}}", &indent(ind)).unwrap();
         }
     };
     result.push_str(&render_post_annotations(n, ann));

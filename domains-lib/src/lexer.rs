@@ -203,7 +203,7 @@ impl<'a> Lexer<'a> {
                     return None;
                 }
                 c => {
-                    if c.is_digit(10) {
+                    if c.is_ascii_digit() {
                         return self.lex_number();
                     }
                     if let kw @ Some(_) = self.lex_keyword() {
@@ -224,7 +224,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_number(&mut self) -> Option<Token> {
-        while self.peek().is_digit(10) {
+        while self.peek().is_ascii_digit() {
             self.advance();
         }
 
@@ -237,7 +237,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_keyword(&mut self) -> Option<Token> {
-        while self.peek().is_alphabetic() {
+        while self.peek().is_ascii_alphabetic() {
             self.advance();
         }
 
