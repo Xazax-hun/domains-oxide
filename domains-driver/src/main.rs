@@ -32,35 +32,62 @@ struct Opt {
     filename: String,
 }
 
-fn main() {
-    let opt = Opt::from_args();
-    let mut diag = DiagnosticEmitter::new(Box::new(std::io::stdout()), Box::new(std::io::stderr()));
-    let contents = std::fs::read_to_string(opt.filename).expect("Failed to read input file.");
-    let mut lexer = Lexer::new(&contents, &mut diag);
-    let mut parser = Parser::new(lexer.lex_all(), &mut diag);
-    let ctxt = parser.parse().unwrap();
+impl Default for Opt {
+    fn default() -> Self {
+        Self {
+            dump_cfg: false,
+            annotate_trace: false,
+            executions: 1,
+            loopiness: 1,
+            filename: "".to_owned(),
+        }
+    }
+}
+
+fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Option<()> {
+    let mut lexer = Lexer::new(src, diag);
+    let tokens = lexer.lex_all();
+    if tokens.is_empty() {
+        return None;
+    }
+
+    let mut parser = Parser::new(tokens, diag);
+    let ctxt = parser.parse()?;
     let cfg = Cfg::new(&ctxt);
 
-    if opt.dump_cfg {
+    if opts.dump_cfg {
         let cfg_dump = domains_lib::cfg::print(&cfg, &ctxt);
         diag.to_out(&cfg_dump);
-        return;
+        return Some(());
     }
 
     let mut walks = Vec::new();
-    for i in 0..opt.executions {
-        walks.push(create_random_walk(&cfg, &ctxt, opt.loopiness));
+    for i in 1..=opts.executions {
+        walks.push(create_random_walk(&cfg, &ctxt, opts.loopiness));
 
-        if opt.executions > 1 {
+        if opts.executions > 1 {
             diag.to_out(&format!("{}. execution:\n", i));
         }
         for step in walks.last().unwrap() {
             diag.to_out(&format!("{{ x: {}, y: {} }}\n", step.pos.x, step.pos.y));
         }
     }
-    if opt.annotate_trace {
+    if opts.annotate_trace {
         let anns = annotate_with_walks(&walks);
         let out = domains_lib::ast::print(ctxt.get_root(), &ctxt, &anns);
-        diag.to_out(&out);
+        diag.to_out(&(out + "\n"));
     }
+
+    Some(())
 }
+
+fn main() {
+    let opts = Opt::from_args();
+    let mut diag = DiagnosticEmitter::new(Box::new(std::io::stdout()), Box::new(std::io::stderr()));
+    let contents = std::fs::read_to_string(&opts.filename).expect("Failed to read input file.");
+
+    process_source(&contents, &mut diag, &opts).unwrap()
+}
+
+#[cfg(test)]
+mod driver_tests;

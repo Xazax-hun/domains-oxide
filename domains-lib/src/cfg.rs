@@ -22,7 +22,7 @@ impl From<&Operation> for Node {
 }
 
 // TODO: Should this have a phantom lifetime to express
-//       its dependency on the CFG? 
+//       its dependency on the CFG?
 pub struct BasicBlock {
     operations: Vec<Operation>,
     succs: Vec<usize>,

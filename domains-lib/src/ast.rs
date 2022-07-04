@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::Hash, fmt::Write};
+use std::{collections::HashMap, fmt::Write, hash::Hash};
 
 use crate::lexer::Token;
 
@@ -171,22 +171,28 @@ fn print_impl(ind: u32, n: Node, ctx: &ASTContext, ann: &Annotations) -> String 
     result.push_str(&render_pre_annotations(n, ann));
     match node_ref {
         NodeRef::Init(init) => {
-            write!(result,
+            write!(
+                result,
                 "init({}, {}, {}, {})",
                 init.bottom_left.x, init.bottom_left.y, init.size.x, init.size.y
-            ).unwrap();
+            )
+            .unwrap();
         }
         NodeRef::Translation(trans) => {
-            write!(result,
+            write!(
+                result,
                 "translation({}, {})",
                 trans.vector.x, trans.vector.y
-            ).unwrap();
+            )
+            .unwrap();
         }
         NodeRef::Rotation(rot) => {
-            write!(result,
+            write!(
+                result,
                 "rotation({}, {}, {})",
                 rot.origin.x, rot.origin.y, rot.deg
-            ).unwrap();
+            )
+            .unwrap();
         }
         NodeRef::Sequence(seq) => {
             let v: Vec<String> = seq
