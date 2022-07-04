@@ -121,3 +121,15 @@ rotation(0, 0, 180)";
     .unwrap();
     assert_eq!(output, expected);
 }
+
+#[test]
+fn parser_error_does_not_panic() {
+    let source = r"init";
+    assert!(run_driver(source, Opt::default()).is_none());
+}
+
+#[test]
+fn lexer_error_does_not_panic() {
+    let source = r"/ ";
+    assert!(run_driver(source, Opt::default()).is_none());
+}
