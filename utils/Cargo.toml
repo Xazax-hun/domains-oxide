@@ -1,5 +1,10 @@
 [package]
 name = "utils"
+description = "Various utilities for geometry, io and other purposes."
+repository = "https://github.com/Xazax-hun/domains-oxide"
+readme = "../README.md"
+license = "Apache-2.0"
+keywords = ["utils"]
 version = "0.1.0"
 edition = "2021"
 

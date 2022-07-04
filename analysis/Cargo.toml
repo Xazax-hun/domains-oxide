@@ -1,5 +1,11 @@
 [package]
 name = "analysis"
+description = "Library for implementing static analysis tools"
+repository = "https://github.com/Xazax-hun/domains-oxide"
+readme = "../README.md"
+license = "Apache-2.0"
+keywords = ["static analysis", "program analysis"]
+categories = ["compilers", "development-tools", "mathematics"]
 version = "0.1.0"
 edition = "2021"
 

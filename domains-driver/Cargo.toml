@@ -1,5 +1,11 @@
 [package]
 name = "domains-driver"
+description = "Executable for a toy language to help experiment with static analysis"
+repository = "https://github.com/Xazax-hun/domains-oxide"
+readme = "../README.md"
+license = "Apache-2.0"
+keywords = ["compiler", "interpreter", "static analysis", "program analysis", "language"]
+categories = ["compilers", "command-line-utilities", "development-tools"]
 version = "0.1.0"
 edition = "2021"
 
