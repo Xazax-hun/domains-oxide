@@ -45,13 +45,13 @@ impl Default for Opt {
 }
 
 pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Option<()> {
-    let mut lexer = Lexer::new(src, diag);
+    let lexer = Lexer::new(src, diag);
     let tokens = lexer.lex_all();
     if tokens.is_empty() {
         return None;
     }
 
-    let mut parser = Parser::new(tokens, diag);
+    let parser = Parser::new(tokens, diag);
     let ctxt = parser.parse()?;
     let cfg = Cfg::new(&ctxt);
 

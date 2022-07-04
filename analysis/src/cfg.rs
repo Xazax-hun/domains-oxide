@@ -2,8 +2,8 @@ pub trait CfgBlock {
     type Element;
 
     fn operations(&self) -> &[Self::Element];
-    fn successors(&self) -> Vec<usize>;
-    fn predecessors(&self) -> Vec<usize>;
+    fn successors(&self) -> &[usize];
+    fn predecessors(&self) -> &[usize];
 }
 
 pub trait ControlFlowGraph<Block: CfgBlock> {

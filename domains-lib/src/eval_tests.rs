@@ -14,12 +14,10 @@ struct EvalResult {
 }
 
 fn eval_string(source: &str) -> Option<EvalResult> {
-    let errors: Box<Vec<u8>> = Box::new(Vec::new());
-    let regular: Box<Vec<u8>> = Box::new(Vec::new());
-    let mut diag = DiagnosticEmitter::new(regular, errors);
-    let mut lexer = Lexer::new(source, &mut diag);
+    let mut diag = DiagnosticEmitter::new(Box::new(Vec::new()), Box::new(Vec::new()));
+    let lexer = Lexer::new(source, &mut diag);
     let tokens = lexer.lex_all();
-    let mut parser = Parser::new(tokens, &mut diag);
+    let parser = Parser::new(tokens, &mut diag);
     let ctx = parser.parse()?;
     let cfg = Cfg::new(&ctx);
     let walk = create_random_walk(&cfg, &ctx, 1);

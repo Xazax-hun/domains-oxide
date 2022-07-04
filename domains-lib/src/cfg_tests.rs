@@ -12,12 +12,10 @@ struct ParseResult {
 }
 
 fn parse_string(source: &str) -> Option<ParseResult> {
-    let errors: Box<Vec<u8>> = Box::new(Vec::new());
-    let regular: Box<Vec<u8>> = Box::new(Vec::new());
-    let mut diag = DiagnosticEmitter::new(regular, errors);
-    let mut lexer = Lexer::new(source, &mut diag);
+    let mut diag = DiagnosticEmitter::new(Box::new(Vec::new()), Box::new(Vec::new()));
+    let lexer = Lexer::new(source, &mut diag);
     let tokens = lexer.lex_all();
-    let mut parser = Parser::new(tokens, &mut diag);
+    let parser = Parser::new(tokens, &mut diag);
     let ctx = parser.parse()?;
     let cfg = Cfg::new(&ctx);
     Some(ParseResult {
@@ -42,10 +40,10 @@ iter {
     assert!(output.is_empty());
     let pretty_printed = print(&cfg, &ctx);
     let expected = r#"digraph CFG {
-  Node_0[label="init(50, 50, 50, 50)\ntranslation(10, 0)\n"]
+  Node_0[label="init(50, 50, 50, 50)\ntranslation(10, 0)"]
   Node_1[label=""]
-  Node_2[label="translation(10, 0)\n"]
-  Node_3[label="rotation(0, 0, 90)\n"]
+  Node_2[label="translation(10, 0)"]
+  Node_3[label="rotation(0, 0, 90)"]
   Node_4[label=""]
   Node_5[label=""]
 
@@ -85,15 +83,15 @@ iter {
     assert!(output.is_empty());
     let pretty_printed = print(&cfg, &ctx);
     let expected = r#"digraph CFG {
-  Node_0[label="init(50, 50, 50, 50)\ntranslation(10, 0)\n"]
+  Node_0[label="init(50, 50, 50, 50)\ntranslation(10, 0)"]
   Node_1[label=""]
-  Node_2[label="translation(10, 0)\n"]
+  Node_2[label="translation(10, 0)"]
   Node_3[label=""]
-  Node_4[label="translation(10, 0)\n"]
+  Node_4[label="translation(10, 0)"]
   Node_5[label=""]
-  Node_6[label="translation(10, 0)\n"]
+  Node_6[label="translation(10, 0)"]
   Node_7[label=""]
-  Node_8[label="rotation(0, 0, 90)\n"]
+  Node_8[label="rotation(0, 0, 90)"]
   Node_9[label=""]
   Node_10[label=""]
   Node_11[label=""]

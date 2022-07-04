@@ -1,7 +1,7 @@
 use utils::DiagnosticEmitter;
 
 use crate::{
-    ast::*,
+    ast::{self, *},
     lexer::{Token, TokenValue},
 };
 
@@ -24,7 +24,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> Option<ASTContext> {
+    pub fn parse(mut self) -> Option<ASTContext> {
         self.sequence(true)?;
         let ctx = std::mem::replace(&mut self.ctx, ASTContext::new());
         if !self.is_at_end() {
@@ -85,7 +85,7 @@ impl<'a> Parser<'a> {
                 return None;
             }
         } else {
-            panic!()
+            panic!("Children of the branches should be sequences.")
         }
 
         Some(self.ctx.make_branch(Branch { kw, lhs, rhs }))
@@ -129,7 +129,7 @@ impl<'a> Parser<'a> {
                 return None;
             }
 
-            return Some(self.ctx.make_init(crate::ast::Init {
+            return Some(self.ctx.make_init(ast::Init {
                 kw,
                 bottom_left: NumPair { x: bot_x, y: bot_y },
                 size: NumPair {
@@ -146,7 +146,7 @@ impl<'a> Parser<'a> {
             let y = self.consume(Number(0), "a number expected.")?;
             self.consume(RightParen, "")?;
 
-            return Some(self.ctx.make_translation(crate::ast::Translation {
+            return Some(self.ctx.make_translation(ast::Translation {
                 kw,
                 vector: NumPair { x, y },
             }));
@@ -161,7 +161,7 @@ impl<'a> Parser<'a> {
             let deg = self.consume(Number(0), "a number expected.")?;
             self.consume(RightParen, "")?;
 
-            return Some(self.ctx.make_rotation(crate::ast::Rotation {
+            return Some(self.ctx.make_rotation(ast::Rotation {
                 kw,
                 origin: NumPair { x, y },
                 deg,

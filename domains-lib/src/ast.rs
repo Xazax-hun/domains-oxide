@@ -1,7 +1,9 @@
-use std::{collections::HashMap, fmt::Write, hash::Hash};
+use std::{collections::HashMap, fmt::Write};
 
 use crate::lexer::Token;
 
+/// Represents a pair of tokens where each
+/// token is a Number.
 pub struct NumPair {
     pub x: Token,
     pub y: Token,
@@ -30,15 +32,25 @@ pub struct Sequence {
 
 pub struct Branch {
     pub kw: Token,
-    pub lhs: Node, // Must be a Sequence(u32)
-    pub rhs: Node, // Must be a Sequence(u32)
+    /// Must be a Sequence(u32)
+    pub lhs: Node,
+    /// Must be a Sequence(u32)
+    pub rhs: Node,
 }
 
 pub struct Loop {
     pub kw: Token,
-    pub body: Node, // Must be a Sequence(u32)
+    /// Must be a Sequence(u32)
+    pub body: Node,
 }
 
+/// Nodes are represented as indices into some storage in
+/// `ASTContext`. The reason they are not references because
+/// references would be invalidated after we pushed some
+/// more nodes into the `ASTContext`. If you want to access the
+/// fields use `ASTContext::node_to_ref` to get back the reference.
+/// `ASTContext` cannot be mutated while any of the references are
+/// live.
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Node {
     Init(u32),
@@ -154,8 +166,8 @@ impl Default for Annotations {
     }
 }
 
-pub fn print(n: Node, ctx: &ASTContext, ann: &Annotations) -> String {
-    print_impl(0, n, ctx, ann)
+pub fn print(root: Node, ctx: &ASTContext, ann: &Annotations) -> String {
+    print_impl(0, root, ctx, ann)
 }
 
 fn indent(indent: u32) -> String {
@@ -163,13 +175,12 @@ fn indent(indent: u32) -> String {
 }
 
 fn print_impl(ind: u32, n: Node, ctx: &ASTContext, ann: &Annotations) -> String {
-    let node_ref = ctx.node_to_ref(n);
     let mut result = String::new();
     if !matches!(n, Node::Sequence(_)) {
         result.push_str(&indent(ind));
     }
     result.push_str(&render_pre_annotations(n, ann));
-    match node_ref {
+    match ctx.node_to_ref(n) {
         NodeRef::Init(init) => {
             write!(
                 result,
@@ -195,11 +206,10 @@ fn print_impl(ind: u32, n: Node, ctx: &ASTContext, ann: &Annotations) -> String 
             .unwrap();
         }
         NodeRef::Sequence(seq) => {
-            let v: Vec<String> = seq
+            let v: Vec<_> = seq
                 .nodes
-                .clone()
-                .into_iter()
-                .map(|n: Node| print_impl(ind, n, ctx, ann))
+                .iter()
+                .map(|n: &Node| print_impl(ind, *n, ctx, ann))
                 .collect();
             result.push_str(&v.join(";\n"));
         }

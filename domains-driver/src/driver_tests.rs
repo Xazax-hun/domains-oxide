@@ -95,12 +95,12 @@ iter {
 };
 rotation(0, 0, 180)";
     let expected = r#"digraph CFG {
-  Node_0[label="init(50, 50, 50, 50)\n"]
+  Node_0[label="init(50, 50, 50, 50)"]
   Node_1[label=""]
-  Node_2[label="translation(10, 0)\n"]
-  Node_3[label="translation(0, 10)\n"]
+  Node_2[label="translation(10, 0)"]
+  Node_3[label="translation(0, 10)"]
   Node_4[label=""]
-  Node_5[label="rotation(0, 0, 180)\n"]
+  Node_5[label="rotation(0, 0, 180)"]
 
   Node_0 -> Node_1
   Node_1 -> Node_2

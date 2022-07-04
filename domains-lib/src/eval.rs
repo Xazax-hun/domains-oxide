@@ -17,6 +17,13 @@ pub struct Step {
 
 pub type Walk = Vec<Step>;
 
+/// A random walk in the CFG.
+///
+/// # Arguments
+///
+/// * `loopiness` - Bias towards taking a back edge in the CFG during the walk.
+/// 1 means that back edges have the same chance of being picked as regular edges.
+/// n means back edges are n times more likely than regular edges.
 pub fn create_random_walk(cfg: &Cfg, ctx: &ASTContext, loopiness: u32) -> Walk {
     let mut w = Vec::new();
     if !matches!(
@@ -86,6 +93,7 @@ pub fn create_random_walk(cfg: &Cfg, ctx: &ASTContext, loopiness: u32) -> Walk {
 
     w
 }
+
 pub fn rotate(mut to_rotate: Vec2, origin: Vec2, deg: i32) -> Vec2 {
     to_rotate -= origin;
     let rad = to_rad(deg);
@@ -101,10 +109,12 @@ pub fn annotate_with_walks(walks: &[Walk]) -> Annotations {
     let mut collected_steps: HashMap<Operation, Vec<Vec2>> = HashMap::new();
 
     for walk in walks {
-        for step in walk {
-            let steps_at = collected_steps.entry(step.op).or_insert(Vec::new());
-            steps_at.push(step.pos);
-        }
+        walk.iter().for_each(|step| {
+            collected_steps
+                .entry(step.op)
+                .or_insert(Vec::new())
+                .push(step.pos)
+        });
     }
 
     fn print_set(v: &[Vec2]) -> String {
@@ -122,10 +132,10 @@ pub fn annotate_with_walks(walks: &[Walk]) -> Annotations {
     }
 
     let mut anns = Annotations::new();
-    for (op, pos) in &collected_steps {
+    collected_steps.iter().for_each(|(op, pos)| {
         anns.post_annotations
             .insert(op.into(), vec![print_set(pos)]);
-    }
+    });
 
     anns
 }
@@ -144,14 +154,13 @@ fn detect_back_edges(
         return HashSet::new();
     }
 
-    let mut result: HashSet<(usize, usize)> = HashSet::new();
-    for succ in cfg.blocks()[current].successors() {
-        if visited.contains(&succ) || current == succ {
-            result.insert((current, succ));
-        }
-    }
-
-    result
+    cfg.blocks()[current]
+        .successors()
+        .iter()
+        .cloned()
+        .filter(|succ| visited.contains(succ) || current == *succ)
+        .map(|succ| (current, succ))
+        .collect()
 }
 
 fn get_next_block(
@@ -163,7 +172,8 @@ fn get_next_block(
 ) -> usize {
     let succs = cfg.blocks()[current].successors();
     let (back_edges, regular_edges): (Vec<usize>, Vec<usize>) = succs
-        .into_iter()
+        .iter()
+        .cloned()
         .partition(|succ| back_edges.contains(&(current, *succ)));
     let max = regular_edges.len() + back_edges.len() * (loopiness as usize);
     let which_edge_kind = rng.gen_range(1..=max);

@@ -1,9 +1,10 @@
 use analysis::cfg::*;
 
-use crate::ast::*;
+use crate::ast::{self, *};
 
 use std::fmt::Write;
 
+/// Operation is the element of basic blocks.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
     Init(u32),
@@ -52,12 +53,12 @@ impl CfgBlock for BasicBlock {
         &self.operations
     }
 
-    fn predecessors(&self) -> Vec<usize> {
-        self.preds.clone()
+    fn predecessors(&self) -> &[usize] {
+        &self.preds
     }
 
-    fn successors(&self) -> Vec<usize> {
-        self.succs.clone()
+    fn successors(&self) -> &[usize] {
+        &self.succs
     }
 }
 
@@ -156,9 +157,12 @@ pub fn print(cfg: &Cfg, ctx: &ASTContext) -> String {
     let anns = Annotations::new();
     for (counter, block) in cfg.basic_blocks.iter().enumerate() {
         write!(output, "  Node_{}[label=\"", counter).unwrap();
-        for op in block.operations() {
-            write!(output, "{}\\n", crate::ast::print(op.into(), ctx, &anns)).unwrap();
-        }
+        let text: Vec<_> = block
+            .operations()
+            .iter()
+            .map(|op| ast::print(op.into(), ctx, &anns))
+            .collect();
+        output.push_str(&text.join("\\n"));
         output.push_str("\"]\n");
     }
     output.push('\n');
