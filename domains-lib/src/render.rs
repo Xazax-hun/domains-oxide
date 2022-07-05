@@ -13,18 +13,17 @@ const HEIGHT: f64 = 500.0;
 
 /// Returns an SVG that represents a list of random walks.
 pub fn render_random_walk(walks: &[Walk], ctxt: &ASTContext, dots_only: bool) -> String {
-    let mut stream: Box<Vec<u8>> = Box::new(Vec::new());
-    unsafe {
-        let surface = SvgSurface::for_raw_stream(WIDTH, HEIGHT, &mut stream)
-            .expect("Failed to create cairo surface.");
-        let cr = Context::new(&surface).expect("Failed to create context.");
+    let stream: Box<Vec<u8>> = Box::new(Vec::new());
+    let surface = SvgSurface::for_stream(WIDTH, HEIGHT, stream)
+        .expect("Failed to create cairo surface.");
+    let cr = Context::new(&surface).expect("Failed to create context.");
 
-        render_random_walk_impl(&cr, walks, ctxt, dots_only);
+    render_random_walk_impl(&cr, walks, ctxt, dots_only);
 
-        surface.finish();
-    }
+    let stream = surface.finish_output_stream().unwrap();
+    let stream = stream.downcast::<Box<Vec<u8>>>().unwrap();
 
-    String::from_utf8(*stream).expect("Generated SVG is not valid UTF8.")
+    String::from_utf8(**stream).expect("Generated SVG is not valid UTF8.")
 }
 
 fn render_random_walk_impl(cr: &Context, walks: &[Walk], ctxt: &ASTContext, dots_only: bool) {
