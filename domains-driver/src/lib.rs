@@ -2,6 +2,7 @@ use domains_lib::cfg::*;
 use domains_lib::eval::*;
 use domains_lib::lexer::Lexer;
 use domains_lib::parser::Parser;
+use domains_lib::render::render_random_walk;
 use structopt::StructOpt;
 use utils::DiagnosticEmitter;
 
@@ -28,6 +29,14 @@ pub struct Opt {
     #[structopt(short, long, default_value = "1")]
     pub loopiness: u32,
 
+    /// Emit svg to stdout.
+    #[structopt(long)]
+    pub svg: bool,
+
+    /// Do not draw the lines in the traces of the svg output.
+    #[structopt(long)]
+    pub dots_only: bool,
+
     /// File containing the program written in the language.
     pub filename: String,
 }
@@ -39,6 +48,8 @@ impl Default for Opt {
             annotate_trace: false,
             executions: 1,
             loopiness: 1,
+            svg: false,
+            dots_only: false,
             filename: "".to_owned(),
         }
     }
@@ -65,17 +76,23 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
     for i in 1..=opts.executions {
         walks.push(create_random_walk(&cfg, &ctxt, opts.loopiness));
 
-        if opts.executions > 1 {
-            diag.to_out(&format!("{}. execution:\n", i));
-        }
-        for step in walks.last().unwrap() {
-            diag.to_out(&format!("{{ x: {}, y: {} }}\n", step.pos.x, step.pos.y));
+        if !opts.svg {
+            if opts.executions > 1 {
+                diag.to_out(&format!("{}. execution:\n", i));
+            }
+            for step in walks.last().unwrap() {
+                diag.to_out(&format!("{{ x: {}, y: {} }}\n", step.pos.x, step.pos.y));
+            }
         }
     }
     if opts.annotate_trace {
         let anns = annotate_with_walks(&walks);
         let out = domains_lib::ast::print(ctxt.get_root(), &ctxt, &anns);
         diag.to_out(&(out + "\n"));
+    }
+    if opts.svg {
+        let svg = render_random_walk(&walks, &ctxt, opts.dots_only);
+        diag.to_out(&svg);
     }
 
     Some(())

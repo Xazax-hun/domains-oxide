@@ -133,3 +133,94 @@ fn lexer_error_does_not_panic() {
     let source = r"/ ";
     assert!(run_driver(source, Opt::default()).is_none());
 }
+
+#[test]
+fn render_svg() {
+    let source = r"init(50, 50, 0, 0);
+translation(10, 0);
+rotation(0, 0, 90);
+translation(0, 10)";
+    let expected = r#"<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="500" height="500" viewBox="0 0 500 500">
+<rect x="-50" y="-50" width="600" height="600" fill="rgb(100%, 100%, 100%)" fill-opacity="1"/>
+<path fill="none" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 0 -250 L 0 250 M -250 0 L 250 0 " transform="matrix(1, 0, 0, 1, 250, 250)"/>
+<path fill="none" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(90.196078%, 9.803922%, 29.411765%)" stroke-opacity="1" stroke-miterlimit="10" d="M 50 -50 L 60 -50 " transform="matrix(1, 0, 0, 1, 250, 250)"/>
+<path fill="none" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(90.196078%, 9.803922%, 29.411765%)" stroke-opacity="1" stroke-miterlimit="10" d="M -50 -60 C -34.085938 -73.261719 -13.558594 -79.65625 7.070312 -77.78125 C 27.699219 -75.90625 46.738281 -65.914062 60 -50 " transform="matrix(1, 0, 0, 1, 250, 250)"/>
+<path fill="none" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(90.196078%, 9.803922%, 29.411765%)" stroke-opacity="1" stroke-miterlimit="10" d="M -50 -60 L -50 -70 " transform="matrix(1, 0, 0, 1, 250, 250)"/>
+<path fill-rule="nonzero" fill="rgb(0%, 100%, 0%)" fill-opacity="1" d="M 303 200 C 303 204 297 204 297 200 C 297 196 303 196 303 200 "/>
+<path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 313 200 C 313 204 307 204 307 200 C 307 196 313 196 313 200 "/>
+<path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 203 190 C 203 194 197 194 197 190 C 197 186 203 186 203 190 "/>
+<path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 203 180 C 203 184 197 184 197 180 C 197 176 203 176 203 180 "/>
+</svg>
+"#;
+    let output = run_driver(
+        source,
+        Opt {
+            svg: true,
+            ..Opt::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(output, expected);
+}
+
+#[test]
+fn render_svg_no_dots() {
+    let source = r"init(50, 50, 0, 0);
+translation(10, 0);
+rotation(0, 0, 90);
+translation(0, 10)";
+    let expected = r#"<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="500" height="500" viewBox="0 0 500 500">
+<rect x="-50" y="-50" width="600" height="600" fill="rgb(100%, 100%, 100%)" fill-opacity="1"/>
+<path fill="none" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 0 -250 L 0 250 M -250 0 L 250 0 " transform="matrix(1, 0, 0, 1, 250, 250)"/>
+<path fill-rule="nonzero" fill="rgb(0%, 100%, 0%)" fill-opacity="1" d="M 303 200 C 303 204 297 204 297 200 C 297 196 303 196 303 200 "/>
+<path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 313 200 C 313 204 307 204 307 200 C 307 196 313 196 313 200 "/>
+<path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 203 190 C 203 194 197 194 197 190 C 197 186 203 186 203 190 "/>
+<path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 203 180 C 203 184 197 184 197 180 C 197 176 203 176 203 180 "/>
+</svg>
+"#;
+    let output = run_driver(
+        source,
+        Opt {
+            svg: true,
+            dots_only: true,
+            ..Opt::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(output, expected);
+}
+
+#[test]
+fn render_svg_no_dots_executions() {
+    let source = r"init(50, 50, 0, 0);
+translation(10, 0);
+rotation(0, 0, 90);
+translation(0, 10)";
+    let expected = r#"<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="500" height="500" viewBox="0 0 500 500">
+<rect x="-50" y="-50" width="600" height="600" fill="rgb(100%, 100%, 100%)" fill-opacity="1"/>
+<path fill="none" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 0 -250 L 0 250 M -250 0 L 250 0 " transform="matrix(1, 0, 0, 1, 250, 250)"/>
+<path fill-rule="nonzero" fill="rgb(0%, 100%, 0%)" fill-opacity="1" d="M 303 200 C 303 204 297 204 297 200 C 297 196 303 196 303 200 "/>
+<path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 313 200 C 313 204 307 204 307 200 C 307 196 313 196 313 200 "/>
+<path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 203 190 C 203 194 197 194 197 190 C 197 186 203 186 203 190 "/>
+<path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 203 180 C 203 184 197 184 197 180 C 197 176 203 176 203 180 "/>
+<path fill-rule="nonzero" fill="rgb(0%, 100%, 0%)" fill-opacity="1" d="M 303 200 C 303 204 297 204 297 200 C 297 196 303 196 303 200 "/>
+<path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 313 200 C 313 204 307 204 307 200 C 307 196 313 196 313 200 "/>
+<path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 203 190 C 203 194 197 194 197 190 C 197 186 203 186 203 190 "/>
+<path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 203 180 C 203 184 197 184 197 180 C 197 176 203 176 203 180 "/>
+</svg>
+"#;
+    let output = run_driver(
+        source,
+        Opt {
+            svg: true,
+            dots_only: true,
+            executions: 2,
+            ..Opt::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(output, expected);
+}

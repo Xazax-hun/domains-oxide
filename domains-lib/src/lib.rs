@@ -7,6 +7,7 @@ pub mod cfg;
 pub mod eval;
 pub mod lexer;
 pub mod parser;
+pub mod render;
 
 #[cfg(test)]
 mod lexer_tests;
