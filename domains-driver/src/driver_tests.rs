@@ -1,6 +1,6 @@
 use crate::*;
-use utils::DiagnosticEmitter;
 use std::hash::{Hash, Hasher};
+use utils::DiagnosticEmitter;
 
 fn run_driver(source: &str, opts: Opt) -> Option<String> {
     let errors: Box<Vec<u8>> = Box::new(Vec::new());
@@ -227,8 +227,8 @@ translation(0, 10)";
 }
 
 /// Looks like different versions of cairo can
-/// generate slightly different SVGs. The geometry should 
-/// be the same, only the format is different. This function 
+/// generate slightly different SVGs. The geometry should
+/// be the same, only the format is different. This function
 /// is just a heuristic to produce a hash of an SVG that is
 /// hopefully only sensitive to the actual geometry.
 fn summarize_svg(s: &str) -> u64 {
@@ -240,7 +240,7 @@ fn summarize_svg(s: &str) -> u64 {
         for word in line.split(" ") {
             if let Ok(num) = word.parse::<f64>() {
                 (num.round() as i64).hash(&mut h);
-            } 
+            }
         }
     }
     h.finish()
