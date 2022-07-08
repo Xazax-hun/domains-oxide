@@ -6,7 +6,7 @@ pub trait CfgBlock {
     fn predecessors(&self) -> &[usize];
 }
 
-pub trait ControlFlowGraph<Block: CfgBlock> {
+pub trait ControlFlowGraph {
     type Block;
-    fn blocks(&self) -> &[Block];
+    fn blocks(&self) -> &[Self::Block];
 }

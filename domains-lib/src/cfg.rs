@@ -68,7 +68,7 @@ pub struct Cfg {
     basic_blocks: Vec<BasicBlock>,
 }
 
-impl ControlFlowGraph<BasicBlock> for Cfg {
+impl ControlFlowGraph for Cfg {
     type Block = BasicBlock;
 
     fn blocks(&self) -> &[Self::Block] {

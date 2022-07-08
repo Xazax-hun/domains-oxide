@@ -158,6 +158,6 @@ impl ColorPicker {
 
 impl Default for ColorPicker {
     fn default() -> Self {
-        ColorPicker::new()
+        Self::new()
     }
 }
