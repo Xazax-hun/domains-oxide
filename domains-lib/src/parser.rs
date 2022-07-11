@@ -7,8 +7,8 @@ use crate::{
 
 pub struct Parser<'a> {
     ctx: ASTContext,
-    tokens: Vec<Token>,
     current: usize,
+    tokens: Vec<Token>,
     diag: &'a mut DiagnosticEmitter,
 }
 
@@ -18,8 +18,8 @@ impl<'a> Parser<'a> {
     pub fn new(tokens: Vec<Token>, diag: &'a mut DiagnosticEmitter) -> Self {
         Parser {
             ctx: ASTContext::new(),
-            tokens,
             current: 0,
+            tokens,
             diag,
         }
     }

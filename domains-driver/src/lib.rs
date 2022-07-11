@@ -1,4 +1,5 @@
-use domains_lib::cfg::*;
+use domains_lib::ast;
+use domains_lib::cfg::{self, *};
 use domains_lib::eval::*;
 use domains_lib::lexer::Lexer;
 use domains_lib::parser::Parser;
@@ -70,7 +71,7 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
     let cfg = Cfg::new(&ctxt);
 
     if opts.dump_cfg {
-        let cfg_dump = domains_lib::cfg::print(&cfg, &ctxt);
+        let cfg_dump = cfg::print(&cfg, &ctxt);
         diag.to_out(&cfg_dump);
         return Some(());
     }
@@ -91,7 +92,7 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
     }
     if opts.annotate_trace {
         let anns = annotate_with_walks(&walks);
-        let out = domains_lib::ast::print(ctxt.get_root(), &ctxt, &anns);
+        let out = ast::print(ctxt.get_root(), &ctxt, &anns);
         diag.to_out(&(out + "\n"));
     }
     if opts.svg {

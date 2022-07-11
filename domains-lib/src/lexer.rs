@@ -117,6 +117,9 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Returns a list of tokens where the last token is
+    /// an EndOfFile token. When the returned vector is empty,
+    /// the lexing failed and en error was emitted to `diag`.
     pub fn lex_all(mut self) -> Vec<Token> {
         let mut result = Vec::new();
 
