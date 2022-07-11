@@ -6,6 +6,9 @@ use domains_lib::render::render_random_walk;
 use structopt::StructOpt;
 use utils::DiagnosticEmitter;
 
+const DEFAULT_EXECUTIONS: &str = "1";
+const DEFAULT_LOOPINESS: &str = "1";
+
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "domains",
@@ -22,11 +25,11 @@ pub struct Opt {
     pub annotate_trace: bool,
 
     /// Number of traces to produce.
-    #[structopt(short, long, default_value = "1")]
+    #[structopt(short, long, default_value = DEFAULT_EXECUTIONS)]
     pub executions: u32,
 
     /// The larger the number the more time will be spent in loops.
-    #[structopt(short, long, default_value = "1")]
+    #[structopt(short, long, default_value = DEFAULT_LOOPINESS)]
     pub loopiness: u32,
 
     /// Emit svg to stdout.
@@ -46,11 +49,11 @@ impl Default for Opt {
         Self {
             dump_cfg: false,
             annotate_trace: false,
-            executions: 1,
-            loopiness: 1,
+            executions: DEFAULT_EXECUTIONS.parse().unwrap(),
+            loopiness: DEFAULT_LOOPINESS.parse().unwrap(),
             svg: false,
             dots_only: false,
-            filename: "".to_owned(),
+            filename: String::default(),
         }
     }
 }
