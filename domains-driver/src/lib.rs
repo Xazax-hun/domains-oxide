@@ -73,6 +73,7 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
     }
 
     let mut walks = Vec::new();
+    walks.reserve(opts.executions as usize);
     for i in 1..=opts.executions {
         walks.push(create_random_walk(&cfg, &ctxt, opts.loopiness));
 
