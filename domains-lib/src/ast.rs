@@ -70,6 +70,7 @@ pub enum NodeRef<'a> {
     Loop(&'a Loop),
 }
 
+#[derive(Default)]
 pub struct ASTContext {
     inits: Vec<Init>,
     translations: Vec<Translation>,
@@ -81,14 +82,7 @@ pub struct ASTContext {
 
 impl ASTContext {
     pub fn new() -> Self {
-        Self {
-            inits: Vec::new(),
-            translations: Vec::new(),
-            rotations: Vec::new(),
-            sequences: Vec::new(),
-            branches: Vec::new(),
-            loops: Vec::new(),
-        }
+        Self::default()
     }
 
     pub fn get_root(&self) -> Node {
@@ -140,12 +134,7 @@ impl ASTContext {
     }
 }
 
-impl Default for ASTContext {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
+#[derive(Default)]
 pub struct Annotations {
     pub pre_annotations: HashMap<Node, Vec<String>>,
     pub post_annotations: HashMap<Node, Vec<String>>,
@@ -153,16 +142,7 @@ pub struct Annotations {
 
 impl Annotations {
     pub fn new() -> Self {
-        Self {
-            pre_annotations: HashMap::new(),
-            post_annotations: HashMap::new(),
-        }
-    }
-}
-
-impl Default for Annotations {
-    fn default() -> Self {
-        Self::new()
+        Self::default()
     }
 }
 

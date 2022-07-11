@@ -22,6 +22,7 @@ impl From<&Operation> for Node {
 
 // TODO: Should this have a phantom lifetime to express
 //       its dependency on the CFG?
+#[derive(Default)]
 pub struct BasicBlock {
     operations: Vec<Operation>,
     succs: Vec<usize>,
@@ -30,17 +31,7 @@ pub struct BasicBlock {
 
 impl BasicBlock {
     pub fn new() -> Self {
-        Self {
-            operations: Vec::new(),
-            succs: Vec::new(),
-            preds: Vec::new(),
-        }
-    }
-}
-
-impl Default for BasicBlock {
-    fn default() -> Self {
-        Self::new()
+        Self::default()
     }
 }
 

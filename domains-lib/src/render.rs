@@ -131,6 +131,7 @@ const COLORS: [Rgb; 21] = [
 const DOT_COLOR: Rgb = Rgb(0.0, 0.0, 0.0);
 const START_DOT_COLOR: Rgb = Rgb(0.0, 1.0, 0.0);
 
+#[derive(Default)]
 struct ColorPicker {
     current: usize,
     rng: ThreadRng,
@@ -138,10 +139,7 @@ struct ColorPicker {
 
 impl ColorPicker {
     fn new() -> Self {
-        Self {
-            current: 0,
-            rng: rand::thread_rng(),
-        }
+        Self::default()
     }
 
     fn next(&mut self) -> Rgb {
@@ -153,11 +151,5 @@ impl ColorPicker {
             self.rng.gen_range(0.0..=1.0),
             self.rng.gen_range(0.0..=1.0),
         )
-    }
-}
-
-impl Default for ColorPicker {
-    fn default() -> Self {
-        Self::new()
     }
 }
