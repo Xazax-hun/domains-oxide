@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fmt::Write;
 
 pub trait CfgBlock {
@@ -33,4 +34,61 @@ where
     }
     output.push_str("}\n");
     output
+}
+
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum Color {
+    White,
+    Gray,
+    Black,
+}
+
+pub fn get_back_edges<Cfg>(cfg: &Cfg) -> HashSet<(usize, usize)>
+where
+    Cfg: ControlFlowGraph,
+{
+    let mut color = vec![Color::White; cfg.blocks().len()];
+    let mut processing = Vec::new();
+    let mut back_edges = HashSet::new();
+
+    processing.push(0usize);
+
+    while !processing.is_empty() {
+        let current = processing.pop().unwrap();
+        match color[current] {
+            Color::White => {
+                color[current] = Color::Gray;
+
+                // Edges pointing to a node that we visited once (Grey) but have not
+                // finished processing its successor subgraph are the back edges.
+                let (back_succs, fwd_succs): (Vec<usize>, Vec<usize>) = cfg.blocks()[current]
+                    .successors()
+                    .iter()
+                    .cloned()
+                    .partition(|succ| color[*succ] == Color::Gray);
+
+                // When the node popped the second time, we are done processing all
+                // of the reachable subgraph from the node. We can turn its color to Black.
+                processing.push(current);
+
+                // Gray successors are back edges. Black successors are already processed
+                // on a different path. We only need continue processing unexplored (White)
+                // nodes.
+                processing.extend(
+                    fwd_succs
+                        .iter()
+                        .cloned()
+                        .filter(|succ| color[*succ] == Color::White),
+                );
+
+                let new_back_edges: HashSet<(usize, usize)> =
+                    back_succs.iter().map(|succ| (current, *succ)).collect();
+                back_edges.extend(new_back_edges);
+            }
+            Color::Gray => color[current] = Color::Black,
+            Color::Black => continue,
+        }
+    }
+
+    back_edges
 }

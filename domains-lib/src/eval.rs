@@ -35,10 +35,8 @@ pub fn create_random_walk(cfg: &Cfg, ctx: &ASTContext, loopiness: u32) -> Walk {
 
     let mut rng = rand::thread_rng();
 
-    // Discover what edges are back edges as we go to correctly
-    // account for loopiness when choosing the next block.
-    let mut visited: HashSet<usize> = HashSet::new();
-    let mut back_edges: HashSet<(usize, usize)> = HashSet::new();
+    // TODO: we should hoist this, so we do not recalculate for all the walks.
+    let mut back_edges = analysis::cfg::get_back_edges(cfg);
 
     let mut current = 0;
     loop {
@@ -86,8 +84,6 @@ pub fn create_random_walk(cfg: &Cfg, ctx: &ASTContext, loopiness: u32) -> Walk {
         if cfg.blocks()[current].successors().is_empty() {
             break;
         }
-        back_edges.extend(detect_back_edges(cfg, current, &visited));
-        visited.insert(current);
         current = get_next_block(&mut rng, cfg, current, &mut back_edges, loopiness);
     }
 
@@ -142,25 +138,6 @@ pub fn annotate_with_walks(walks: &[Walk]) -> Annotations {
 
 fn to_rad(deg: i32) -> f64 {
     deg as f64 / 180f64 * std::f64::consts::PI
-}
-
-fn detect_back_edges(
-    cfg: &Cfg,
-    current: usize,
-    visited: &HashSet<usize>,
-) -> HashSet<(usize, usize)> {
-    // Only do back-edge detection when we first encounter a node.
-    if visited.contains(&current) {
-        return HashSet::new();
-    }
-
-    cfg.blocks()[current]
-        .successors()
-        .iter()
-        .cloned()
-        .filter(|succ| visited.contains(succ) || current == *succ)
-        .map(|succ| (current, succ))
-        .collect()
 }
 
 fn get_next_block(
