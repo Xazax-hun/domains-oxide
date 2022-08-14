@@ -61,25 +61,24 @@ where
 
                 // Edges pointing to a node that we visited once (Grey) but have not
                 // finished processing its successor subgraph are the back edges.
-                let (back_succs, fwd_succs): (Vec<usize>, Vec<usize>) = cfg.blocks()[current]
-                    .successors()
-                    .iter()
-                    .cloned()
-                    .partition(|succ| color[*succ] == Color::Gray);
+                let (mut back_succs, mut fwd_succs) = (Vec::new(), Vec::new());
+                
+                for succ in cfg.blocks()[current].successors() {
+                    // Gray successors are back edges. Black successors are already processed
+                    // on a different path. We only need continue processing unexplored (White)
+                    // nodes.
+                    match color[*succ] {
+                        Color::White => fwd_succs.push(*succ),
+                        Color::Gray => back_succs.push(*succ),
+                        Color::Black => continue,
+                    }
+
+                }
 
                 // When the node popped the second time, we are done processing all
                 // of the reachable subgraph from the node. We can turn its color to Black.
                 processing.push(current);
-
-                // Gray successors are back edges. Black successors are already processed
-                // on a different path. We only need continue processing unexplored (White)
-                // nodes.
-                processing.extend(
-                    fwd_succs
-                        .iter()
-                        .cloned()
-                        .filter(|succ| color[*succ] == Color::White),
-                );
+                processing.extend(fwd_succs);
 
                 let new_back_edges: HashSet<(usize, usize)> =
                     back_succs.iter().map(|succ| (current, *succ)).collect();
