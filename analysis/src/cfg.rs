@@ -62,7 +62,7 @@ where
                 // Edges pointing to a node that we visited once (Grey) but have not
                 // finished processing its successor subgraph are the back edges.
                 let (mut back_succs, mut fwd_succs) = (Vec::new(), Vec::new());
-                
+
                 for succ in cfg.blocks()[current].successors() {
                     // Gray successors are back edges. Black successors are already processed
                     // on a different path. We only need continue processing unexplored (White)
@@ -72,7 +72,6 @@ where
                         Color::Gray => back_succs.push(*succ),
                         Color::Black => continue,
                     }
-
                 }
 
                 // When the node popped the second time, we are done processing all

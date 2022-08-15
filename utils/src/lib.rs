@@ -43,7 +43,7 @@ impl DiagnosticEmitter {
             .err
             .write(format!("[line {line}] Error {item}: {message}\n").as_bytes());
     }
-    
+
     pub fn flush(&mut self) {
         self.out.flush().expect("Failed to flush output buffer.");
         self.err.flush().expect("Failed to flush error buffer.");
