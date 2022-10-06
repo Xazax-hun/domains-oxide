@@ -12,6 +12,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-structopt = "0.3.26"
+clap = { version = "4.0.10", features = ["derive"] }
 utils = { path = "../utils"}
 domains-lib = { path = "../domains-lib"}

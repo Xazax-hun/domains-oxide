@@ -4,41 +4,42 @@ use domains_lib::eval::*;
 use domains_lib::lexer::Lexer;
 use domains_lib::parser::Parser;
 use domains_lib::render::render_random_walk;
-use structopt::StructOpt;
+use clap::Parser as CommandLineParser;
 use utils::DiagnosticEmitter;
 
 const DEFAULT_EXECUTIONS: &str = "1";
 const DEFAULT_LOOPINESS: &str = "1";
 
-#[derive(Debug, StructOpt)]
-#[structopt(
+#[derive(Debug, CommandLineParser)]
+#[command(
     name = "domains",
+    version,
     about = "Toy language to help learn about static analysis."
 )]
 pub struct Opt {
     /// Dump the control flow graph representation of the program in graphviz format.
-    #[structopt(long)]
+    #[arg(long)]
     pub dump_cfg: bool,
 
     /// Pretty print the source code with the traces projected on the top
     /// as annotations.
-    #[structopt(long)]
+    #[arg(long)]
     pub annotate_trace: bool,
 
     /// Number of traces to produce.
-    #[structopt(short, long, default_value = DEFAULT_EXECUTIONS)]
+    #[arg(short, long, default_value = DEFAULT_EXECUTIONS)]
     pub executions: u32,
 
     /// The larger the number the more time will be spent in loops.
-    #[structopt(short, long, default_value = DEFAULT_LOOPINESS)]
+    #[arg(short, long, default_value = DEFAULT_LOOPINESS)]
     pub loopiness: u32,
 
     /// Emit svg to stdout.
-    #[structopt(long)]
+    #[arg(long)]
     pub svg: bool,
 
     /// Do not draw the lines in the traces of the svg output.
-    #[structopt(long)]
+    #[arg(long)]
     pub dots_only: bool,
 
     /// File containing the program written in the language.
