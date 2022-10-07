@@ -25,3 +25,30 @@ fn sign_domain_tests() {
     assert_eq!(SignDomain::from(0), SignDomain::Zero);
     assert_eq!(SignDomain::from(-5), SignDomain::Negative);
 }
+
+#[test]
+fn vec2_domain_test() {
+    type SignVec = Vec2Domain<SignDomain>;
+    let bottom = SignVec::bottom();
+    let pos_pos = SignVec {
+        x: SignDomain::Positive,
+        y: SignDomain::Positive,
+    };
+    let pos_neg = SignVec {
+        x: SignDomain::Positive,
+        y: SignDomain::Negative,
+    };
+    let pos_top = SignVec {
+        x: SignDomain::Positive,
+        y: SignDomain::Top,
+    };
+
+    assert_eq!(bottom, bottom);
+    assert_eq!(pos_pos, pos_pos);
+    assert!(bottom <= pos_pos);
+    assert!(pos_pos <= pos_pos);
+    assert!(pos_pos <= pos_top);
+    assert!(!(pos_pos <= pos_neg));
+    assert!(!(pos_pos >= pos_neg));
+    assert_eq!(pos_pos.join(&pos_neg), pos_top);
+}

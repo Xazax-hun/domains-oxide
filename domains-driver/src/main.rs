@@ -1,7 +1,7 @@
 use utils::DiagnosticEmitter;
 
-use domains_driver::Opt;
 use clap::Parser;
+use domains_driver::Opt;
 use std::process::ExitCode;
 
 fn main() -> ExitCode {

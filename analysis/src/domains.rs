@@ -65,7 +65,7 @@ impl PartialOrd for SignDomain {
         match other {
             SignDomain::Bottom => return Some(Ordering::Greater),
             SignDomain::Top => return Some(Ordering::Less),
-            _ => {},
+            _ => {}
         }
         match self {
             SignDomain::Bottom => Some(Ordering::Less),
@@ -90,5 +90,42 @@ impl Domain for SignDomain {
         }
 
         SignDomain::Top
+    }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub struct Vec2Domain<T: Domain> {
+    pub x: T,
+    pub y: T,
+}
+
+impl<T: Domain> Display for Vec2Domain<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{ x: {}, y: {} }}", self.x, self.y)
+    }
+}
+
+impl<T: Domain> Domain for Vec2Domain<T> {
+    fn bottom() -> Self {
+        Vec2Domain {
+            x: T::bottom(),
+            y: T::bottom(),
+        }
+    }
+
+    fn join(&self, other: &Self) -> Self {
+        Vec2Domain {
+            x: self.x.join(&other.x),
+            y: self.y.join(&other.y),
+        }
+    }
+}
+
+impl<T: WidenableDomain> WidenableDomain for Vec2Domain<T> {
+    fn widen(&self, other: &Self) -> Self {
+        Vec2Domain {
+            x: self.x.widen(&other.x),
+            y: self.y.widen(&other.y),
+        }
     }
 }

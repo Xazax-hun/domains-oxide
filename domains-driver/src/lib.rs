@@ -1,10 +1,10 @@
+use clap::Parser as CommandLineParser;
 use domains_lib::ast;
 use domains_lib::cfg::{self, *};
 use domains_lib::eval::*;
 use domains_lib::lexer::Lexer;
 use domains_lib::parser::Parser;
 use domains_lib::render::render_random_walk;
-use clap::Parser as CommandLineParser;
 use utils::DiagnosticEmitter;
 
 const DEFAULT_EXECUTIONS: &str = "1";
