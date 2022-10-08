@@ -23,6 +23,12 @@ pub trait WidenableDomain: Domain {
     fn widen(&self, other: &Self) -> Self;
 }
 
+pub trait Top: Domain {
+    /// Requirements:
+    /// Top is the greatest element of the lattice.
+    fn top() -> Self;
+}
+
 // TODO:
 // Add more general building blocks for finite domains and
 // post SignDomain to those facilities.
@@ -39,6 +45,12 @@ pub enum SignDomain {
     Negative,
     Zero,
     Positive,
+}
+
+impl Top for SignDomain {
+    fn top() -> Self {
+        SignDomain::Top
+    }
 }
 
 impl From<i32> for SignDomain {
@@ -93,7 +105,7 @@ impl Domain for SignDomain {
     }
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Debug)]
 pub struct Vec2Domain<T: Domain> {
     pub x: T,
     pub y: T,
@@ -126,6 +138,138 @@ impl<T: WidenableDomain> WidenableDomain for Vec2Domain<T> {
         Vec2Domain {
             x: self.x.widen(&other.x),
             y: self.y.widen(&other.y),
+        }
+    }
+}
+
+impl<T: Top> Top for Vec2Domain<T> {
+    fn top() -> Self {
+        Vec2Domain {
+            x: T::top(),
+            y: T::top(),
+        }
+    }
+}
+
+pub const INF: i64 = i64::MAX;
+pub const NEG_INF: i64 = i64::MIN;
+
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub struct IntervalDomain {
+    pub min: i64,
+    pub max: i64,
+}
+
+impl From<i32> for IntervalDomain {
+    fn from(val: i32) -> Self {
+        IntervalDomain {
+            min: val.into(),
+            max: val.into(),
+        }
+    }
+}
+
+impl Display for IntervalDomain {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let to_str = |x: i64| match x {
+            INF => "inf".to_owned(),
+            NEG_INF => "-inf".to_owned(),
+            _ => x.to_string(),
+        };
+        write!(f, "[{}, {}]", to_str(self.min), to_str(self.max))
+    }
+}
+
+impl PartialOrd for IntervalDomain {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if self == other {
+            return Some(Ordering::Equal);
+        }
+        if self.min <= other.min && self.max >= other.max {
+            return Some(Ordering::Greater);
+        }
+        if self.min >= other.min && self.max <= other.max {
+            return Some(Ordering::Less);
+        }
+
+        None
+    }
+}
+
+impl Domain for IntervalDomain {
+    fn bottom() -> Self {
+        IntervalDomain {
+            min: INF,
+            max: NEG_INF,
+        }
+    }
+
+    fn join(&self, other: &Self) -> Self {
+        IntervalDomain {
+            min: self.min.min(other.min),
+            max: self.max.max(other.max),
+        }
+    }
+}
+
+impl Top for IntervalDomain {
+    fn top() -> Self {
+        IntervalDomain {
+            min: NEG_INF,
+            max: INF,
+        }
+    }
+}
+
+impl WidenableDomain for IntervalDomain {
+    fn widen(&self, transferred_state: &Self) -> Self {
+        if *self == IntervalDomain::bottom() {
+            return *transferred_state;
+        }
+        IntervalDomain {
+            min: if transferred_state.min < self.min {
+                NEG_INF
+            } else {
+                self.min
+            },
+            max: if transferred_state.max > self.max {
+                INF
+            } else {
+                self.max
+            },
+        }
+    }
+}
+
+impl std::ops::Add<IntervalDomain> for IntervalDomain {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        // Cannot do arithmetic on bottom.
+        assert!(self.min != INF && rhs.min != INF);
+        assert!(self.max != NEG_INF && rhs.max != NEG_INF);
+        IntervalDomain {
+            min: if self.min == NEG_INF || rhs.min == NEG_INF {
+                NEG_INF
+            } else {
+                self.min + rhs.min
+            },
+            max: if self.max == INF || rhs.max == INF {
+                INF
+            } else {
+                self.max + rhs.max
+            },
+        }
+    }
+}
+
+impl std::ops::Neg for IntervalDomain {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+        IntervalDomain {
+            min: if self.max == INF { NEG_INF } else { -self.max },
+            max: if self.min == NEG_INF { INF } else { -self.min },
         }
     }
 }
