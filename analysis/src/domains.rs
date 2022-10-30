@@ -1,5 +1,11 @@
 use std::cmp::Ordering;
+use std::collections::HashSet;
 use std::fmt::Display;
+use std::hash::Hash;
+
+///////////////////////////
+/// Traits for domains. ///
+///////////////////////////
 
 pub trait Domain: Eq + PartialOrd + Display {
     /// Required to be the smallest element according to the ordering.
@@ -28,6 +34,10 @@ pub trait Top: Domain {
     /// Top is the greatest element of the lattice.
     fn top() -> Self;
 }
+
+///////////////////////////////////////
+/// Concrete domain implementations ///
+///////////////////////////////////////
 
 // TODO:
 // Add more general building blocks for finite domains and
@@ -271,5 +281,43 @@ impl std::ops::Neg for IntervalDomain {
             min: if self.max == INF { NEG_INF } else { -self.max },
             max: if self.min == NEG_INF { INF } else { -self.min },
         }
+    }
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct PowerSetDomain<T: Eq + Hash>(pub HashSet<T>);
+
+impl<T: Eq + Hash> PartialOrd for PowerSetDomain<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self.0.is_superset(&other.0), other.0.is_superset(&self.0)) {
+            (true, true) => Some(Ordering::Equal),
+            (true, false) => Some(Ordering::Greater),
+            (false, true) => Some(Ordering::Less),
+            (_, _) => None,
+        }
+    }
+}
+
+impl<T: Eq + Hash + Display> Display for PowerSetDomain<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{{{}}}",
+            self.0
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
+    }
+}
+
+impl<T: Eq + Hash + Display + Clone> Domain for PowerSetDomain<T> {
+    fn bottom() -> Self {
+        Self(HashSet::new())
+    }
+
+    fn join(&self, other: &Self) -> Self {
+        Self(self.0.union(&other.0).cloned().collect::<HashSet<T>>())
     }
 }

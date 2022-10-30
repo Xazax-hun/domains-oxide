@@ -1,4 +1,5 @@
 use super::domains::*;
+use std::collections::HashSet;
 
 #[test]
 fn sign_domain_tests() {
@@ -30,7 +31,7 @@ fn sign_domain_tests() {
 }
 
 #[test]
-fn vec2_domain_test() {
+fn vec2_domain_tests() {
     // Vec2Sign
     {
         type SignVec = Vec2Domain<SignDomain>;
@@ -90,7 +91,7 @@ fn vec2_domain_test() {
 }
 
 #[test]
-fn vec2_interval_test() {
+fn vec2_interval_tests() {
     let bottom = IntervalDomain::bottom();
     let top = IntervalDomain::top();
     let singleton = IntervalDomain::from(5);
@@ -174,4 +175,22 @@ fn vec2_interval_test() {
     assert_eq!(small_range_a.to_string(), "[0, 10]");
     assert_eq!(top.to_string(), "[-inf, inf]");
     assert_eq!(bottom.to_string(), "[inf, -inf]");
+}
+
+#[test]
+fn set_domain_tests() {
+    type IntSetDomain = PowerSetDomain<i32>;
+    let bottom = IntSetDomain::bottom();
+    let small_set = PowerSetDomain::<i32>(HashSet::from([1, 2, 3]));
+    let small_set2 = PowerSetDomain::<i32>(HashSet::from([2, 3, 4]));
+    let union = PowerSetDomain::<i32>(HashSet::from([1, 2, 3, 4]));
+
+    assert!(bottom < small_set);
+    assert!(bottom < small_set2);
+    assert!(!(small_set2 < small_set));
+    assert!(!(small_set2 > small_set));
+    assert!(small_set < union);
+    assert!(small_set2 < union);
+    assert_eq!(small_set.join(&small_set2), union);
+    assert_eq!(small_set2.join(&small_set), union);
 }
