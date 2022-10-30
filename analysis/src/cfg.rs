@@ -1,3 +1,4 @@
+use priority_queue::PriorityQueue;
 use std::collections::HashSet;
 use std::fmt::Write;
 
@@ -89,4 +90,73 @@ where
     }
 
     back_edges
+}
+
+pub struct RPOWorklist<'a, Cfg: ControlFlowGraph> {
+    queue: PriorityQueue<usize, usize>,
+    rpo_order: Vec<usize>,
+    cfg: &'a Cfg,
+}
+
+impl<'cfg, Cfg: ControlFlowGraph> RPOWorklist<'cfg, Cfg> {
+    pub fn new(cfg: &'cfg Cfg) -> Self {
+        // TODO: look into deduplicating this and get_back_edges
+        let mut counter = 0usize;
+        let mut color = vec![Color::White; cfg.blocks().len()];
+        let mut processing = Vec::new();
+        let mut worklist = Self {
+            queue: PriorityQueue::<usize, usize>::new(),
+            rpo_order: vec![0; cfg.blocks().len()],
+            cfg,
+        };
+
+        processing.push(0usize);
+
+        while !processing.is_empty() {
+            let current = processing.pop().unwrap();
+            match color[current] {
+                Color::White => {
+                    color[current] = Color::Gray;
+                    processing.push(current);
+
+                    for succ in cfg.blocks()[current].successors() {
+                        if color[*succ] == Color::White {
+                            processing.push(*succ);
+                        }
+                    }
+                }
+                Color::Gray => {
+                    color[current] = Color::Black;
+                    worklist.rpo_order[current] = counter;
+                    counter += 1;
+                }
+                Color::Black => continue,
+            }
+        }
+
+        let max_pos = counter - 1;
+        for node in 0..cfg.blocks().len() {
+            worklist.rpo_order[node] = max_pos - worklist.rpo_order[node];
+        }
+
+        worklist
+    }
+
+    pub fn push(&mut self, block: usize) {
+        self.queue.push(block, self.rpo_order[block]);
+    }
+
+    pub fn push_successors(&mut self, block: usize) {
+        for succ in self.cfg.blocks()[block].successors() {
+            self.push(*succ);
+        }
+    }
+
+    pub fn pop(&mut self) -> Option<usize> {
+        self.queue.pop().map(|x| x.0)
+    }
+
+    pub fn get_rpo_order(&self, block: usize) -> usize {
+        self.rpo_order[block]
+    }
 }
