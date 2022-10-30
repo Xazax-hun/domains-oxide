@@ -107,11 +107,9 @@ fn test_rpo_order() {
 
     worklist.push(1);
     worklist.push(4);
-    let succ_1 = worklist.pop().unwrap();
-    let succ_2 = worklist.pop().unwrap();
+    let (succ_1, succ_2) = (worklist.pop().unwrap(), worklist.pop().unwrap());
+    assert_eq!((succ_1, succ_2), (1, 4));
     assert_eq!(worklist.pop(), None);
-    assert_eq!(succ_1, 1);
-    assert_eq!(succ_2, 4);
 }
 
 #[test]
