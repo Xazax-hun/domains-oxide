@@ -134,11 +134,6 @@ impl<'cfg, Cfg: ControlFlowGraph> RPOWorklist<'cfg, Cfg> {
             }
         }
 
-        let max_pos = counter - 1;
-        for node in 0..cfg.blocks().len() {
-            worklist.rpo_order[node] = max_pos - worklist.rpo_order[node];
-        }
-
         worklist
     }
 
@@ -157,6 +152,6 @@ impl<'cfg, Cfg: ControlFlowGraph> RPOWorklist<'cfg, Cfg> {
     }
 
     pub fn get_rpo_order(&self, block: usize) -> usize {
-        self.rpo_order[block]
+        self.rpo_order.len() - 1 - self.rpo_order[block]
     }
 }

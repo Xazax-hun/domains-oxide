@@ -98,12 +98,20 @@ fn test_rpo_order() {
         .add_edge(2, 3)
         .add_edge(3, 4);
 
-    let worklist = RPOWorklist::new(&cfg);
+    let mut worklist = RPOWorklist::new(&cfg);
     assert_eq!(worklist.get_rpo_order(0), 0);
     assert_eq!(worklist.get_rpo_order(1), 1);
     assert_eq!(worklist.get_rpo_order(2), 2);
     assert_eq!(worklist.get_rpo_order(3), 3);
     assert_eq!(worklist.get_rpo_order(4), 4);
+
+    worklist.push(1);
+    worklist.push(4);
+    let succ_1 = worklist.pop().unwrap();
+    let succ_2 = worklist.pop().unwrap();
+    assert_eq!(worklist.pop(), None);
+    assert_eq!(succ_1, 1);
+    assert_eq!(succ_2, 4);
 }
 
 #[test]
