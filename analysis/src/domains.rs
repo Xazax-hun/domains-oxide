@@ -7,7 +7,7 @@ use std::hash::Hash;
 /// Traits for domains. ///
 ///////////////////////////
 
-pub trait Domain: Eq + PartialOrd + Display {
+pub trait Domain: Eq + PartialOrd + Clone + Display {
     /// Required to be the smallest element according to the ordering.
     fn bottom() -> Self;
 
@@ -115,7 +115,7 @@ impl Domain for SignDomain {
     }
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Clone, Debug)]
 pub struct Vec2Domain<T: Domain> {
     pub x: T,
     pub y: T,
@@ -284,7 +284,7 @@ impl std::ops::Neg for IntervalDomain {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct PowerSetDomain<T: Eq + Hash>(pub HashSet<T>);
 
 impl<T: Eq + Hash> PartialOrd for PowerSetDomain<T> {
