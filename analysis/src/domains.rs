@@ -43,6 +43,25 @@ pub trait Top: Domain {
 // Add more general building blocks for finite domains and
 // post SignDomain to those facilities.
 
+#[derive(PartialEq, Eq, PartialOrd, Clone)]
+pub struct UnitDomain;
+
+impl Display for UnitDomain {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "UnitDomain")
+    }
+}
+
+impl Domain for UnitDomain {
+    fn bottom() -> Self {
+        Self
+    }
+
+    fn join(&self, _: &Self) -> Self {
+        Self
+    }
+}
+
 ///     Top
 ///   /  |  \
 ///   N  Z  P

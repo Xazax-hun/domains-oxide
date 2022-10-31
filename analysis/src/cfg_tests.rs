@@ -1,4 +1,8 @@
+use std::collections::HashSet;
+
 use super::cfg::*;
+use super::domains::*;
+use super::solvers::*;
 
 #[derive(Default, Clone)]
 struct TestBasicBlock {
@@ -223,4 +227,35 @@ fn test_get_back_edges() {
     // in test_rpo_order_with_back_edges_2 why we don't care about
     // this case too much.
     assert!(edges.contains(&(1usize, 4usize)));
+}
+
+#[test]
+fn basic_solver_visit_nodes() {
+    //     0
+    //    / \
+    //   2   1
+    //   |   |
+    //   3   |
+    //    \ /
+    //     4
+    let mut cfg = TestCfg::new(5);
+    cfg.add_edge(0, 2)
+        .add_edge(0, 1)
+        .add_edge(1, 4)
+        .add_edge(2, 3)
+        .add_edge(3, 4);
+
+    let mut visited = Vec::new();
+
+    let result = SolveMonotone::<20>::transfer_blocks(&cfg, &mut |id, _, dom: &UnitDomain| {
+        visited.push(id);
+        dom.clone()
+    });
+
+    assert_eq!(result.len(), cfg.blocks().len());
+    assert_eq!(visited.len(), 5);
+    assert_eq!(
+        visited.iter().collect::<HashSet<_>>(),
+        vec![0, 1, 2, 3, 4].iter().collect::<HashSet<_>>()
+    );
 }
