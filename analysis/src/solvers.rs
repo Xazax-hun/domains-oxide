@@ -1,16 +1,24 @@
 use super::cfg::*;
 use super::domains::*;
 
-pub struct SolveMonotone<const NODELIMIT: usize>;
+pub struct SolveMonotone {
+    pub node_limit: usize,
+}
 
-impl<const NODELIMIT: usize> SolveMonotone<NODELIMIT> {
-    pub fn transfer_blocks<Cfg, D, F>(cfg: &Cfg, transfer: &mut F) -> Vec<D>
+impl Default for SolveMonotone {
+    fn default() -> Self {
+        Self { node_limit: 20 }
+    }
+}
+
+impl SolveMonotone {
+    pub fn transfer_blocks<Cfg, D, F>(self, cfg: &Cfg, transfer: &mut F) -> Vec<D>
     where
         Cfg: ControlFlowGraph,
         D: Domain,
         F: FnMut(usize, &<Cfg as ControlFlowGraph>::Block, &D) -> D,
     {
-        let limit = NODELIMIT * cfg.blocks().len();
+        let limit = self.node_limit * cfg.blocks().len();
         let mut processed_nodes = 0usize;
         let mut post_states = vec![D::bottom(); cfg.blocks().len()];
         let mut visited = vec![false; cfg.blocks().len()];
@@ -41,13 +49,13 @@ impl<const NODELIMIT: usize> SolveMonotone<NODELIMIT> {
         post_states
     }
 
-    pub fn transfer_operations<Cfg, D, F>(cfg: &Cfg, transfer: &mut F) -> Vec<D>
+    pub fn transfer_operations<Cfg, D, F>(self, cfg: &Cfg, transfer: &mut F) -> Vec<D>
     where
         Cfg: ControlFlowGraph,
         D: Domain,
         F: FnMut(&<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Element, &D) -> D,
     {
-        Self::transfer_blocks(cfg, &mut |_, block, dom: &D| {
+        self.transfer_blocks(cfg, &mut |_, block, dom: &D| {
             let mut post_state = dom.clone();
             for op in block.operations() {
                 post_state = transfer(op, &post_state);
