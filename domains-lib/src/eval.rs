@@ -108,7 +108,7 @@ pub fn annotate_with_walks(walks: &[Walk]) -> Annotations {
         walk.iter().for_each(|step| {
             collected_steps
                 .entry(step.op)
-                .or_insert(Vec::new())
+                .or_default()
                 .push(step.pos)
         });
     }
