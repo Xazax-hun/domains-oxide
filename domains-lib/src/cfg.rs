@@ -36,9 +36,9 @@ impl BasicBlock {
 }
 
 impl CfgBlock for BasicBlock {
-    type Element = Operation;
+    type Operation = Operation;
 
-    fn operations(&self) -> &[Self::Element] {
+    fn operations(&self) -> &[Self::Operation] {
         &self.operations
     }
 

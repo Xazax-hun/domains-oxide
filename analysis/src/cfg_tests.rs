@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::usize;
 
 use super::cfg::*;
 use super::domains::*;
@@ -11,9 +12,9 @@ struct TestBasicBlock {
 }
 
 impl CfgBlock for TestBasicBlock {
-    type Element = ();
+    type Operation = usize;
 
-    fn operations(&self) -> &[Self::Element] {
+    fn operations(&self) -> &[Self::Operation] {
         &[]
     }
 
@@ -26,6 +27,7 @@ impl CfgBlock for TestBasicBlock {
     }
 }
 
+#[derive(Default)]
 struct TestCfg {
     basic_blocks: Vec<TestBasicBlock>,
 }
@@ -38,17 +40,55 @@ impl ControlFlowGraph for TestCfg {
     }
 }
 
-impl TestCfg {
-    fn new(size: usize) -> Self {
-        Self {
-            basic_blocks: vec![TestBasicBlock::default(); size],
-        }
+impl MutableCfg for TestCfg {
+    fn new_block(&mut self) -> usize {
+        self.basic_blocks.push(TestBasicBlock::default());
+        self.basic_blocks.len()
+    }
+
+    fn add_block(&mut self, block: <Self as ControlFlowGraph>::Block) -> usize {
+        self.basic_blocks.push(block);
+        self.basic_blocks.len() - 1
+    }
+
+    fn remove_block(&mut self, block: usize) -> TestBasicBlock {
+        self.basic_blocks.remove(block)
     }
 
     fn add_edge(&mut self, from: usize, to: usize) -> &mut Self {
         self.basic_blocks[from].succs.push(to);
         self.basic_blocks[to].preds.push(from);
         self
+    }
+
+    fn remove_edge(&mut self, from: usize, to: usize) -> &mut Self {
+        self.basic_blocks[from].succs.retain(|b| *b != to);
+        self.basic_blocks[to].succs.retain(|b| *b != from);
+        self
+    }
+}
+
+impl BlockMutableCfg for TestCfg {
+    fn extend_block<'cfg>(
+        &'cfg mut self,
+        _block: usize,
+        _ops: impl Iterator<Item = &'cfg <<Self as ControlFlowGraph>::Block as CfgBlock>::Operation>,
+    ) {
+    }
+
+    fn remove_ops(
+        &mut self,
+        _block: usize,
+    ) -> Vec<<<Self as ControlFlowGraph>::Block as CfgBlock>::Operation> {
+        Vec::default()
+    }
+}
+
+impl TestCfg {
+    fn new(size: usize) -> Self {
+        Self {
+            basic_blocks: vec![TestBasicBlock::default(); size],
+        }
     }
 }
 
@@ -80,6 +120,48 @@ fn test_cfg_print() {
   Node_0 -> Node_2
   Node_1 -> Node_4
   Node_2 -> Node_3
+  Node_3 -> Node_4
+}
+"#;
+    assert_eq!(printed, expected);
+}
+
+#[test]
+fn test_cfg_reverse() {
+    //     0
+    //    / \
+    //   1   2
+    //   \   /
+    //     3
+    //     |
+    //     4
+    let mut cfg = TestCfg::new(5);
+    cfg.add_edge(0, 1)
+        .add_edge(0, 2)
+        .add_edge(1, 3)
+        .add_edge(2, 3)
+        .add_edge(3, 4);
+
+    //     0
+    //     |
+    //     1
+    //    / \
+    //   2   3
+    //   \   /
+    //     4
+    let reversed = reverse(&cfg);
+    let printed = print(&reversed, |_| "".to_owned());
+    let expected = r#"digraph CFG {
+  Node_0[label=""]
+  Node_1[label=""]
+  Node_2[label=""]
+  Node_3[label=""]
+  Node_4[label=""]
+
+  Node_0 -> Node_1
+  Node_1 -> Node_3
+  Node_1 -> Node_2
+  Node_2 -> Node_4
   Node_3 -> Node_4
 }
 "#;

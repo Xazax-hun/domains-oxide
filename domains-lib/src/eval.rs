@@ -105,12 +105,8 @@ pub fn annotate_with_walks(walks: &[Walk]) -> Annotations {
     let mut collected_steps: HashMap<Operation, Vec<Vec2>> = HashMap::new();
 
     for walk in walks {
-        walk.iter().for_each(|step| {
-            collected_steps
-                .entry(step.op)
-                .or_default()
-                .push(step.pos)
-        });
+        walk.iter()
+            .for_each(|step| collected_steps.entry(step.op).or_default().push(step.pos));
     }
 
     fn print_set(v: &[Vec2]) -> String {

@@ -53,7 +53,7 @@ impl SolveMonotone {
     where
         Cfg: ControlFlowGraph,
         D: Domain,
-        F: FnMut(&<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Element, &D) -> D,
+        F: FnMut(&<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation, &D) -> D,
     {
         self.transfer_blocks(cfg, &mut |_, block, dom: &D| {
             let mut post_state = dom.clone();

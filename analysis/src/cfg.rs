@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use std::fmt::Write;
 
 pub trait CfgBlock {
-    type Element;
+    type Operation;
 
-    fn operations(&self) -> &[Self::Element];
+    fn operations(&self) -> &[Self::Operation];
     fn successors(&self) -> &[usize];
     fn predecessors(&self) -> &[usize];
 }
@@ -15,10 +15,45 @@ pub trait ControlFlowGraph {
     fn blocks(&self) -> &[Self::Block];
 }
 
+pub trait MutableCfg: ControlFlowGraph + Default {
+    fn add_edge(&mut self, from: usize, to: usize) -> &mut Self;
+    fn remove_edge(&mut self, from: usize, to: usize) -> &mut Self;
+    fn new_block(&mut self) -> usize;
+    fn add_block(&mut self, block: <Self as ControlFlowGraph>::Block) -> usize;
+    fn remove_block(&mut self, block: usize) -> <Self as ControlFlowGraph>::Block;
+}
+
+pub trait BlockMutableCfg: MutableCfg {
+    fn extend_block<'cfg>(
+        &'cfg mut self,
+        block: usize,
+        ops: impl Iterator<Item = &'cfg <<Self as ControlFlowGraph>::Block as CfgBlock>::Operation>,
+    );
+    fn remove_ops(
+        &mut self,
+        block: usize,
+    ) -> Vec<<<Self as ControlFlowGraph>::Block as CfgBlock>::Operation>;
+}
+
+pub fn reverse<Cfg: BlockMutableCfg>(cfg: &Cfg) -> Cfg {
+    let mut reversed = Cfg::default();
+    let block_num = cfg.blocks().len();
+    for block in cfg.blocks().iter().rev() {
+        let new_block = reversed.new_block();
+        reversed.extend_block(new_block, block.operations().iter().rev());
+    }
+    for (id, block) in cfg.blocks().iter().rev().enumerate() {
+        for pred in block.predecessors() {
+            reversed.add_edge(id, block_num - 1 - pred);
+        }
+    }
+    reversed
+}
+
 pub fn print<Cfg, OpPrinter>(cfg: &Cfg, printer: OpPrinter) -> String
 where
     Cfg: ControlFlowGraph,
-    OpPrinter: Fn(&<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Element) -> String,
+    OpPrinter: Fn(&<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation) -> String,
 {
     let mut output = "digraph CFG {\n".to_owned();
     for (counter, block) in cfg.blocks().iter().enumerate() {
