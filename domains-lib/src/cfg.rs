@@ -124,28 +124,30 @@ impl ControlFlowGraph for Cfg {
 impl Cfg {
     pub fn new(ctx: &ASTContext) -> Self {
         let mut cfg = Cfg(CfgImpl::default());
-        let start_block = cfg.0.new_block();
         let root = ctx.get_root();
-        cfg.add_ast_node(start_block, root, ctx);
+        let start_block = cfg.0.new_block();
+        cfg.0.add_ast_node(start_block, root, ctx);
         cfg
     }
+}
 
+impl CfgImpl {
     fn add_ast_node(&mut self, mut current_block: usize, n: Node, ctx: &ASTContext) -> usize {
         match (n, ctx.node_to_ref(n)) {
             (Node::Init(init), _) => {
-                self.0.basic_blocks[current_block]
+                self.basic_blocks[current_block]
                     .operations
                     .push(Operation::Init(init));
                 current_block
             }
             (Node::Translation(trans), _) => {
-                self.0.basic_blocks[current_block]
+                self.basic_blocks[current_block]
                     .operations
                     .push(Operation::Translation(trans));
                 current_block
             }
             (Node::Rotation(rot), _) => {
-                self.0.basic_blocks[current_block]
+                self.basic_blocks[current_block]
                     .operations
                     .push(Operation::Rotation(rot));
                 current_block
@@ -157,25 +159,25 @@ impl Cfg {
                 current_block
             }
             (_, NodeRef::Branch(branch)) => {
-                let lhs_block = self.0.new_block();
-                let rhs_block = self.0.new_block();
+                let lhs_block = self.new_block();
+                let rhs_block = self.new_block();
                 let branch_pred = current_block;
                 let lhs_after = self.add_ast_node(lhs_block, branch.lhs, ctx);
                 let rhs_after = self.add_ast_node(rhs_block, branch.rhs, ctx);
-                self.0.add_edge(branch_pred, lhs_block);
-                self.0.add_edge(branch_pred, rhs_block);
-                let after_branch = self.0.new_block();
-                self.0.add_edge(lhs_after, after_branch);
-                self.0.add_edge(rhs_after, after_branch);
+                self.add_edge(branch_pred, lhs_block);
+                self.add_edge(branch_pred, rhs_block);
+                let after_branch = self.new_block();
+                self.add_edge(lhs_after, after_branch);
+                self.add_edge(rhs_after, after_branch);
                 after_branch
             }
             (_, NodeRef::Loop(loop_)) => {
-                let body_begin = self.0.new_block();
-                self.0.add_edge(current_block, body_begin);
+                let body_begin = self.new_block();
+                self.add_edge(current_block, body_begin);
                 let body_end = self.add_ast_node(body_begin, loop_.body, ctx);
-                let after_body = self.0.new_block();
-                self.0.add_edge(body_end, body_begin);
-                self.0.add_edge(body_end, after_body);
+                let after_body = self.new_block();
+                self.add_edge(body_end, body_begin);
+                self.add_edge(body_end, after_body);
                 after_body
             }
             _ => panic!(),
