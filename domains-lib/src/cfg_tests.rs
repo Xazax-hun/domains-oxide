@@ -60,6 +60,41 @@ iter {
 }
 
 #[test]
+fn reverse_cfg_printed() {
+    let source = r"init(50, 50, 50, 50);
+translation(10, 0);
+iter {
+  {
+    translation(10, 0)
+  } or {
+    rotation(0, 0, 90)
+  }
+}";
+    let ParseResult { output, ctx, cfg } = parse_string(source).unwrap();
+    assert!(output.is_empty());
+    let reverse_cfg = reverse(&cfg);
+    let pretty_printed = print(&reverse_cfg, &ctx);
+    let expected = r#"digraph CFG {
+  Node_0[label=""]
+  Node_1[label=""]
+  Node_2[label="rotation(0, 0, 90)"]
+  Node_3[label="translation(10, 0)"]
+  Node_4[label=""]
+  Node_5[label="translation(10, 0)\ninit(50, 50, 50, 50)"]
+
+  Node_0 -> Node_1
+  Node_1 -> Node_3
+  Node_1 -> Node_2
+  Node_2 -> Node_4
+  Node_3 -> Node_4
+  Node_4 -> Node_5
+  Node_4 -> Node_1
+}
+"#;
+    assert_eq!(expected, pretty_printed);
+}
+
+#[test]
 fn more_nested_cfg_printed() {
     let source = r"init(50, 50, 50, 50);
 translation(10, 0);

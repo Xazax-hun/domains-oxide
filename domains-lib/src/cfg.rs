@@ -53,11 +53,14 @@ impl CfgBlock for BasicBlock {
 
 // TODO: Either introduce phantom lifetime to make the connection to ASTContext
 //       explicit, or make it own the AST Context.
-pub struct Cfg {
+#[derive(Default)]
+struct CfgImpl {
     basic_blocks: Vec<BasicBlock>,
 }
 
-impl ControlFlowGraph for Cfg {
+pub struct Cfg(CfgImpl);
+
+impl ControlFlowGraph for CfgImpl {
     type Block = BasicBlock;
 
     fn blocks(&self) -> &[Self::Block] {
@@ -65,45 +68,84 @@ impl ControlFlowGraph for Cfg {
     }
 }
 
-impl Cfg {
-    pub fn new(ctx: &ASTContext) -> Self {
-        let mut cfg = Cfg {
-            basic_blocks: Vec::new(),
-        };
-        let start_block = cfg.new_block();
-        let root = ctx.get_root();
-        cfg.add_ast_node(start_block, root, ctx);
-        cfg
-    }
-
+impl MutableCfg for CfgImpl {
     fn new_block(&mut self) -> usize {
         self.basic_blocks.push(BasicBlock::new());
         self.basic_blocks.len() - 1
     }
 
+    fn add_block(&mut self, block: <Self as ControlFlowGraph>::Block) -> usize {
+        self.basic_blocks.push(block);
+        self.basic_blocks.len() - 1
+    }
+
+    fn remove_block(&mut self, block: usize) -> <Self as ControlFlowGraph>::Block {
+        self.basic_blocks.remove(block)
+    }
+
     fn add_edge(&mut self, from: usize, to: usize) -> &mut Self {
         self.basic_blocks[from].succs.push(to);
         self.basic_blocks[to].preds.push(from);
-        // TODO: assertion about no duplicates in succs/preds.
         self
+    }
+
+    fn remove_edge(&mut self, from: usize, to: usize) -> &mut Self {
+        self.basic_blocks[from].succs.retain(|b| *b != to);
+        self.basic_blocks[to].succs.retain(|b| *b != from);
+        self
+    }
+}
+
+impl BlockMutableCfg for CfgImpl {
+    fn extend_block<'cfg>(
+        &'cfg mut self,
+        block: usize,
+        ops: impl Iterator<Item = &'cfg <<Self as ControlFlowGraph>::Block as CfgBlock>::Operation>,
+    ) {
+        self.basic_blocks[block].operations.extend(ops);
+    }
+
+    fn remove_ops(
+        &mut self,
+        block: usize,
+    ) -> Vec<<<Self as ControlFlowGraph>::Block as CfgBlock>::Operation> {
+        std::mem::take(&mut self.basic_blocks[block].operations)
+    }
+}
+
+impl ControlFlowGraph for Cfg {
+    type Block = BasicBlock;
+
+    fn blocks(&self) -> &[Self::Block] {
+        self.0.blocks()
+    }
+}
+
+impl Cfg {
+    pub fn new(ctx: &ASTContext) -> Self {
+        let mut cfg = Cfg(CfgImpl::default());
+        let start_block = cfg.0.new_block();
+        let root = ctx.get_root();
+        cfg.add_ast_node(start_block, root, ctx);
+        cfg
     }
 
     fn add_ast_node(&mut self, mut current_block: usize, n: Node, ctx: &ASTContext) -> usize {
         match (n, ctx.node_to_ref(n)) {
             (Node::Init(init), _) => {
-                self.basic_blocks[current_block]
+                self.0.basic_blocks[current_block]
                     .operations
                     .push(Operation::Init(init));
                 current_block
             }
             (Node::Translation(trans), _) => {
-                self.basic_blocks[current_block]
+                self.0.basic_blocks[current_block]
                     .operations
                     .push(Operation::Translation(trans));
                 current_block
             }
             (Node::Rotation(rot), _) => {
-                self.basic_blocks[current_block]
+                self.0.basic_blocks[current_block]
                     .operations
                     .push(Operation::Rotation(rot));
                 current_block
@@ -115,25 +157,25 @@ impl Cfg {
                 current_block
             }
             (_, NodeRef::Branch(branch)) => {
-                let lhs_block = self.new_block();
-                let rhs_block = self.new_block();
+                let lhs_block = self.0.new_block();
+                let rhs_block = self.0.new_block();
                 let branch_pred = current_block;
                 let lhs_after = self.add_ast_node(lhs_block, branch.lhs, ctx);
                 let rhs_after = self.add_ast_node(rhs_block, branch.rhs, ctx);
-                self.add_edge(branch_pred, lhs_block);
-                self.add_edge(branch_pred, rhs_block);
-                let after_branch = self.new_block();
-                self.add_edge(lhs_after, after_branch);
-                self.add_edge(rhs_after, after_branch);
+                self.0.add_edge(branch_pred, lhs_block);
+                self.0.add_edge(branch_pred, rhs_block);
+                let after_branch = self.0.new_block();
+                self.0.add_edge(lhs_after, after_branch);
+                self.0.add_edge(rhs_after, after_branch);
                 after_branch
             }
             (_, NodeRef::Loop(loop_)) => {
-                let body_begin = self.new_block();
-                self.add_edge(current_block, body_begin);
+                let body_begin = self.0.new_block();
+                self.0.add_edge(current_block, body_begin);
                 let body_end = self.add_ast_node(body_begin, loop_.body, ctx);
-                let after_body = self.new_block();
-                self.add_edge(body_end, body_begin);
-                self.add_edge(body_end, after_body);
+                let after_body = self.0.new_block();
+                self.0.add_edge(body_end, body_begin);
+                self.0.add_edge(body_end, after_body);
                 after_body
             }
             _ => panic!(),
@@ -144,4 +186,8 @@ impl Cfg {
 pub fn print(cfg: &Cfg, ctx: &ASTContext) -> String {
     let anns = Annotations::new();
     analysis::cfg::print(cfg, |op| ast::print(op.into(), ctx, &anns))
+}
+
+pub fn reverse(cfg: &Cfg) -> Cfg {
+    Cfg(analysis::cfg::reverse(&cfg.0))
 }
