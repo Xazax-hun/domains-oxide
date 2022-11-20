@@ -19,14 +19,13 @@ pub trait Domain: Eq + PartialOrd + Clone + Display {
     /// * top.join(b) == top
     /// * bottom.join(b) == b
     fn join(&self, other: &Self) -> Self;
-}
 
-pub trait WidenableDomain: Domain {
     /// Requirements:
-    /// * bottom.widen(a) == a
     /// * a.widen(a) == a
     /// * b.widen(a) == b if a <= b
-    fn widen(&self, other: &Self) -> Self;
+    fn widen(&self, _previous: &Self) -> Self {
+        self.clone()
+    }
 }
 
 pub trait Top: Domain {
@@ -160,9 +159,7 @@ impl<T: Domain> Domain for Vec2Domain<T> {
             y: self.y.join(&other.y),
         }
     }
-}
 
-impl<T: WidenableDomain> WidenableDomain for Vec2Domain<T> {
     fn widen(&self, other: &Self) -> Self {
         Vec2Domain {
             x: self.x.widen(&other.x),
@@ -239,18 +236,7 @@ impl Domain for IntervalDomain {
             max: self.max.max(other.max),
         }
     }
-}
 
-impl Top for IntervalDomain {
-    fn top() -> Self {
-        IntervalDomain {
-            min: NEG_INF,
-            max: INF,
-        }
-    }
-}
-
-impl WidenableDomain for IntervalDomain {
     fn widen(&self, transferred_state: &Self) -> Self {
         if *self == IntervalDomain::bottom() {
             return *transferred_state;
@@ -266,6 +252,15 @@ impl WidenableDomain for IntervalDomain {
             } else {
                 self.max
             },
+        }
+    }
+}
+
+impl Top for IntervalDomain {
+    fn top() -> Self {
+        IntervalDomain {
+            min: NEG_INF,
+            max: INF,
         }
     }
 }
