@@ -4,5 +4,8 @@ members = [
   "domains-driver",
   "domains-lib",
   "analysis",
-  "utils"
+  "utils",
+]
+exclude = [
+  "parser-fuzz"
 ]

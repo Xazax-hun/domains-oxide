@@ -99,4 +99,8 @@ fn test_error_messages() {
     let LexResult { output, tokens } = lex_string("-iter");
     assert!(tokens.is_empty());
     assert_eq!(output, "[line 1] Error : Expected number after '-'.\n");
+
+    let LexResult { output, tokens } = lex_string("a̐");
+    assert!(tokens.is_empty());
+    assert_eq!(output, "[line 1] Error : Only ASCII input is supported.\n");
 }

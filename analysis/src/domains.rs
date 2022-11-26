@@ -40,7 +40,7 @@ pub trait Top: Domain {
 
 // TODO:
 // Add more general building blocks for finite domains and
-// post SignDomain to those facilities.
+// port SignDomain to those facilities.
 
 #[derive(PartialEq, Eq, PartialOrd, Clone)]
 pub struct UnitDomain;
