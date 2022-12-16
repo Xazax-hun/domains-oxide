@@ -3,8 +3,8 @@ use std::hash::{Hash, Hasher};
 use utils::DiagnosticEmitter;
 
 fn run_driver(source: &str, opts: Opt) -> Option<String> {
-    let errors: Box<Vec<u8>> = Box::new(Vec::new());
-    let regular: Box<Vec<u8>> = Box::new(Vec::new());
+    let errors: Box<Vec<u8>> = Box::default();
+    let regular: Box<Vec<u8>> = Box::default();
     let mut diag = DiagnosticEmitter::new(regular, errors);
     process_source(source, &mut diag, &opts)?;
     Some(diag.out_buffer().to_string() + diag.err_buffer())
@@ -162,7 +162,7 @@ translation(0, 10)";
         },
     )
     .unwrap();
-    assert_eq!(summarize_svg(&output), summarize_svg(&expected));
+    assert_eq!(summarize_svg(&output), summarize_svg(expected));
 }
 
 #[test]
@@ -190,7 +190,7 @@ translation(0, 10)";
         },
     )
     .unwrap();
-    assert_eq!(summarize_svg(&output), summarize_svg(&expected));
+    assert_eq!(summarize_svg(&output), summarize_svg(expected));
 }
 
 #[test]
@@ -223,7 +223,7 @@ translation(0, 10)";
         },
     )
     .unwrap();
-    assert_eq!(summarize_svg(&output), summarize_svg(&expected));
+    assert_eq!(summarize_svg(&output), summarize_svg(expected));
 }
 
 /// Looks like different versions of cairo can
@@ -237,7 +237,7 @@ fn summarize_svg(s: &str) -> u64 {
         if !line.starts_with("<path") && !line.starts_with("<rect") {
             continue;
         }
-        for word in line.split(" ") {
+        for word in line.split(' ') {
             if let Ok(num) = word.parse::<f64>() {
                 (num.round() as i64).hash(&mut h);
             }

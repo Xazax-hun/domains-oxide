@@ -122,7 +122,7 @@ impl<'a> Lexer<'a> {
     /// the lexing failed and en error was emitted to `diag`.
     pub fn lex_all(mut self) -> Vec<Token> {
         let mut result = Vec::new();
-        
+
         // TODO: better support for unicode:
         //   * Point out where the non-ascii character is
         //   * Allow any non-control characters in comments.
