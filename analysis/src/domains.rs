@@ -3,9 +3,11 @@ use std::collections::HashSet;
 use std::fmt::Display;
 use std::hash::Hash;
 
-///////////////////////////
-/// Traits for domains. ///
-///////////////////////////
+use fixedbitset::FixedBitSet;
+
+/////////////////////////
+// Traits for domains. //
+/////////////////////////
 
 pub trait JoinSemiLattice: Eq + PartialOrd + Clone + Display {
     // For some lattices, like the power set lattice, we need to
@@ -41,9 +43,9 @@ pub trait Lattice: JoinSemiLattice {
     fn meet(&self, other: &Self) -> Self;
 }
 
-///////////////////////////////////////
-/// Concrete domain implementations ///
-///////////////////////////////////////
+/////////////////////////////////////
+// Concrete domain implementations //
+/////////////////////////////////////
 
 // TODO:
 // Add more general building blocks for finite domains and
@@ -163,59 +165,6 @@ impl Lattice for SignDomain {
         }
 
         SignDomain::Bottom
-    }
-}
-
-#[derive(PartialEq, Eq, PartialOrd, Clone, Debug)]
-pub struct Vec2Domain<T: JoinSemiLattice> {
-    pub x: T,
-    pub y: T,
-}
-
-impl<T: JoinSemiLattice> Display for Vec2Domain<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{ x: {}, y: {} }}", self.x, self.y)
-    }
-}
-
-impl<T: JoinSemiLattice> JoinSemiLattice for Vec2Domain<T> {
-    type LatticeContext = T::LatticeContext;
-
-    fn bottom(ctx: &Self::LatticeContext) -> Self {
-        Vec2Domain {
-            x: T::bottom(ctx),
-            y: T::bottom(ctx),
-        }
-    }
-
-    fn join(&self, other: &Self) -> Self {
-        Vec2Domain {
-            x: self.x.join(&other.x),
-            y: self.y.join(&other.y),
-        }
-    }
-
-    fn widen(&self, other: &Self, iteration: usize) -> Self {
-        Vec2Domain {
-            x: self.x.widen(&other.x, iteration),
-            y: self.y.widen(&other.y, iteration),
-        }
-    }
-}
-
-impl<T: Lattice> Lattice for Vec2Domain<T> {
-    fn top(ctx: &Self::LatticeContext) -> Self {
-        Vec2Domain {
-            x: T::top(ctx),
-            y: T::top(ctx),
-        }
-    }
-
-    fn meet(&self, other: &Self) -> Self {
-        Vec2Domain {
-            x: self.x.meet(&other.x),
-            y: self.y.meet(&other.y),
-        }
     }
 }
 
@@ -413,6 +362,131 @@ impl<T: Eq + Hash + Display + Clone> Lattice for PowerSetDomain<T> {
                 .cloned()
                 .collect::<HashSet<T>>(),
         )
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub struct BitSetDomain(pub FixedBitSet);
+
+pub struct BitSetTop(pub usize);
+
+impl BitSetDomain {
+    pub fn from(ctx: &BitSetTop, values: &[usize]) -> Self {
+        let mut inner = FixedBitSet::with_capacity(ctx.0);
+        for &v in values {
+            inner.insert(v);
+        }
+        Self(inner)
+    }
+}
+
+impl PartialOrd for BitSetDomain {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self.0.is_superset(&other.0), other.0.is_superset(&self.0)) {
+            (true, true) => Some(Ordering::Equal),
+            (true, false) => Some(Ordering::Greater),
+            (false, true) => Some(Ordering::Less),
+            (_, _) => None,
+        }
+    }
+}
+
+impl Display for BitSetDomain {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{{{}}}",
+            self.0
+                .ones()
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
+    }
+}
+
+impl JoinSemiLattice for BitSetDomain {
+    type LatticeContext = BitSetTop;
+
+    fn bottom(ctx: &Self::LatticeContext) -> Self {
+        Self(FixedBitSet::with_capacity(ctx.0))
+    }
+
+    fn join(&self, other: &Self) -> Self {
+        let mut result = self.0.clone();
+        result.union_with(&other.0);
+        Self(result)
+    }
+}
+
+impl Lattice for BitSetDomain {
+    fn top(ctx: &Self::LatticeContext) -> Self {
+        let mut result = FixedBitSet::with_capacity(ctx.0);
+        result.toggle_range(..);
+        BitSetDomain(result)
+    }
+
+    fn meet(&self, other: &Self) -> Self {
+        let mut result = self.0.clone();
+        result.intersect_with(&other.0);
+        Self(result)
+    }
+}
+
+/////////////////////////
+// Domain transformers //
+/////////////////////////
+
+#[derive(PartialEq, Eq, PartialOrd, Clone, Debug)]
+pub struct Vec2Domain<T: JoinSemiLattice> {
+    pub x: T,
+    pub y: T,
+}
+
+impl<T: JoinSemiLattice> Display for Vec2Domain<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{ x: {}, y: {} }}", self.x, self.y)
+    }
+}
+
+impl<T: JoinSemiLattice> JoinSemiLattice for Vec2Domain<T> {
+    type LatticeContext = T::LatticeContext;
+
+    fn bottom(ctx: &Self::LatticeContext) -> Self {
+        Vec2Domain {
+            x: T::bottom(ctx),
+            y: T::bottom(ctx),
+        }
+    }
+
+    fn join(&self, other: &Self) -> Self {
+        Vec2Domain {
+            x: self.x.join(&other.x),
+            y: self.y.join(&other.y),
+        }
+    }
+
+    fn widen(&self, other: &Self, iteration: usize) -> Self {
+        Vec2Domain {
+            x: self.x.widen(&other.x, iteration),
+            y: self.y.widen(&other.y, iteration),
+        }
+    }
+}
+
+impl<T: Lattice> Lattice for Vec2Domain<T> {
+    fn top(ctx: &Self::LatticeContext) -> Self {
+        Vec2Domain {
+            x: T::top(ctx),
+            y: T::top(ctx),
+        }
+    }
+
+    fn meet(&self, other: &Self) -> Self {
+        Vec2Domain {
+            x: self.x.meet(&other.x),
+            y: self.y.meet(&other.y),
+        }
     }
 }
 

@@ -13,3 +13,4 @@ edition = "2021"
 
 [dependencies]
 priority-queue = "1.2.3"
+fixedbitset = "0.4.2"

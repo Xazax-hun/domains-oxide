@@ -204,6 +204,7 @@ fn set_domain_tests() {
     let small_set = PowerSetDomain::<i32>(HashSet::from([1, 2, 3]));
     let small_set2 = PowerSetDomain::<i32>(HashSet::from([2, 3, 4]));
     let union = PowerSetDomain::<i32>(HashSet::from([1, 2, 3, 4]));
+    let intersection = PowerSetDomain::<i32>(HashSet::from([2, 3]));
 
     assert!(bottom < small_set);
     assert!(bottom < small_set2);
@@ -213,4 +214,34 @@ fn set_domain_tests() {
     assert!(small_set2 < union);
     assert_eq!(small_set.join(&small_set2), union);
     assert_eq!(small_set2.join(&small_set), union);
+    assert_eq!(small_set.meet(&small_set2), intersection);
+    assert_eq!(small_set2.meet(&small_set), intersection);
+}
+
+#[test]
+fn bitset_domain_tests() {
+    let ctx = BitSetTop(5);
+    let bottom = BitSetDomain::bottom(&ctx);
+    let small_set = BitSetDomain::from(&ctx, &[1, 2, 3]);
+    let small_set2 = BitSetDomain::from(&ctx, &[2, 3, 4]);
+    let union = BitSetDomain::from(&ctx, &[1, 2, 3, 4]);
+    let intersection = BitSetDomain::from(&ctx, &[2, 3]);
+
+    assert!(bottom < small_set);
+    assert!(bottom < small_set2);
+    assert!(!(small_set2 < small_set));
+    assert!(!(small_set2 > small_set));
+    assert!(small_set < union);
+    assert!(small_set2 < union);
+    assert_eq!(small_set.join(&small_set2), union);
+    assert_eq!(small_set2.join(&small_set), union);
+    assert_eq!(small_set.meet(&small_set2), intersection);
+    assert_eq!(small_set2.meet(&small_set), intersection);
+
+    assert_eq!(bottom.to_string(), "{}".to_owned());
+    assert_eq!(small_set.to_string(), "{1, 2, 3}".to_owned());
+    assert_eq!(
+        BitSetDomain::top(&ctx).to_string(),
+        "{0, 1, 2, 3, 4}".to_owned()
+    );
 }
