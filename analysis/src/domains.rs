@@ -21,9 +21,9 @@ pub trait JoinSemiLattice: Eq + PartialOrd + Clone + Display {
     fn join(&self, other: &Self) -> Self;
 
     /// Requirements:
-    /// * a.widen(a) == a
-    /// * b.widen(a) == b if a <= b
-    fn widen(&self, _previous: &Self) -> Self {
+    /// * a.widen(a, x) == a
+    /// * b.widen(a, x) == b if a <= b
+    fn widen(&self, _previous: &Self, _iteration: usize) -> Self {
         self.clone()
     }
 }
@@ -184,10 +184,10 @@ impl<T: JoinSemiLattice> JoinSemiLattice for Vec2Domain<T> {
         }
     }
 
-    fn widen(&self, other: &Self) -> Self {
+    fn widen(&self, other: &Self, iteration : usize) -> Self {
         Vec2Domain {
-            x: self.x.widen(&other.x),
-            y: self.y.widen(&other.y),
+            x: self.x.widen(&other.x, iteration),
+            y: self.y.widen(&other.y, iteration),
         }
     }
 }
@@ -268,7 +268,7 @@ impl JoinSemiLattice for IntervalDomain {
         }
     }
 
-    fn widen(&self, transferred_state: &Self) -> Self {
+    fn widen(&self, transferred_state: &Self, _: usize) -> Self {
         if *self == IntervalDomain::bottom() {
             return *transferred_state;
         }
@@ -380,3 +380,13 @@ impl<T: Eq + Hash + Display + Clone> JoinSemiLattice for PowerSetDomain<T> {
         Self(self.0.union(&other.0).cloned().collect::<HashSet<T>>())
     }
 }
+
+// TODO:
+// Add operations to built lattices
+// * Product, Pair
+// * Reduced product
+// * Disjoint union
+// * Stacking
+// * Lifting
+// * Finite lattices
+// * Flipping
