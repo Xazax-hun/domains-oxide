@@ -41,7 +41,7 @@ fn vec2_domain_tests() {
     // Vec2Sign
     {
         type SignVec = Vec2Domain<SignDomain>;
-        let bottom = SignVec::bottom();
+        let bottom = SignVec::bottom(&());
         let pos_pos = SignVec {
             x: SignDomain::Positive,
             y: SignDomain::Positive,
@@ -71,7 +71,7 @@ fn vec2_domain_tests() {
         assert!(!(pos_pos <= pos_neg));
         assert!(!(pos_pos >= pos_neg));
         assert_eq!(pos_pos.join(&pos_neg), pos_top);
-        assert_eq!(top_top, SignVec::top());
+        assert_eq!(top_top, SignVec::top(&()));
         assert_eq!(pos_pos.meet(&pos_neg), pos_bot);
 
         // Pretty printing
@@ -82,8 +82,8 @@ fn vec2_domain_tests() {
     {
         type IntervalVec = Vec2Domain<IntervalDomain>;
 
-        let bottom = IntervalVec::bottom();
-        let top = IntervalVec::top();
+        let bottom = IntervalVec::bottom(&());
+        let top = IntervalVec::top(&());
         let singleton = IntervalVec {
             x: IntervalDomain::from(5),
             y: IntervalDomain::from(15),
@@ -103,8 +103,8 @@ fn vec2_domain_tests() {
 
 #[test]
 fn vec2_interval_tests() {
-    let bottom = IntervalDomain::bottom();
-    let top = IntervalDomain::top();
+    let bottom = IntervalDomain::bottom(&());
+    let top = IntervalDomain::top(&());
     let singleton = IntervalDomain::from(5);
     let small_range_a = IntervalDomain {
         min: 0.into(),
@@ -199,7 +199,8 @@ fn vec2_interval_tests() {
 #[test]
 fn set_domain_tests() {
     type IntSetDomain = PowerSetDomain<i32>;
-    let bottom = IntSetDomain::bottom();
+    let ctx = PowerSetTop(PowerSetDomain::<i32>(HashSet::from([1, 2, 3, 4, 5])));
+    let bottom = IntSetDomain::bottom(&ctx);
     let small_set = PowerSetDomain::<i32>(HashSet::from([1, 2, 3]));
     let small_set2 = PowerSetDomain::<i32>(HashSet::from([2, 3, 4]));
     let union = PowerSetDomain::<i32>(HashSet::from([1, 2, 3, 4]));

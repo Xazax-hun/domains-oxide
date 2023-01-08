@@ -8,8 +8,13 @@ use std::hash::Hash;
 ///////////////////////////
 
 pub trait JoinSemiLattice: Eq + PartialOrd + Clone + Display {
+    // For some lattices, like the power set lattice, we need to
+    // store somewhere the top or the bottom value. When we need
+    // no such values, set this to unit.
+    type LatticeContext;
+
     /// Required to be the smallest element according to the ordering.
-    fn bottom() -> Self;
+    fn bottom(ctx: &Self::LatticeContext) -> Self;
 
     /// Requirements:
     /// * a.join(a) == a
@@ -31,7 +36,7 @@ pub trait JoinSemiLattice: Eq + PartialOrd + Clone + Display {
 pub trait Lattice: JoinSemiLattice {
     /// Requirements:
     /// Top is the greatest element of the lattice.
-    fn top() -> Self;
+    fn top(ctx: &Self::LatticeContext) -> Self;
 
     fn meet(&self, other: &Self) -> Self;
 }
@@ -54,7 +59,9 @@ impl Display for UnitDomain {
 }
 
 impl JoinSemiLattice for UnitDomain {
-    fn bottom() -> Self {
+    type LatticeContext = ();
+
+    fn bottom(_: &Self::LatticeContext) -> Self {
         Self
     }
 
@@ -64,7 +71,7 @@ impl JoinSemiLattice for UnitDomain {
 }
 
 impl Lattice for UnitDomain {
-    fn top() -> Self {
+    fn top(_: &Self::LatticeContext) -> Self {
         Self
     }
 
@@ -122,7 +129,9 @@ impl PartialOrd for SignDomain {
 }
 
 impl JoinSemiLattice for SignDomain {
-    fn bottom() -> Self {
+    type LatticeContext = ();
+
+    fn bottom(_: &Self::LatticeContext) -> Self {
         SignDomain::Bottom
     }
 
@@ -140,7 +149,7 @@ impl JoinSemiLattice for SignDomain {
 }
 
 impl Lattice for SignDomain {
-    fn top() -> Self {
+    fn top(_: &Self::LatticeContext) -> Self {
         SignDomain::Top
     }
 
@@ -170,10 +179,12 @@ impl<T: JoinSemiLattice> Display for Vec2Domain<T> {
 }
 
 impl<T: JoinSemiLattice> JoinSemiLattice for Vec2Domain<T> {
-    fn bottom() -> Self {
+    type LatticeContext = T::LatticeContext;
+
+    fn bottom(ctx: &Self::LatticeContext) -> Self {
         Vec2Domain {
-            x: T::bottom(),
-            y: T::bottom(),
+            x: T::bottom(ctx),
+            y: T::bottom(ctx),
         }
     }
 
@@ -184,7 +195,7 @@ impl<T: JoinSemiLattice> JoinSemiLattice for Vec2Domain<T> {
         }
     }
 
-    fn widen(&self, other: &Self, iteration : usize) -> Self {
+    fn widen(&self, other: &Self, iteration: usize) -> Self {
         Vec2Domain {
             x: self.x.widen(&other.x, iteration),
             y: self.y.widen(&other.y, iteration),
@@ -193,10 +204,10 @@ impl<T: JoinSemiLattice> JoinSemiLattice for Vec2Domain<T> {
 }
 
 impl<T: Lattice> Lattice for Vec2Domain<T> {
-    fn top() -> Self {
+    fn top(ctx: &Self::LatticeContext) -> Self {
         Vec2Domain {
-            x: T::top(),
-            y: T::top(),
+            x: T::top(ctx),
+            y: T::top(ctx),
         }
     }
 
@@ -254,7 +265,9 @@ impl PartialOrd for IntervalDomain {
 }
 
 impl JoinSemiLattice for IntervalDomain {
-    fn bottom() -> Self {
+    type LatticeContext = ();
+
+    fn bottom(_: &Self::LatticeContext) -> Self {
         IntervalDomain {
             min: INF,
             max: NEG_INF,
@@ -269,7 +282,7 @@ impl JoinSemiLattice for IntervalDomain {
     }
 
     fn widen(&self, transferred_state: &Self, _: usize) -> Self {
-        if *self == IntervalDomain::bottom() {
+        if *self == IntervalDomain::bottom(&()) {
             return *transferred_state;
         }
         IntervalDomain {
@@ -288,7 +301,7 @@ impl JoinSemiLattice for IntervalDomain {
 }
 
 impl Lattice for IntervalDomain {
-    fn top() -> Self {
+    fn top(_: &Self::LatticeContext) -> Self {
         IntervalDomain {
             min: NEG_INF,
             max: INF,
@@ -300,10 +313,10 @@ impl Lattice for IntervalDomain {
             min: self.min.max(other.min),
             max: self.max.min(other.max),
         };
-        
+
         // We only want one canonical representation for bottom.
         if result.min > result.max {
-            IntervalDomain::bottom()
+            IntervalDomain::bottom(&())
         } else {
             result
         }
@@ -346,6 +359,8 @@ impl std::ops::Neg for IntervalDomain {
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct PowerSetDomain<T: Eq + Hash>(pub HashSet<T>);
 
+pub struct PowerSetTop<T: Eq + Hash>(pub PowerSetDomain<T>);
+
 impl<T: Eq + Hash> PartialOrd for PowerSetDomain<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self.0.is_superset(&other.0), other.0.is_superset(&self.0)) {
@@ -372,12 +387,32 @@ impl<T: Eq + Hash + Display> Display for PowerSetDomain<T> {
 }
 
 impl<T: Eq + Hash + Display + Clone> JoinSemiLattice for PowerSetDomain<T> {
-    fn bottom() -> Self {
+    type LatticeContext = PowerSetTop<T>;
+
+    fn bottom(_: &Self::LatticeContext) -> Self {
         Self(HashSet::new())
     }
 
     fn join(&self, other: &Self) -> Self {
         Self(self.0.union(&other.0).cloned().collect::<HashSet<T>>())
+    }
+}
+
+impl<T: Eq + Hash + Display + Clone> Lattice for PowerSetDomain<T> {
+    // TODO: some impls want to return a value, some want to
+    //       return a reference. Try to make the trait flexible,
+    //       e.g.: https://stackoverflow.com/questions/43323250/trait-method-that-can-be-implemented-to-either-return-a-reference-or-an-owned-va
+    fn top(ctx: &Self::LatticeContext) -> Self {
+        ctx.0.clone()
+    }
+
+    fn meet(&self, other: &Self) -> Self {
+        Self(
+            self.0
+                .intersection(&other.0)
+                .cloned()
+                .collect::<HashSet<T>>(),
+        )
     }
 }
 
