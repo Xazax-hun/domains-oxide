@@ -51,7 +51,7 @@ pub trait Lattice: JoinSemiLattice {
 // Add more general building blocks for finite domains and
 // port SignDomain to those facilities.
 
-#[derive(PartialEq, Eq, PartialOrd, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Clone, Copy)]
 pub struct UnitDomain;
 
 impl Display for UnitDomain {
