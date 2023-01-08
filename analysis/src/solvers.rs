@@ -15,7 +15,7 @@ impl SolveMonotone {
     pub fn transfer_blocks<Cfg, D, F>(self, cfg: &Cfg, transfer: &mut F) -> Vec<D>
     where
         Cfg: ControlFlowGraph,
-        D: Domain,
+        D: JoinSemiLattice,
         F: FnMut(usize, &<Cfg as ControlFlowGraph>::Block, &D) -> D,
     {
         let limit = self.node_limit * cfg.blocks().len();
@@ -52,7 +52,7 @@ impl SolveMonotone {
     pub fn transfer_operations<Cfg, D, F>(self, cfg: &Cfg, transfer: &mut F) -> Vec<D>
     where
         Cfg: ControlFlowGraph,
-        D: Domain,
+        D: JoinSemiLattice,
         F: FnMut(&<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation, &D) -> D,
     {
         self.transfer_blocks(cfg, &mut |_, block, dom: &D| {

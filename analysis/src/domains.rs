@@ -7,7 +7,7 @@ use std::hash::Hash;
 /// Traits for domains. ///
 ///////////////////////////
 
-pub trait Domain: Eq + PartialOrd + Clone + Display {
+pub trait JoinSemiLattice: Eq + PartialOrd + Clone + Display {
     /// Required to be the smallest element according to the ordering.
     fn bottom() -> Self;
 
@@ -28,10 +28,12 @@ pub trait Domain: Eq + PartialOrd + Clone + Display {
     }
 }
 
-pub trait Top: Domain {
+pub trait Lattice: JoinSemiLattice {
     /// Requirements:
     /// Top is the greatest element of the lattice.
     fn top() -> Self;
+
+    fn meet(&self, other: &Self) -> Self;
 }
 
 ///////////////////////////////////////
@@ -51,12 +53,22 @@ impl Display for UnitDomain {
     }
 }
 
-impl Domain for UnitDomain {
+impl JoinSemiLattice for UnitDomain {
     fn bottom() -> Self {
         Self
     }
 
     fn join(&self, _: &Self) -> Self {
+        Self
+    }
+}
+
+impl Lattice for UnitDomain {
+    fn top() -> Self {
+        Self
+    }
+
+    fn meet(&self, _: &Self) -> Self {
         Self
     }
 }
@@ -73,12 +85,6 @@ pub enum SignDomain {
     Negative,
     Zero,
     Positive,
-}
-
-impl Top for SignDomain {
-    fn top() -> Self {
-        SignDomain::Top
-    }
 }
 
 impl From<i32> for SignDomain {
@@ -115,7 +121,7 @@ impl PartialOrd for SignDomain {
     }
 }
 
-impl Domain for SignDomain {
+impl JoinSemiLattice for SignDomain {
     fn bottom() -> Self {
         SignDomain::Bottom
     }
@@ -133,19 +139,37 @@ impl Domain for SignDomain {
     }
 }
 
+impl Lattice for SignDomain {
+    fn top() -> Self {
+        SignDomain::Top
+    }
+
+    fn meet(&self, other: &Self) -> Self {
+        if self == other || *other == SignDomain::Top {
+            return *self;
+        }
+
+        if *self == SignDomain::Top {
+            return *other;
+        }
+
+        SignDomain::Bottom
+    }
+}
+
 #[derive(PartialEq, Eq, PartialOrd, Clone, Debug)]
-pub struct Vec2Domain<T: Domain> {
+pub struct Vec2Domain<T: JoinSemiLattice> {
     pub x: T,
     pub y: T,
 }
 
-impl<T: Domain> Display for Vec2Domain<T> {
+impl<T: JoinSemiLattice> Display for Vec2Domain<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{ x: {}, y: {} }}", self.x, self.y)
     }
 }
 
-impl<T: Domain> Domain for Vec2Domain<T> {
+impl<T: JoinSemiLattice> JoinSemiLattice for Vec2Domain<T> {
     fn bottom() -> Self {
         Vec2Domain {
             x: T::bottom(),
@@ -168,11 +192,18 @@ impl<T: Domain> Domain for Vec2Domain<T> {
     }
 }
 
-impl<T: Top> Top for Vec2Domain<T> {
+impl<T: Lattice> Lattice for Vec2Domain<T> {
     fn top() -> Self {
         Vec2Domain {
             x: T::top(),
             y: T::top(),
+        }
+    }
+
+    fn meet(&self, other: &Self) -> Self {
+        Vec2Domain {
+            x: self.x.meet(&other.x),
+            y: self.y.meet(&other.y),
         }
     }
 }
@@ -222,7 +253,7 @@ impl PartialOrd for IntervalDomain {
     }
 }
 
-impl Domain for IntervalDomain {
+impl JoinSemiLattice for IntervalDomain {
     fn bottom() -> Self {
         IntervalDomain {
             min: INF,
@@ -256,11 +287,25 @@ impl Domain for IntervalDomain {
     }
 }
 
-impl Top for IntervalDomain {
+impl Lattice for IntervalDomain {
     fn top() -> Self {
         IntervalDomain {
             min: NEG_INF,
             max: INF,
+        }
+    }
+
+    fn meet(&self, other: &Self) -> Self {
+        let result = IntervalDomain {
+            min: self.min.max(other.min),
+            max: self.max.min(other.max),
+        };
+        
+        // We only want one canonical representation for bottom.
+        if result.min > result.max {
+            IntervalDomain::bottom()
+        } else {
+            result
         }
     }
 }
@@ -326,7 +371,7 @@ impl<T: Eq + Hash + Display> Display for PowerSetDomain<T> {
     }
 }
 
-impl<T: Eq + Hash + Display + Clone> Domain for PowerSetDomain<T> {
+impl<T: Eq + Hash + Display + Clone> JoinSemiLattice for PowerSetDomain<T> {
     fn bottom() -> Self {
         Self(HashSet::new())
     }

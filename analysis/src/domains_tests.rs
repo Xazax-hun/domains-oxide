@@ -21,6 +21,12 @@ fn sign_domain_tests() {
     assert_eq!(bottom.join(&negative), negative);
     assert_eq!(negative.join(&bottom), negative);
 
+    // Meet
+    assert_eq!(zero.meet(&zero), zero);
+    assert_eq!(bottom.meet(&zero), bottom);
+    assert_eq!(top.meet(&zero), zero);
+    assert_eq!(negative.meet(&zero), bottom);
+
     // Conversions
     assert_eq!(SignDomain::from(5), SignDomain::Positive);
     assert_eq!(SignDomain::from(0), SignDomain::Zero);
@@ -48,6 +54,10 @@ fn vec2_domain_tests() {
             x: SignDomain::Positive,
             y: SignDomain::Top,
         };
+        let pos_bot = SignVec {
+            x: SignDomain::Positive,
+            y: SignDomain::Bottom,
+        };
         let top_top = SignVec {
             x: SignDomain::Top,
             y: SignDomain::Top,
@@ -62,6 +72,7 @@ fn vec2_domain_tests() {
         assert!(!(pos_pos >= pos_neg));
         assert_eq!(pos_pos.join(&pos_neg), pos_top);
         assert_eq!(top_top, SignVec::top());
+        assert_eq!(pos_pos.meet(&pos_neg), pos_bot);
 
         // Pretty printing
         assert_eq!(pos_top.to_string(), "{ x: Positive, y: Top }");
@@ -121,7 +132,7 @@ fn vec2_interval_tests() {
     assert!(!(singleton <= small_range_b));
     assert!(!(small_range_b <= singleton));
 
-    // Merging
+    // Merging / join
     assert_eq!(bottom.join(&singleton), singleton);
     assert_eq!(bottom.join(&small_range_a), small_range_a);
     assert_eq!(small_range_a.join(&bottom), small_range_a);
@@ -133,6 +144,14 @@ fn vec2_interval_tests() {
     assert_eq!(large_range.join(&top), top);
     assert_eq!(top.join(&large_range), top);
     assert_eq!(large_range.join(&large_range), large_range);
+
+    // Intersection / meet
+    assert_eq!(top.meet(&bottom), bottom);
+    assert_eq!(bottom.meet(&singleton), bottom);
+    assert_eq!(top.meet(&singleton), singleton);
+    assert_eq!(singleton.meet(&small_range_a), singleton);
+    assert_eq!(small_range_a.meet(&small_range_b), bottom);
+    assert_eq!(large_range.meet(&small_range_b), small_range_b);
 
     // Widening
     assert_eq!(large_range.widen(&small_range_a), large_range);

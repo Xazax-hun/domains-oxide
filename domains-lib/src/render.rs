@@ -13,7 +13,7 @@ const HEIGHT: f64 = 500.0;
 
 /// Returns an SVG that represents a list of random walks.
 pub fn render_random_walk(walks: &[Walk], ctxt: &ASTContext, dots_only: bool) -> String {
-    let stream: Box<Vec<u8>> = Box::new(Vec::new());
+    let stream: Box<Vec<u8>> = Box::default();
     let surface =
         SvgSurface::for_stream(WIDTH, HEIGHT, stream).expect("Failed to create cairo surface.");
     let cr = Context::new(&surface).expect("Failed to create context.");
