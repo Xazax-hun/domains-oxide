@@ -490,6 +490,37 @@ impl<T: Lattice> Lattice for Vec2Domain<T> {
     }
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Clone, Debug)]
+pub struct Flipped<T: Lattice>(pub T);
+
+impl<T: Display + Lattice> Display for Flipped<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl<T: Lattice> JoinSemiLattice for Flipped<T> {
+    type LatticeContext = T::LatticeContext;
+
+    fn bottom(ctx: &Self::LatticeContext) -> Self {
+        Self(T::top(ctx))
+    }
+    
+    fn join(&self, other: &Self) -> Self {
+        Self(self.0.meet(&other.0))
+    }
+}
+
+impl<T: Lattice> Lattice for Flipped<T> {
+    fn top(ctx: &Self::LatticeContext) -> Self {
+        Self(T::bottom(ctx))
+    }
+
+    fn meet(&self, other: &Self) -> Self {
+        Self(self.0.join(&other.0))
+    }
+}
+
 // TODO:
 // Add operations to built lattices
 // * Product, Pair
@@ -498,4 +529,3 @@ impl<T: Lattice> Lattice for Vec2Domain<T> {
 // * Stacking
 // * Lifting
 // * Finite lattices
-// * Flipping

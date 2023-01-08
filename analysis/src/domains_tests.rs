@@ -245,3 +245,33 @@ fn bitset_domain_tests() {
         "{0, 1, 2, 3, 4}".to_owned()
     );
 }
+
+#[test]
+fn flipped_sign_domain_tests() {
+    let bottom = Flipped(SignDomain::Bottom);
+    let positive = Flipped(SignDomain::Positive);
+    let negative = Flipped(SignDomain::Negative);
+    let zero = Flipped(SignDomain::Zero);
+    let top = Flipped(SignDomain::Top);
+
+    // Comparisons, join
+    assert_eq!(positive, positive);
+    assert!(bottom <= negative);
+    assert!(zero <= top);
+    assert_eq!(zero.join(&zero), zero);
+    assert_eq!(negative.join(&positive), bottom);
+    assert_eq!(positive.join(&negative), bottom);
+    assert_eq!(bottom.join(&negative), bottom);
+    assert_eq!(negative.join(&bottom), bottom);
+    assert_eq!(top.join(&negative), negative);
+    assert_eq!(negative.join(&top), negative);
+
+    // Meet
+    assert_eq!(zero.meet(&zero), zero);
+    assert_eq!(top.meet(&zero), top);
+    assert_eq!(bottom.meet(&zero), zero);
+    assert_eq!(negative.meet(&zero), top);
+
+    // Pretty printing
+    assert_eq!(bottom.to_string(), "Bottom");
+}
