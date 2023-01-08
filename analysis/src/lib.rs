@@ -1,3 +1,4 @@
+pub mod analyses;
 pub mod cfg;
 pub mod domains;
 pub mod solvers;
@@ -7,3 +8,6 @@ mod domains_tests;
 
 #[cfg(test)]
 mod cfg_tests;
+
+#[cfg(test)]
+mod analyses_tests;

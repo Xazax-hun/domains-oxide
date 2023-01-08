@@ -24,11 +24,17 @@ impl SolveMonotone {
         F: FnMut(usize, &<Cfg as ControlFlowGraph>::Block, &D) -> D,
     {
         let limit = self.node_limit * cfg.blocks().len();
-        let mut processed_nodes = 0usize;
         let mut visited = vec![false; cfg.blocks().len()];
-
         let mut worklist = RPOWorklist::new(cfg);
-        worklist.push(0usize);
+
+        // Process first node. It is hoisted, so the input state can be other than
+        // the bottom value.
+        let first_state = post_states[0].clone();
+        post_states[0] = transfer(0usize, &cfg.blocks()[0usize], &first_state);
+        visited[0usize] = true;
+        worklist.push_successors(0usize);
+
+        let mut processed_nodes = 1usize;
         while let Some(current) = worklist.pop() {
             if limit > 0 && processed_nodes >= limit {
                 post_states.clear();

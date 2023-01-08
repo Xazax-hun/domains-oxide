@@ -6,7 +6,7 @@ use super::domains::*;
 use super::solvers::*;
 
 #[derive(Default, Clone)]
-struct TestBasicBlock {
+pub struct TestBasicBlock {
     succs: Vec<usize>,
     preds: Vec<usize>,
 }
@@ -28,7 +28,7 @@ impl CfgBlock for TestBasicBlock {
 }
 
 #[derive(Default)]
-struct TestCfg {
+pub struct TestCfg {
     basic_blocks: Vec<TestBasicBlock>,
 }
 
@@ -85,7 +85,7 @@ impl BlockMutableCfg for TestCfg {
 }
 
 impl TestCfg {
-    fn new(size: usize) -> Self {
+    pub fn new(size: usize) -> Self {
         Self {
             basic_blocks: vec![TestBasicBlock::default(); size],
         }

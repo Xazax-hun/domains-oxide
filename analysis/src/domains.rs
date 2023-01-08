@@ -505,7 +505,7 @@ impl<T: Lattice> JoinSemiLattice for Flipped<T> {
     fn bottom(ctx: &Self::LatticeContext) -> Self {
         Self(T::top(ctx))
     }
-    
+
     fn join(&self, other: &Self) -> Self {
         Self(self.0.meet(&other.0))
     }
