@@ -53,12 +53,19 @@ pub struct Loop {
 /// live.
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Node {
-    Init(u32),
-    Translation(u32),
-    Rotation(u32),
+    Operation(Operation),
     Sequence(u32),
     Branch(u32),
     Loop(u32),
+}
+
+/// Elementary operation that does not involve any control
+/// flow, can be the element of a basic block.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Operation {
+    Init(u32),
+    Translation(u32),
+    Rotation(u32),
 }
 
 pub enum NodeRef<'a> {
@@ -91,17 +98,17 @@ impl ASTContext {
 
     pub fn make_init(&mut self, n: Init) -> Node {
         self.inits.push(n);
-        Node::Init((self.inits.len() - 1) as u32)
+        Node::Operation(Operation::Init((self.inits.len() - 1) as u32))
     }
 
     pub fn make_translation(&mut self, n: Translation) -> Node {
         self.translations.push(n);
-        Node::Translation((self.translations.len() - 1) as u32)
+        Node::Operation(Operation::Translation((self.translations.len() - 1) as u32))
     }
 
     pub fn make_rotation(&mut self, n: Rotation) -> Node {
         self.rotations.push(n);
-        Node::Rotation((self.rotations.len() - 1) as u32)
+        Node::Operation(Operation::Rotation((self.rotations.len() - 1) as u32))
     }
 
     pub fn make_sequence(&mut self, n: Sequence) -> Node {
@@ -124,12 +131,18 @@ impl ASTContext {
 
     pub fn node_to_ref(&self, n: Node) -> NodeRef {
         match n {
-            Node::Init(id) => NodeRef::Init(&self.inits[id as usize]),
-            Node::Translation(id) => NodeRef::Translation(&self.translations[id as usize]),
-            Node::Rotation(id) => NodeRef::Rotation(&self.rotations[id as usize]),
+            Node::Operation(op) => self.op_to_ref(op),
             Node::Sequence(id) => NodeRef::Sequence(&self.sequences[id as usize]),
             Node::Branch(id) => NodeRef::Branch(&self.branches[id as usize]),
             Node::Loop(id) => NodeRef::Loop(&self.loops[id as usize]),
+        }
+    }
+
+    pub fn op_to_ref(&self, o: Operation) -> NodeRef {
+        match o {
+            Operation::Init(id) => NodeRef::Init(&self.inits[id as usize]),
+            Operation::Translation(id) => NodeRef::Translation(&self.translations[id as usize]),
+            Operation::Rotation(id) => NodeRef::Rotation(&self.rotations[id as usize]),
         }
     }
 }

@@ -1,6 +1,5 @@
 use crate::{
-    ast::{ASTContext, NodeRef},
-    cfg::*,
+    ast::{ASTContext, NodeRef, Operation},
     eval::Walk,
 };
 
@@ -63,7 +62,7 @@ fn render_random_path(cr: &Context, color: Rgb, walk: &Walk, ctxt: &ASTContext, 
             let prev_y: f64 = walk[i - 1].pos.y.into();
             let y: f64 = walk[i].pos.y.into();
             cr.new_path();
-            if let NodeRef::Rotation(rot) = ctxt.node_to_ref((&walk[i].op).into()) {
+            if let NodeRef::Rotation(rot) = ctxt.op_to_ref(walk[i].op) {
                 let orig_x: f64 = rot.origin.x.value.to_num().into();
                 let orig_y: f64 = rot.origin.y.value.to_num().into();
                 let x_diff: f64 = orig_x - walk[i].pos.x as f64;

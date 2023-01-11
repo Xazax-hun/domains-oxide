@@ -2,23 +2,6 @@ use analysis::cfg::*;
 
 use crate::ast::{self, *};
 
-/// Operation is the element of basic blocks.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Operation {
-    Init(u32),
-    Translation(u32),
-    Rotation(u32),
-}
-
-impl From<&Operation> for Node {
-    fn from(op: &Operation) -> Self {
-        match *op {
-            Operation::Init(id) => Node::Init(id),
-            Operation::Translation(id) => Node::Translation(id),
-            Operation::Rotation(id) => Node::Rotation(id),
-        }
-    }
-}
 
 // TODO: Should this have a phantom lifetime to express
 //       its dependency on the CFG?
@@ -134,22 +117,10 @@ impl Cfg {
 impl CfgImpl {
     fn add_ast_node(&mut self, mut current_block: usize, n: Node, ctx: &ASTContext) -> usize {
         match (n, ctx.node_to_ref(n)) {
-            (Node::Init(init), _) => {
+            (Node::Operation(op), _) => {
                 self.basic_blocks[current_block]
                     .operations
-                    .push(Operation::Init(init));
-                current_block
-            }
-            (Node::Translation(trans), _) => {
-                self.basic_blocks[current_block]
-                    .operations
-                    .push(Operation::Translation(trans));
-                current_block
-            }
-            (Node::Rotation(rot), _) => {
-                self.basic_blocks[current_block]
-                    .operations
-                    .push(Operation::Rotation(rot));
+                    .push(op);
                 current_block
             }
             (_, NodeRef::Sequence(seq_ref)) => {
@@ -187,7 +158,7 @@ impl CfgImpl {
 
 pub fn print(cfg: &Cfg, ctx: &ASTContext) -> String {
     let anns = Annotations::new();
-    analysis::cfg::print(cfg, |op| ast::print(op.into(), ctx, &anns))
+    analysis::cfg::print(cfg, |&op| ast::print(Node::Operation(op), ctx, &anns))
 }
 
 pub fn reverse(cfg: &Cfg) -> Cfg {

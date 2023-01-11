@@ -40,8 +40,8 @@ pub fn create_random_walk(cfg: &Cfg, ctx: &ASTContext, loopiness: u32) -> Walk {
 
     let mut current = 0;
     loop {
-        for op in cfg.blocks()[current].operations() {
-            let step = match ctx.node_to_ref(op.into()) {
+        for &op in cfg.blocks()[current].operations() {
+            let step = match ctx.op_to_ref(op) {
                 NodeRef::Init(init) => {
                     let from_x = init.bottom_left.x.value.to_num();
                     let from_y = init.bottom_left.y.value.to_num();
@@ -52,7 +52,7 @@ pub fn create_random_walk(cfg: &Cfg, ctx: &ASTContext, loopiness: u32) -> Walk {
                             x: rng.gen_range(from_x..=to_x),
                             y: rng.gen_range(from_y..=to_y),
                         },
-                        op: *op,
+                        op,
                     }
                 }
                 NodeRef::Translation(trans) => {
@@ -63,7 +63,7 @@ pub fn create_random_walk(cfg: &Cfg, ctx: &ASTContext, loopiness: u32) -> Walk {
                                 x: trans.vector.x.value.to_num(),
                                 y: trans.vector.y.value.to_num(),
                             },
-                        op: *op,
+                        op,
                     }
                 }
                 NodeRef::Rotation(rot) => {
@@ -74,7 +74,7 @@ pub fn create_random_walk(cfg: &Cfg, ctx: &ASTContext, loopiness: u32) -> Walk {
                     let to_rotate = w.last().unwrap().pos;
                     Step {
                         pos: rotate(to_rotate, origin, rot.deg.value.to_num()),
-                        op: *op,
+                        op,
                     }
                 }
                 _ => panic!(),
@@ -124,9 +124,9 @@ pub fn annotate_with_walks(walks: &[Walk]) -> Annotations {
     }
 
     let mut anns = Annotations::new();
-    collected_steps.iter().for_each(|(op, pos)| {
+    collected_steps.iter().for_each(|(&op, pos)| {
         anns.post_annotations
-            .insert(op.into(), vec![print_set(pos)]);
+            .insert(Node::Operation(op), vec![print_set(pos)]);
     });
 
     anns

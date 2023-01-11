@@ -1,5 +1,6 @@
 use super::ast::ASTContext;
-use super::cfg::*;
+use super::ast::Operation;
+use super::cfg::Cfg;
 use super::eval::*;
 
 use super::lexer::Lexer;
