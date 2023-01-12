@@ -2,7 +2,6 @@ use analysis::cfg::*;
 
 use crate::ast::{self, *};
 
-
 // TODO: Should this have a phantom lifetime to express
 //       its dependency on the CFG?
 #[derive(Default)]
@@ -118,9 +117,7 @@ impl CfgImpl {
     fn add_ast_node(&mut self, mut current_block: usize, n: Node, ctx: &ASTContext) -> usize {
         match (n, ctx.node_to_ref(n)) {
             (Node::Operation(op), _) => {
-                self.basic_blocks[current_block]
-                    .operations
-                    .push(op);
+                self.basic_blocks[current_block].operations.push(op);
                 current_block
             }
             (_, NodeRef::Sequence(seq_ref)) => {

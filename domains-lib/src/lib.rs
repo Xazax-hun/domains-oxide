@@ -2,6 +2,7 @@
 extern crate lazy_static;
 extern crate rand;
 
+pub mod analysis;
 pub mod ast;
 pub mod cfg;
 pub mod eval;

@@ -2,6 +2,8 @@ use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::hash::Hash;
+use std::ops::Add;
+use std::ops::Neg;
 
 use fixedbitset::FixedBitSet;
 
@@ -165,6 +167,36 @@ impl Lattice for SignDomain {
         }
 
         SignDomain::Bottom
+    }
+}
+
+impl Add for SignDomain {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        use SignDomain::*;
+        // TODO: can we format this as a table?
+        match (self, rhs) {
+            (Top, _) => Top,
+            (_, Top) => Top,
+            (Bottom, _) => Bottom,
+            (_, Bottom) => Bottom,
+            (Zero, s) => s,
+            (s, Zero) => s,
+            (s1, s2) if s1 == s2 => s1,
+            _ => Top,
+        }
+    }
+}
+
+impl Neg for SignDomain {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            SignDomain::Negative => SignDomain::Positive,
+            SignDomain::Positive => SignDomain::Negative,
+            _ => self,
+        }
     }
 }
 
