@@ -1,5 +1,5 @@
-use super::cfg::*;
-use super::domains::*;
+use super::cfg::{CfgBlock, ControlFlowGraph, RPOWorklist};
+use super::domains::JoinSemiLattice;
 
 pub struct SolveMonotone {
     pub node_limit: usize,
@@ -30,11 +30,11 @@ impl SolveMonotone {
         // Process first node. It is hoisted, so the input state can be other than
         // the bottom value.
         let first_state = post_states[0].clone();
-        post_states[0] = transfer(0usize, &cfg.blocks()[0usize], &first_state);
-        visited[0usize] = true;
-        worklist.push_successors(0usize);
+        post_states[0] = transfer(0, &cfg.blocks()[0], &first_state);
+        visited[0] = true;
+        worklist.push_successors(0);
 
-        let mut processed_nodes = 1usize;
+        let mut processed_nodes = 1_usize;
         while let Some(current) = worklist.pop() {
             if limit > 0 && processed_nodes >= limit {
                 post_states.clear();
@@ -91,7 +91,7 @@ impl SolveMonotone {
                 post_state = transfer(op, &post_state);
             }
             post_state
-        })
+        });
     }
 
     pub fn transfer_operations<Cfg, D, F>(

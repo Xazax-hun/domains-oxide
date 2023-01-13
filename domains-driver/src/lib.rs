@@ -1,7 +1,7 @@
 use clap::Parser as CommandLineParser;
 use domains_lib::ast;
-use domains_lib::cfg::{self, *};
-use domains_lib::eval::*;
+use domains_lib::cfg::{self, Cfg};
+use domains_lib::eval::{annotate_with_walks, create_random_walk};
 use domains_lib::lexer::Lexer;
 use domains_lib::parser::Parser;
 use domains_lib::render::render_random_walk;
@@ -84,10 +84,10 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
 
         if !opts.svg {
             if opts.executions > 1 {
-                diag.to_out(&format!("{}. execution:\n", i));
+                diag.to_out(&format!("{i}. execution:\n"));
             }
             for step in walks.last().unwrap() {
-                diag.to_out(&format!("{{ x: {}, y: {} }}\n", step.pos.x, step.pos.y));
+                diag.to_out(&format!("{}\n", step.pos));
             }
         }
     }

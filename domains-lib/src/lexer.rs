@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fmt;
 use utils::DiagnosticEmitter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,8 +47,8 @@ impl TokenValue {
     }
 }
 
-impl fmt::Display for TokenValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl core::fmt::Display for TokenValue {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match *self {
             LeftParen => write!(f, "("),
             RightParen => write!(f, ")"),
@@ -71,11 +70,11 @@ impl fmt::Display for TokenValue {
 lazy_static! {
     static ref KEYWORDS: HashMap<String, TokenValue> = {
         let mut m = HashMap::new();
-        m.insert(format!("{}", Init), Init);
-        m.insert(format!("{}", Or), Or);
-        m.insert(format!("{}", Translation), Translation);
-        m.insert(format!("{}", Rotation), Rotation);
-        m.insert(format!("{}", Iter), Iter);
+        m.insert(format!("{Init}"), Init);
+        m.insert(format!("{Or}"), Or);
+        m.insert(format!("{Translation}"), Translation);
+        m.insert(format!("{Rotation}"), Rotation);
+        m.insert(format!("{Iter}"), Iter);
         m
     };
 }
@@ -90,23 +89,23 @@ pub struct Token {
     pub line_num: u32,
 }
 
-impl fmt::Display for Token {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl core::fmt::Display for Token {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "{}", self.value)
     }
 }
 
-pub struct Lexer<'a> {
-    source: &'a str,
+pub struct Lexer<'src> {
+    source: &'src str,
     start: usize,
     current: usize,
     line_num: u32,
     has_error: bool, // TODO: can we get rid of this?
-    diagnostic_emitter: &'a mut DiagnosticEmitter,
+    diagnostic_emitter: &'src mut DiagnosticEmitter,
 }
 
-impl<'a> Lexer<'a> {
-    pub fn new(src: &'a str, diag: &'a mut DiagnosticEmitter) -> Self {
+impl<'src> Lexer<'src> {
+    pub fn new(src: &'src str, diag: &'src mut DiagnosticEmitter) -> Self {
         Lexer {
             source: src,
             start: 0,
@@ -118,7 +117,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Returns a list of tokens where the last token is
-    /// an EndOfFile token. When the returned vector is empty,
+    /// an `EndOfFile` token. When the returned vector is empty,
     /// the lexing failed and en error was emitted to `diag`.
     pub fn lex_all(mut self) -> Vec<Token> {
         let mut result = Vec::new();

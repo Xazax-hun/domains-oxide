@@ -14,8 +14,8 @@ pub struct Parser<'a> {
 
 use TokenValue::*;
 
-impl<'a> Parser<'a> {
-    pub fn new(tokens: Vec<Token>, diag: &'a mut DiagnosticEmitter) -> Self {
+impl<'src> Parser<'src> {
+    pub fn new(tokens: Vec<Token>, diag: &'src mut DiagnosticEmitter) -> Self {
         Parser {
             ctx: ASTContext::new(),
             current: 0,
@@ -26,7 +26,7 @@ impl<'a> Parser<'a> {
 
     pub fn parse(mut self) -> Option<ASTContext> {
         self.sequence(true)?;
-        let ctx = std::mem::replace(&mut self.ctx, ASTContext::new());
+        let ctx = core::mem::replace(&mut self.ctx, ASTContext::new());
         if !self.is_at_end() {
             self.error(self.peek(), "end of file expected.");
             return None;
@@ -197,7 +197,7 @@ impl<'a> Parser<'a> {
         if self.is_at_end() {
             false
         } else {
-            std::mem::discriminant(&self.peek().value) == std::mem::discriminant(&tok_val)
+            core::mem::discriminant(&self.peek().value) == core::mem::discriminant(&tok_val)
         }
     }
 
@@ -221,7 +221,7 @@ impl<'a> Parser<'a> {
             return Some(self.advance());
         }
         let msg = if s.is_empty() {
-            format!("'{}' expected.", tok_val)
+            format!("'{tok_val}' expected.")
         } else {
             s.to_owned()
         };
@@ -231,9 +231,9 @@ impl<'a> Parser<'a> {
 
     fn error(&mut self, tok: Token, s: &str) {
         if tok.value == EndOfFile {
-            self.diag.report(tok.line_num, "at end of file", s)
+            self.diag.report(tok.line_num, "at end of file", s);
         } else {
-            self.diag.report(tok.line_num, &format!("at '{}'", tok), s)
+            self.diag.report(tok.line_num, &format!("at '{tok}'"), s);
         }
     }
 }

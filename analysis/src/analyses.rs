@@ -1,6 +1,6 @@
-use super::cfg::*;
+use super::cfg::{BlockMutableCfg, ControlFlowGraph, reverse};
 use super::domains::*;
-use super::solvers::*;
+use super::solvers::SolveMonotone;
 
 pub fn calculate_dominators<Cfg: ControlFlowGraph>(
     cfg: &Cfg,

@@ -1,9 +1,9 @@
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 use std::collections::HashSet;
-use std::fmt::Display;
-use std::hash::Hash;
-use std::ops::Add;
-use std::ops::Neg;
+use core::fmt::Display;
+use core::hash::Hash;
+use core::ops::Add;
+use core::ops::Neg;
 
 use fixedbitset::FixedBitSet;
 
@@ -57,7 +57,7 @@ pub trait Lattice: JoinSemiLattice {
 pub struct UnitDomain;
 
 impl Display for UnitDomain {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "UnitDomain")
     }
 }
@@ -109,8 +109,8 @@ impl From<i32> for SignDomain {
 }
 
 impl Display for SignDomain {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{self:?}")
     }
 }
 
@@ -176,12 +176,9 @@ impl Add for SignDomain {
         use SignDomain::*;
         // TODO: can we format this as a table?
         match (self, rhs) {
-            (Top, _) => Top,
-            (_, Top) => Top,
-            (Bottom, _) => Bottom,
-            (_, Bottom) => Bottom,
-            (Zero, s) => s,
-            (s, Zero) => s,
+            (Top, _) | (_, Top) => Top,
+            (Bottom, _) | (_, Bottom) => Bottom,
+            (Zero, s) | (s, Zero) => s,
             (s1, s2) if s1 == s2 => s1,
             _ => Top,
         }
@@ -211,7 +208,7 @@ pub struct IntervalDomain {
 
 impl From<i32> for IntervalDomain {
     fn from(val: i32) -> Self {
-        IntervalDomain {
+        Self {
             min: val.into(),
             max: val.into(),
         }
@@ -219,7 +216,7 @@ impl From<i32> for IntervalDomain {
 }
 
 impl Display for IntervalDomain {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let to_str = |x: i64| match x {
             INF => "inf".to_owned(),
             NEG_INF => "-inf".to_owned(),
@@ -249,14 +246,14 @@ impl JoinSemiLattice for IntervalDomain {
     type LatticeContext = ();
 
     fn bottom(_: &Self::LatticeContext) -> Self {
-        IntervalDomain {
+        Self {
             min: INF,
             max: NEG_INF,
         }
     }
 
     fn join(&self, other: &Self) -> Self {
-        IntervalDomain {
+        Self {
             min: self.min.min(other.min),
             max: self.max.max(other.max),
         }
@@ -266,7 +263,7 @@ impl JoinSemiLattice for IntervalDomain {
         if *self == IntervalDomain::bottom(&()) {
             return *transferred_state;
         }
-        IntervalDomain {
+        Self {
             min: if transferred_state.min < self.min {
                 NEG_INF
             } else {
@@ -283,7 +280,7 @@ impl JoinSemiLattice for IntervalDomain {
 
 impl Lattice for IntervalDomain {
     fn top(_: &Self::LatticeContext) -> Self {
-        IntervalDomain {
+        Self {
             min: NEG_INF,
             max: INF,
         }
@@ -304,14 +301,14 @@ impl Lattice for IntervalDomain {
     }
 }
 
-impl std::ops::Add<IntervalDomain> for IntervalDomain {
+impl core::ops::Add<IntervalDomain> for IntervalDomain {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
         // Cannot do arithmetic on bottom.
         assert!(self.min != INF && rhs.min != INF);
         assert!(self.max != NEG_INF && rhs.max != NEG_INF);
-        IntervalDomain {
+        Self {
             min: if self.min == NEG_INF || rhs.min == NEG_INF {
                 NEG_INF
             } else {
@@ -326,11 +323,11 @@ impl std::ops::Add<IntervalDomain> for IntervalDomain {
     }
 }
 
-impl std::ops::Neg for IntervalDomain {
+impl core::ops::Neg for IntervalDomain {
     type Output = Self;
 
     fn neg(self) -> Self {
-        IntervalDomain {
+        Self {
             min: if self.max == INF { NEG_INF } else { -self.max },
             max: if self.min == NEG_INF { INF } else { -self.min },
         }
@@ -354,13 +351,13 @@ impl<T: Eq + Hash> PartialOrd for PowerSetDomain<T> {
 }
 
 impl<T: Eq + Hash + Display> Display for PowerSetDomain<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "{{{}}}",
             self.0
                 .iter()
-                .map(|x| x.to_string())
+                .map(std::string::ToString::to_string)
                 .collect::<Vec<String>>()
                 .join(", ")
         )
@@ -424,7 +421,7 @@ impl PartialOrd for BitSetDomain {
 }
 
 impl Display for BitSetDomain {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "{{{}}}",
@@ -455,7 +452,7 @@ impl Lattice for BitSetDomain {
     fn top(ctx: &Self::LatticeContext) -> Self {
         let mut result = FixedBitSet::with_capacity(ctx.0);
         result.toggle_range(..);
-        BitSetDomain(result)
+        Self(result)
     }
 
     fn meet(&self, other: &Self) -> Self {
@@ -476,7 +473,7 @@ pub struct Vec2Domain<T: JoinSemiLattice> {
 }
 
 impl<T: JoinSemiLattice> Display for Vec2Domain<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{{ x: {}, y: {} }}", self.x, self.y)
     }
 }
@@ -485,21 +482,21 @@ impl<T: JoinSemiLattice> JoinSemiLattice for Vec2Domain<T> {
     type LatticeContext = T::LatticeContext;
 
     fn bottom(ctx: &Self::LatticeContext) -> Self {
-        Vec2Domain {
+        Self {
             x: T::bottom(ctx),
             y: T::bottom(ctx),
         }
     }
 
     fn join(&self, other: &Self) -> Self {
-        Vec2Domain {
+        Self {
             x: self.x.join(&other.x),
             y: self.y.join(&other.y),
         }
     }
 
     fn widen(&self, other: &Self, iteration: usize) -> Self {
-        Vec2Domain {
+        Self {
             x: self.x.widen(&other.x, iteration),
             y: self.y.widen(&other.y, iteration),
         }
@@ -508,14 +505,14 @@ impl<T: JoinSemiLattice> JoinSemiLattice for Vec2Domain<T> {
 
 impl<T: Lattice> Lattice for Vec2Domain<T> {
     fn top(ctx: &Self::LatticeContext) -> Self {
-        Vec2Domain {
+        Self {
             x: T::top(ctx),
             y: T::top(ctx),
         }
     }
 
     fn meet(&self, other: &Self) -> Self {
-        Vec2Domain {
+        Self {
             x: self.x.meet(&other.x),
             y: self.y.meet(&other.y),
         }
@@ -526,7 +523,7 @@ impl<T: Lattice> Lattice for Vec2Domain<T> {
 pub struct Flipped<T: Lattice>(pub T);
 
 impl<T: Display + Lattice> Display for Flipped<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.0)
     }
 }

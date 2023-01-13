@@ -8,7 +8,7 @@ use rand::Rng;
 use utils::Vec2;
 
 use crate::ast::*;
-use crate::cfg::*;
+use crate::cfg::Cfg;
 
 pub struct Step {
     pub pos: Vec2,
@@ -124,16 +124,16 @@ pub fn annotate_with_walks(walks: &[Walk]) -> Annotations {
     }
 
     let mut anns = Annotations::new();
-    collected_steps.iter().for_each(|(&op, pos)| {
+    for (&op, pos) in &collected_steps {
         anns.post_annotations
             .insert(Node::Operation(op), vec![print_set(pos)]);
-    });
+    }
 
     anns
 }
 
 fn to_rad(deg: i32) -> f64 {
-    deg as f64 / 180f64 * std::f64::consts::PI
+    f64::from(deg) / 180_f64 * core::f64::consts::PI
 }
 
 fn get_next_block(
@@ -146,7 +146,7 @@ fn get_next_block(
     let succs = cfg.blocks()[current].successors();
     let (back_edges, regular_edges): (Vec<usize>, Vec<usize>) = succs
         .iter()
-        .cloned()
+        .copied()
         .partition(|succ| back_edges.contains(&(current, *succ)));
     let max = regular_edges.len() + back_edges.len() * (loopiness as usize);
     let which_edge_kind = rng.gen_range(1..=max);

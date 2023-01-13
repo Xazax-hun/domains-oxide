@@ -1,3 +1,4 @@
+use core::fmt::Display;
 use std::io::BufWriter;
 use std::io::Write;
 
@@ -27,11 +28,11 @@ impl DiagnosticEmitter {
     }
 
     pub fn out_buffer(&self) -> &str {
-        std::str::from_utf8(self.out.buffer()).expect("Failed to create string from bytes.")
+        core::str::from_utf8(self.out.buffer()).expect("Failed to create string from bytes.")
     }
 
     pub fn err_buffer(&self) -> &str {
-        std::str::from_utf8(self.err.buffer()).expect("Failed to create string from bytes.")
+        core::str::from_utf8(self.err.buffer()).expect("Failed to create string from bytes.")
     }
 
     pub fn error(&mut self, line: u32, message: &str) {
@@ -62,7 +63,13 @@ pub struct Vec2 {
     pub y: i32,
 }
 
-impl std::ops::Add<Vec2> for Vec2 {
+impl Display for Vec2 {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{{ x: {}, y: {} }}", self.x, self.y)
+    }
+}
+
+impl core::ops::Add<Vec2> for Vec2 {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -73,13 +80,13 @@ impl std::ops::Add<Vec2> for Vec2 {
     }
 }
 
-impl std::ops::AddAssign<Vec2> for Vec2 {
+impl core::ops::AddAssign<Vec2> for Vec2 {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
 }
 
-impl std::ops::Sub<Vec2> for Vec2 {
+impl core::ops::Sub<Vec2> for Vec2 {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -90,7 +97,7 @@ impl std::ops::Sub<Vec2> for Vec2 {
     }
 }
 
-impl std::ops::SubAssign<Vec2> for Vec2 {
+impl core::ops::SubAssign<Vec2> for Vec2 {
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }

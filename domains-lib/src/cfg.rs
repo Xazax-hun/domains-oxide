@@ -91,7 +91,7 @@ impl BlockMutableCfg for CfgImpl {
         &mut self,
         block: usize,
     ) -> Vec<<<Self as ControlFlowGraph>::Block as CfgBlock>::Operation> {
-        std::mem::take(&mut self.basic_blocks[block].operations)
+        core::mem::take(&mut self.basic_blocks[block].operations)
     }
 }
 

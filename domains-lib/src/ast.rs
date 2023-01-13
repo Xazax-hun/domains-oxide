@@ -1,4 +1,5 @@
-use std::{collections::HashMap, fmt::Write};
+use core::fmt::Write;
+use std::collections::HashMap;
 
 use crate::lexer::Token;
 
@@ -68,13 +69,13 @@ pub enum Operation {
     Rotation(u32),
 }
 
-pub enum NodeRef<'a> {
-    Init(&'a Init),
-    Translation(&'a Translation),
-    Rotation(&'a Rotation),
-    Sequence(&'a Sequence),
-    Branch(&'a Branch),
-    Loop(&'a Loop),
+pub enum NodeRef<'ctx> {
+    Init(&'ctx Init),
+    Translation(&'ctx Translation),
+    Rotation(&'ctx Rotation),
+    Sequence(&'ctx Sequence),
+    Branch(&'ctx Branch),
+    Loop(&'ctx Loop),
 }
 
 #[derive(Default)]

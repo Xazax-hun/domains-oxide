@@ -1,6 +1,6 @@
 use priority_queue::PriorityQueue;
 use std::collections::HashSet;
-use std::fmt::Write;
+use core::fmt::Write;
 
 pub trait CfgBlock {
     type Operation;
@@ -57,7 +57,7 @@ where
 {
     let mut output = "digraph CFG {\n".to_owned();
     for (counter, block) in cfg.blocks().iter().enumerate() {
-        write!(output, "  Node_{}[label=\"", counter).unwrap();
+        write!(output, "  Node_{counter}[label=\"").unwrap();
         let text: Vec<_> = block.operations().iter().map(&printer).collect();
         output.push_str(&text.join("\\n"));
         output.push_str("\"]\n");
@@ -65,7 +65,7 @@ where
     output.push('\n');
     for (counter, block) in cfg.blocks().iter().enumerate() {
         for next in block.successors() {
-            writeln!(output, "  Node_{} -> Node_{}", counter, next).unwrap();
+            writeln!(output, "  Node_{counter} -> Node_{next}").unwrap();
         }
     }
     output.push_str("}\n");
@@ -87,7 +87,7 @@ where
     let mut processing = Vec::new();
     let mut back_edges = HashSet::new();
 
-    processing.push(0usize);
+    processing.push(0_usize);
 
     while !processing.is_empty() {
         let current = processing.pop().unwrap();
@@ -127,16 +127,16 @@ where
     back_edges
 }
 
-pub struct RPOWorklist<'a, Cfg: ControlFlowGraph> {
+pub struct RPOWorklist<'cfg, Cfg: ControlFlowGraph> {
     queue: PriorityQueue<usize, usize>,
     rpo_order: Vec<usize>,
-    cfg: &'a Cfg,
+    cfg: &'cfg Cfg,
 }
 
 impl<'cfg, Cfg: ControlFlowGraph> RPOWorklist<'cfg, Cfg> {
     pub fn new(cfg: &'cfg Cfg) -> Self {
         // TODO: look into deduplicating this and get_back_edges
-        let mut counter = 0usize;
+        let mut counter = 0_usize;
         let mut color = vec![Color::White; cfg.blocks().len()];
         let mut processing = Vec::new();
         let mut worklist = Self {
@@ -145,7 +145,7 @@ impl<'cfg, Cfg: ControlFlowGraph> RPOWorklist<'cfg, Cfg> {
             cfg,
         };
 
-        processing.push(0usize);
+        processing.push(0_usize);
 
         while !processing.is_empty() {
             let current = processing.pop().unwrap();

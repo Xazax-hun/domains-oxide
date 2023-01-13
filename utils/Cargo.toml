@@ -5,6 +5,7 @@ repository = "https://github.com/Xazax-hun/domains-oxide"
 readme = "../README.md"
 license = "Apache-2.0"
 keywords = ["utils"]
+categories = ["compilers", "development-tools", "utils"]
 version = "0.1.0"
 edition = "2021"
 
