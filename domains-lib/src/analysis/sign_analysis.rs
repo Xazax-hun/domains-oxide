@@ -7,9 +7,9 @@ use crate::cfg::Cfg;
 
 type Vec2Sign = Vec2Domain<SignDomain>;
 
-pub fn get_sign_analysis<'ctx>(cfg: &Cfg<'ctx>) -> Vec<Vec2Sign> {
+fn sing_transfer(&op: &Operation, cfg: &Cfg, pre_state: &Vec2Sign) -> Vec2Sign {
     let ctx = cfg.context();
-    let mut transfer = |&op: &Operation, pre_state: &Vec2Sign| match ctx.op_to_ref(op) {
+    match ctx.op_to_ref(op) {
         NodeRef::Init(init) => {
             let bot_left_x = init.bottom_left.x.value.to_num();
             let width = init.size.x.value.to_num();
@@ -78,7 +78,10 @@ pub fn get_sign_analysis<'ctx>(cfg: &Cfg<'ctx>) -> Vec<Vec2Sign> {
             }
         }
         _ => panic!("Unexpected operation."),
-    };
+    }
+}
+
+pub fn get_sign_analysis(cfg: &Cfg) -> Vec<Vec2Sign> {
     let solver = SolveMonotone::default();
-    solver.transfer_operations(cfg, &(), &mut transfer)
+    solver.transfer_operations(cfg, &(), &mut sing_transfer)
 }

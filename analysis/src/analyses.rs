@@ -14,18 +14,15 @@ pub fn calculate_dominators<Cfg: ControlFlowGraph>(
         states.push(Flipped::<BitSetDomain>::bottom(&ctx));
     }
     let solver = SolveMonotone { node_limit };
-    solver.transfer_blocks_in_place(
-        cfg,
-        &ctx,
-        &mut states,
-        &mut |id: usize,
-              _block: &<Cfg as ControlFlowGraph>::Block,
-              preds_merged: &Flipped<BitSetDomain>| {
-            let mut result = Flipped(BitSetDomain::from(&ctx, &[id]));
-            result = result.meet(preds_merged);
-            result
-        },
-    );
+    solver.transfer_blocks_in_place(cfg, &ctx, &mut states, &mut |id: usize,
+                                                                  _cfg: &Cfg,
+                                                                  preds_merged: &Flipped<
+        BitSetDomain,
+    >| {
+        let mut result = Flipped(BitSetDomain::from(&ctx, &[id]));
+        result = result.meet(preds_merged);
+        result
+    });
     states
 }
 
