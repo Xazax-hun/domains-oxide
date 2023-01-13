@@ -108,7 +108,7 @@ impl SolveMonotone {
         self.transfer_blocks(cfg, lat_ctx, &mut |current, cfg, dom: &D| {
             let mut post_state = dom.clone();
             for op in cfg.blocks()[current].operations() {
-                post_state = transfer(op, &cfg, &post_state);
+                post_state = transfer(op, cfg, &post_state);
             }
             post_state
         })

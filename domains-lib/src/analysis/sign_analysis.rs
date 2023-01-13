@@ -2,12 +2,13 @@ use analysis::domains::SignDomain;
 use analysis::domains::Vec2Domain;
 use analysis::solvers::SolveMonotone;
 
-use crate::ast::{NodeRef, Operation};
+use crate::analysis::annotations_from_forward_analysis_results;
+use crate::ast::{Annotations, NodeRef, Operation};
 use crate::cfg::Cfg;
 
 type Vec2Sign = Vec2Domain<SignDomain>;
 
-fn sing_transfer(&op: &Operation, cfg: &Cfg, pre_state: &Vec2Sign) -> Vec2Sign {
+fn sign_transfer(&op: &Operation, cfg: &Cfg, pre_state: &Vec2Sign) -> Vec2Sign {
     let ctx = cfg.context();
     match ctx.op_to_ref(op) {
         NodeRef::Init(init) => {
@@ -83,5 +84,9 @@ fn sing_transfer(&op: &Operation, cfg: &Cfg, pre_state: &Vec2Sign) -> Vec2Sign {
 
 pub fn get_sign_analysis(cfg: &Cfg) -> Vec<Vec2Sign> {
     let solver = SolveMonotone::default();
-    solver.transfer_operations(cfg, &(), &mut sing_transfer)
+    solver.transfer_operations(cfg, &(), &mut sign_transfer)
+}
+
+pub fn sign_analysis_results_to_annotations(cfg: &Cfg, results: &[Vec2Sign]) -> Annotations {
+    annotations_from_forward_analysis_results(cfg, &(), &mut sign_transfer, results)
 }
