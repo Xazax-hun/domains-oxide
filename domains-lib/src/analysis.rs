@@ -6,10 +6,45 @@ use analysis::{
     solvers::SolveMonotone,
 };
 
+use std::collections::HashMap;
+
 use crate::{
     ast::{Annotations, Node},
     cfg::Cfg,
 };
+
+// TODO: maybe a Trait object instead?
+struct AnalysisDescription {
+    annotate: fn(&Cfg) -> Annotations,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Analyses {
+    Sign,
+}
+
+lazy_static! {
+    static ref FORWARD_ANALYSES: HashMap<Analyses, AnalysisDescription> = {
+        let mut m = HashMap::new();
+        m.insert(
+            Analyses::Sign,
+            AnalysisDescription {
+                annotate: |cfg| {
+                    let results = sign_analysis::get_sign_analysis(cfg);
+                    sign_analysis::sign_analysis_results_to_annotations(cfg, &results)
+                },
+            },
+        );
+        m
+    };
+}
+
+pub fn get_analysis_results(analysis: Analyses, cfg: &Cfg) -> Annotations {
+    if let Some(desc) = FORWARD_ANALYSES.get(&analysis) {
+        return (desc.annotate)(cfg);
+    }
+    panic!("Unimplemented analysis!")
+}
 
 pub fn annotations_from_forward_analysis_results<D, F>(
     cfg: &Cfg,

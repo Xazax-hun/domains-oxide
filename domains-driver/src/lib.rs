@@ -1,4 +1,5 @@
-use clap::Parser as CommandLineParser;
+use clap::{Parser as CommandLineParser, ValueEnum};
+use domains_lib::analysis::{get_analysis_results, Analyses};
 use domains_lib::ast;
 use domains_lib::cfg::{self, Cfg};
 use domains_lib::eval::{annotate_with_walks, create_random_walk};
@@ -9,6 +10,20 @@ use utils::DiagnosticEmitter;
 
 const DEFAULT_EXECUTIONS: &str = "1";
 const DEFAULT_LOOPINESS: &str = "1";
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, ValueEnum)]
+pub enum CLIAnalyses {
+    // A simple sign analysis.
+    Sign,
+}
+
+impl From<CLIAnalyses> for Analyses {
+    fn from(value: CLIAnalyses) -> Self {
+        match value {
+            CLIAnalyses::Sign => Analyses::Sign,
+        }
+    }
+}
 
 #[derive(Debug, CommandLineParser)]
 #[command(
@@ -42,6 +57,10 @@ pub struct Opt {
     #[arg(long)]
     pub dots_only: bool,
 
+    /// Name of the analysis to execute
+    #[arg(long, value_name = "ANALYSIS_NAME")]
+    pub analyze: Option<CLIAnalyses>,
+
     /// File containing the program written in the language.
     pub filename: String,
 }
@@ -55,6 +74,7 @@ impl Default for Opt {
             loopiness: DEFAULT_LOOPINESS.parse().unwrap(),
             svg: false,
             dots_only: false,
+            analyze: None,
             filename: String::default(),
         }
     }
@@ -73,8 +93,14 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
 
     if opts.dump_cfg {
         let cfg_dump = cfg::print(&cfg, &ctxt);
-        diag.to_out(&cfg_dump);
+        diag.out(&cfg_dump);
         return Some(());
+    }
+
+    if let Some(analysis) = opts.analyze {
+        let annotations = get_analysis_results(Analyses::from(analysis), &cfg);
+        let annotated = ast::print(ctxt.get_root(), &ctxt, &annotations);
+        diag.out_ln(&annotated);
     }
 
     let mut walks = Vec::new();
@@ -84,21 +110,21 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
 
         if !opts.svg {
             if opts.executions > 1 {
-                diag.to_out(&format!("{i}. execution:\n"));
+                diag.out_ln(&format!("{i}. execution:"));
             }
             for step in walks.last().unwrap() {
-                diag.to_out(&format!("{}\n", step.pos));
+                diag.out_ln(&format!("{}", step.pos));
             }
         }
     }
     if opts.annotate_trace {
         let anns = annotate_with_walks(&walks);
         let out = ast::print(ctxt.get_root(), &ctxt, &anns);
-        diag.to_out(&(out + "\n"));
+        diag.out_ln(&out);
     }
     if opts.svg {
         let svg = render_random_walk(&walks, &ctxt, opts.dots_only);
-        diag.to_out(&svg);
+        diag.out(&svg);
     }
 
     Some(())

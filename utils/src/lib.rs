@@ -15,13 +15,18 @@ impl DiagnosticEmitter {
         }
     }
 
-    pub fn to_out(&mut self, msg: &str) {
+    pub fn out(&mut self, msg: &str) {
         self.out
             .write_all(msg.as_bytes())
             .expect("Failed to write to output buffer.");
     }
 
-    pub fn to_err(&mut self, msg: &str) {
+    pub fn out_ln(&mut self, msg: &str) {
+        self.out(msg);
+        self.out("\n");
+    }
+
+    pub fn err(&mut self, msg: &str) {
         self.err
             .write_all(msg.as_bytes())
             .expect("Failed to write to error buffer.");

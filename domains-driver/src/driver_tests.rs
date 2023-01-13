@@ -245,3 +245,26 @@ fn summarize_svg(s: &str) -> u64 {
     }
     h.finish()
 }
+
+#[test]
+fn simple_analysis() {
+    let source = r"init(50, 50, 0, 0);
+translation(10, 0);
+rotation(0, 0, 90);
+translation(0, 10)";
+    let expected = r"init(50, 50, 0, 0) /* { x: Positive, y: Positive } */;
+translation(10, 0) /* { x: Positive, y: Positive } */;
+rotation(0, 0, 90) /* { x: Negative, y: Positive } */;
+translation(0, 10) /* { x: Negative, y: Positive } */
+";
+    let output = run_driver(
+        source,
+        Opt {
+            analyze: Some(CLIAnalyses::Sign),
+            executions: 0,
+            ..Opt::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(output, expected);
+}

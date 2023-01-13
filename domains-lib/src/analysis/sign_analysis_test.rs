@@ -1,8 +1,8 @@
 use crate::{
     analysis::sign_analysis::{self, sign_analysis_results_to_annotations},
+    ast::print,
     cfg::Cfg,
     cfg_tests::{parse_string, ParseResult},
-    ast::print
 };
 
 #[test]
