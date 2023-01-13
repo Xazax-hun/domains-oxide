@@ -1,6 +1,6 @@
+use core::fmt::Write;
 use priority_queue::PriorityQueue;
 use std::collections::HashSet;
-use core::fmt::Write;
 
 pub trait CfgBlock {
     type Operation;
@@ -15,7 +15,7 @@ pub trait ControlFlowGraph {
     fn blocks(&self) -> &[Self::Block];
 }
 
-pub trait MutableCfg: ControlFlowGraph + Default {
+pub trait MutableCfg: ControlFlowGraph {
     fn add_edge(&mut self, from: usize, to: usize) -> &mut Self;
     fn remove_edge(&mut self, from: usize, to: usize) -> &mut Self;
     fn new_block(&mut self) -> usize;
@@ -35,19 +35,23 @@ pub trait BlockMutableCfg: MutableCfg {
     ) -> Vec<<<Self as ControlFlowGraph>::Block as CfgBlock>::Operation>;
 }
 
-pub fn reverse<Cfg: BlockMutableCfg>(cfg: &Cfg) -> Cfg {
+pub fn reverse<Cfg: BlockMutableCfg + Default>(cfg: &Cfg) -> Cfg {
     let mut reversed = Cfg::default();
+    reverse_in_place(cfg, &mut reversed);
+    reversed
+}
+
+pub fn reverse_in_place<Cfg: BlockMutableCfg>(cfg: &Cfg, empty: &mut Cfg) {
     let block_num = cfg.blocks().len();
     for block in cfg.blocks().iter().rev() {
-        let new_block = reversed.new_block();
-        reversed.extend_block(new_block, block.operations().iter().rev());
+        let new_block = empty.new_block();
+        empty.extend_block(new_block, block.operations().iter().rev());
     }
     for (id, block) in cfg.blocks().iter().rev().enumerate() {
         for pred in block.predecessors() {
-            reversed.add_edge(id, block_num - 1 - pred);
+            empty.add_edge(id, block_num - 1 - pred);
         }
     }
-    reversed
 }
 
 pub fn print<Cfg, OpPrinter>(cfg: &Cfg, printer: OpPrinter) -> String

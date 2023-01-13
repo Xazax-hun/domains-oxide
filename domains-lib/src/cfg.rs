@@ -33,16 +33,14 @@ impl CfgBlock for BasicBlock {
     }
 }
 
-// TODO: Either introduce phantom lifetime to make the connection to ASTContext
-//       explicit, or make it own the AST Context.
-#[derive(Default)]
-struct CfgImpl {
+struct CfgImpl<'ctx> {
     basic_blocks: Vec<BasicBlock>,
+    context: &'ctx ASTContext,
 }
 
-pub struct Cfg(CfgImpl);
+pub struct Cfg<'ctx>(CfgImpl<'ctx>);
 
-impl ControlFlowGraph for CfgImpl {
+impl<'ctx> ControlFlowGraph for CfgImpl<'ctx> {
     type Block = BasicBlock;
 
     fn blocks(&self) -> &[Self::Block] {
@@ -50,7 +48,7 @@ impl ControlFlowGraph for CfgImpl {
     }
 }
 
-impl MutableCfg for CfgImpl {
+impl<'ctx> MutableCfg for CfgImpl<'ctx> {
     fn new_block(&mut self) -> usize {
         self.basic_blocks.push(BasicBlock::new());
         self.basic_blocks.len() - 1
@@ -78,7 +76,7 @@ impl MutableCfg for CfgImpl {
     }
 }
 
-impl BlockMutableCfg for CfgImpl {
+impl<'ctx> BlockMutableCfg for CfgImpl<'ctx> {
     fn extend_block<'cfg>(
         &'cfg mut self,
         block: usize,
@@ -95,7 +93,7 @@ impl BlockMutableCfg for CfgImpl {
     }
 }
 
-impl ControlFlowGraph for Cfg {
+impl<'ctx> ControlFlowGraph for Cfg<'ctx> {
     type Block = BasicBlock;
 
     fn blocks(&self) -> &[Self::Block] {
@@ -103,17 +101,31 @@ impl ControlFlowGraph for Cfg {
     }
 }
 
-impl Cfg {
-    pub fn new(ctx: &ASTContext) -> Self {
-        let mut cfg = Cfg(CfgImpl::default());
+impl<'ctx> Cfg<'ctx> {
+    pub fn new(ctx: &'ctx ASTContext) -> Self {
+        let mut cfg = Cfg(CfgImpl {
+            basic_blocks: Vec::default(),
+            context: ctx,
+        });
         let root = ctx.get_root();
         let start_block = cfg.0.new_block();
         cfg.0.add_ast_node(start_block, root, ctx);
         cfg
     }
+
+    pub fn context(&self) -> &'ctx ASTContext {
+        self.0.context
+    }
+
+    fn empty(ctx: &'ctx ASTContext) -> Self {
+        Cfg(CfgImpl {
+            basic_blocks: Vec::default(),
+            context: ctx,
+        })
+    }
 }
 
-impl CfgImpl {
+impl<'ctx> CfgImpl<'ctx> {
     fn add_ast_node(&mut self, mut current_block: usize, n: Node, ctx: &ASTContext) -> usize {
         match (n, ctx.node_to_ref(n)) {
             (Node::Operation(op), _) => {
@@ -158,6 +170,8 @@ pub fn print(cfg: &Cfg, ctx: &ASTContext) -> String {
     analysis::cfg::print(cfg, |&op| ast::print(Node::Operation(op), ctx, &anns))
 }
 
-pub fn reverse(cfg: &Cfg) -> Cfg {
-    Cfg(analysis::cfg::reverse(&cfg.0))
+pub fn reverse<'ctx>(cfg: &Cfg<'ctx>) -> Cfg<'ctx> {
+    let mut reversed = Cfg::empty(cfg.context());
+    analysis::cfg::reverse_in_place(&cfg.0, &mut reversed.0);
+    reversed
 }

@@ -1,9 +1,9 @@
 use core::cmp::Ordering;
-use std::collections::HashSet;
 use core::fmt::Display;
 use core::hash::Hash;
 use core::ops::Add;
 use core::ops::Neg;
+use std::collections::HashSet;
 
 use fixedbitset::FixedBitSet;
 

@@ -1,4 +1,4 @@
-use super::cfg::{BlockMutableCfg, ControlFlowGraph, reverse};
+use super::cfg::{reverse, BlockMutableCfg, ControlFlowGraph};
 use super::domains::*;
 use super::solvers::SolveMonotone;
 
@@ -29,7 +29,7 @@ pub fn calculate_dominators<Cfg: ControlFlowGraph>(
     states
 }
 
-pub fn calculate_post_dominators<Cfg: BlockMutableCfg>(
+pub fn calculate_post_dominators<Cfg: BlockMutableCfg + Default>(
     cfg: &Cfg,
     node_limit: usize,
 ) -> Vec<Flipped<BitSetDomain>> {

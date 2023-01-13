@@ -5,23 +5,20 @@ use super::lexer::Lexer;
 use super::parser::Parser;
 use utils::DiagnosticEmitter;
 
-struct ParseResult {
-    output: String,
-    ctx: ASTContext,
-    cfg: Cfg,
+pub struct ParseResult {
+    pub output: String,
+    pub ctx: ASTContext,
 }
 
-fn parse_string(source: &str) -> Option<ParseResult> {
+pub fn parse_string(source: &str) -> Option<ParseResult> {
     let mut diag = DiagnosticEmitter::new(Box::new(Vec::new()), Box::new(Vec::new()));
     let lexer = Lexer::new(source, &mut diag);
     let tokens = lexer.lex_all();
     let parser = Parser::new(tokens, &mut diag);
     let ctx = parser.parse()?;
-    let cfg = Cfg::new(&ctx);
     Some(ParseResult {
         output: diag.out_buffer().to_string() + diag.err_buffer(),
         ctx,
-        cfg,
     })
 }
 
@@ -36,7 +33,8 @@ iter {
     rotation(0, 0, 90)
   }
 }";
-    let ParseResult { output, ctx, cfg } = parse_string(source).unwrap();
+    let ParseResult { output, ctx } = parse_string(source).unwrap();
+    let cfg = Cfg::new(&ctx);
     assert!(output.is_empty());
     let pretty_printed = print(&cfg, &ctx);
     let expected = r#"digraph CFG {
@@ -70,7 +68,8 @@ iter {
     rotation(0, 0, 90)
   }
 }";
-    let ParseResult { output, ctx, cfg } = parse_string(source).unwrap();
+    let ParseResult { output, ctx } = parse_string(source).unwrap();
+    let cfg = Cfg::new(&ctx);
     assert!(output.is_empty());
     let reverse_cfg = reverse(&cfg);
     let pretty_printed = print(&reverse_cfg, &ctx);
@@ -114,7 +113,8 @@ iter {
     }
   }
 }";
-    let ParseResult { output, ctx, cfg } = parse_string(source).unwrap();
+    let ParseResult { output, ctx } = parse_string(source).unwrap();
+    let cfg = Cfg::new(&ctx);
     assert!(output.is_empty());
     let pretty_printed = print(&cfg, &ctx);
     let expected = r#"digraph CFG {

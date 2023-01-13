@@ -2,12 +2,13 @@ use analysis::domains::SignDomain;
 use analysis::domains::Vec2Domain;
 use analysis::solvers::SolveMonotone;
 
-use crate::ast::{ASTContext, NodeRef, Operation};
+use crate::ast::{NodeRef, Operation};
 use crate::cfg::Cfg;
 
 type Vec2Sign = Vec2Domain<SignDomain>;
 
-pub fn get_sign_analysis(ctx: &ASTContext, cfg: &Cfg) -> Vec<Vec2Sign> {
+pub fn get_sign_analysis<'ctx>(cfg: &Cfg<'ctx>) -> Vec<Vec2Sign> {
+    let ctx = cfg.context();
     let mut transfer = |&op: &Operation, pre_state: &Vec2Sign| match ctx.op_to_ref(op) {
         NodeRef::Init(init) => {
             let bot_left_x = init.bottom_left.x.value.to_num();
