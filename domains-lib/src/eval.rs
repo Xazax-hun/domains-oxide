@@ -49,8 +49,8 @@ pub fn create_random_walk(cfg: &Cfg, ctx: &ASTContext, loopiness: u32) -> Walk {
                     let to_y = from_y + init.size.y.value.to_num();
                     Step {
                         pos: Vec2 {
-                            x: rng.gen_range(from_x..=to_x),
-                            y: rng.gen_range(from_y..=to_y),
+                            x: rng.gen_range(from_x..=to_x).into(),
+                            y: rng.gen_range(from_y..=to_y).into(),
                         },
                         op,
                     }
@@ -60,16 +60,16 @@ pub fn create_random_walk(cfg: &Cfg, ctx: &ASTContext, loopiness: u32) -> Walk {
                     Step {
                         pos: prev
                             + Vec2 {
-                                x: trans.vector.x.value.to_num(),
-                                y: trans.vector.y.value.to_num(),
+                                x: trans.vector.x.value.to_num().into(),
+                                y: trans.vector.y.value.to_num().into(),
                             },
                         op,
                     }
                 }
                 NodeRef::Rotation(rot) => {
                     let origin = Vec2 {
-                        x: rot.origin.x.value.to_num(),
-                        y: rot.origin.y.value.to_num(),
+                        x: rot.origin.x.value.to_num().into(),
+                        y: rot.origin.y.value.to_num().into(),
                     };
                     let to_rotate = w.last().unwrap().pos;
                     Step {
@@ -94,8 +94,8 @@ pub fn rotate(mut to_rotate: Vec2, origin: Vec2, deg: i32) -> Vec2 {
     to_rotate -= origin;
     let rad = to_rad(deg);
     let mut rotated = Vec2 {
-        x: (f64::from(to_rotate.x) * rad.cos() - f64::from(to_rotate.y) * rad.sin()).round() as i32,
-        y: (f64::from(to_rotate.y) * rad.cos() + f64::from(to_rotate.x) * rad.sin()).round() as i32,
+        x: ((to_rotate.x as f64) * rad.cos() - (to_rotate.y as f64) * rad.sin()).round() as i64,
+        y: ((to_rotate.y as f64) * rad.cos() + (to_rotate.x as f64) * rad.sin()).round() as i64,
     };
     rotated += origin;
     rotated

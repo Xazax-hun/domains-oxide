@@ -4,7 +4,9 @@ use analysis::solvers::SolveMonotone;
 use utils::Vec2;
 
 use crate::analysis::annotations_from_forward_analysis_results;
-use crate::ast::{Annotations, NodeRef, Operation};
+use crate::analysis::covered_area_from_analysis_results;
+use crate::analysis::AnalysisResult;
+use crate::ast::{NodeRef, Operation};
 use crate::cfg::Cfg;
 
 use super::Analysis;
@@ -24,7 +26,7 @@ impl SignAnalysis {
         match ctx.op_to_ref(op) {
             NodeRef::Init(init) => {
                 let bot_left = Vec2::from(&init.bottom_left);
-                let width = init.size.x.value.to_num();
+                let width = init.size.x.value.to_num() as i64;
                 let x_sign = if bot_left.x > 0 {
                     SignDomain::Positive
                 } else if bot_left.x + width < 0 {
@@ -35,7 +37,7 @@ impl SignAnalysis {
                     SignDomain::Top
                 };
 
-                let height = init.size.y.value.to_num();
+                let height = init.size.y.value.to_num() as i64;
                 let y_sign = if bot_left.y > 0 {
                     SignDomain::Positive
                 } else if bot_left.y + height < 0 {
@@ -94,8 +96,21 @@ impl SignAnalysis {
 }
 
 impl Analysis for SignAnalysis {
-    fn annotate(&self, cfg: &Cfg) -> Annotations {
+    fn analyze(&self, cfg: &Cfg) -> AnalysisResult {
         let results = SignAnalysis::get_results(cfg);
-        annotations_from_forward_analysis_results(cfg, &(), &mut SignAnalysis::transfer, &results)
+        AnalysisResult {
+            annotations: annotations_from_forward_analysis_results(
+                cfg,
+                &(),
+                &mut SignAnalysis::transfer,
+                &results,
+            ),
+            covered: covered_area_from_analysis_results(
+                cfg,
+                &(),
+                &mut SignAnalysis::transfer,
+                &results,
+            ),
+        }
     }
 }

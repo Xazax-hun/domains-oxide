@@ -4,11 +4,11 @@ use analysis::solvers::SolveMonotone;
 use utils::Vec2;
 
 use crate::analysis::annotations_from_forward_analysis_results;
-use crate::ast::{Annotations, NodeRef, Operation};
+use crate::analysis::covered_area_from_analysis_results;
+use crate::analysis::{Analysis, AnalysisResult};
+use crate::ast::{NodeRef, Operation};
 use crate::cfg::Cfg;
 use crate::eval::rotate;
-
-use super::Analysis;
 
 type Vec2Interval = Vec2Domain<IntervalDomain>;
 
@@ -33,18 +33,18 @@ impl IntervalAnalysis {
                 let size = Vec2::from(&init.size);
                 Vec2Domain {
                     x: IntervalDomain {
-                        min: bot_left.x.into(),
-                        max: (bot_left.x + size.x).into(),
+                        min: bot_left.x,
+                        max: (bot_left.x + size.x),
                     },
                     y: IntervalDomain {
-                        min: bot_left.y.into(),
-                        max: (bot_left.y + size.y).into(),
+                        min: bot_left.y,
+                        max: (bot_left.y + size.y),
                     },
                 }
             }
             NodeRef::Translation(trans) => Vec2Domain {
-                x: pre_state.x + IntervalDomain::from(trans.vector.x.value.to_num()),
-                y: pre_state.y + IntervalDomain::from(trans.vector.y.value.to_num()),
+                x: pre_state.x + IntervalDomain::from(trans.vector.x.value.to_num() as i64),
+                y: pre_state.y + IntervalDomain::from(trans.vector.y.value.to_num() as i64),
             },
             NodeRef::Rotation(rot) => {
                 let degree = rot.deg.value.to_num() % 360;
@@ -110,20 +110,20 @@ impl IntervalAnalysis {
                 //
                 let mut corners = [
                     Vec2 {
-                        x: pre_state.x.min as i32,
-                        y: pre_state.y.min as i32,
+                        x: pre_state.x.min,
+                        y: pre_state.y.min,
                     },
                     Vec2 {
-                        x: pre_state.x.min as i32,
-                        y: pre_state.y.max as i32,
+                        x: pre_state.x.min,
+                        y: pre_state.y.max,
                     },
                     Vec2 {
-                        x: pre_state.x.max as i32,
-                        y: pre_state.y.min as i32,
+                        x: pre_state.x.max,
+                        y: pre_state.y.min,
                     },
                     Vec2 {
-                        x: pre_state.x.max as i32,
-                        y: pre_state.y.max as i32,
+                        x: pre_state.x.max,
+                        y: pre_state.y.max,
                     },
                 ];
                 for corner in &mut corners {
@@ -132,12 +132,12 @@ impl IntervalAnalysis {
 
                 Vec2Domain {
                     x: IntervalDomain {
-                        min: corners.iter().min_by_key(|&x| x.x).unwrap().x.into(),
-                        max: corners.iter().max_by_key(|&x| x.x).unwrap().x.into(),
+                        min: corners.iter().min_by_key(|&x| x.x).unwrap().x,
+                        max: corners.iter().max_by_key(|&x| x.x).unwrap().x,
                     },
                     y: IntervalDomain {
-                        min: corners.iter().min_by_key(|&x| x.y).unwrap().y.into(),
-                        max: corners.iter().max_by_key(|&x| x.y).unwrap().y.into(),
+                        min: corners.iter().min_by_key(|&x| x.y).unwrap().y,
+                        max: corners.iter().max_by_key(|&x| x.y).unwrap().y,
                     },
                 }
             }
@@ -147,13 +147,19 @@ impl IntervalAnalysis {
 }
 
 impl Analysis for IntervalAnalysis {
-    fn annotate(&self, cfg: &Cfg) -> Annotations {
+    fn analyze(&self, cfg: &Cfg) -> AnalysisResult {
         let results = IntervalAnalysis::get_results(cfg);
-        annotations_from_forward_analysis_results(
+        let annotations = annotations_from_forward_analysis_results(
             cfg,
             &(),
             &mut IntervalAnalysis::transfer,
             &results,
-        )
+        );
+        let covered =
+            covered_area_from_analysis_results(cfg, &(), &mut IntervalAnalysis::transfer, &results);
+        AnalysisResult {
+            annotations,
+            covered,
+        }
     }
 }

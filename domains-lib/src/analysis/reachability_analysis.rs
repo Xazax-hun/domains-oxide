@@ -7,7 +7,8 @@ use analysis::solvers::SolveMonotone;
 
 use crate::analysis::annotations_from_backward_analysis_results;
 use crate::analysis::annotations_from_forward_analysis_results;
-use crate::ast::{Annotations, Operation};
+use crate::analysis::AnalysisResult;
+use crate::ast::Operation;
 use crate::cfg::{reverse, Cfg};
 
 use super::Analysis;
@@ -48,14 +49,17 @@ impl PastOperations {
 }
 
 impl Analysis for PastOperations {
-    fn annotate(&self, cfg: &Cfg) -> Annotations {
+    fn analyze(&self, cfg: &Cfg) -> AnalysisResult {
         let results = PastOperations::get_results(cfg);
-        annotations_from_forward_analysis_results(
-            cfg,
-            &*LAT_CTX,
-            &mut collect_operation_kind,
-            &results,
-        )
+        AnalysisResult {
+            annotations: annotations_from_forward_analysis_results(
+                cfg,
+                &*LAT_CTX,
+                &mut collect_operation_kind,
+                &results,
+            ),
+            covered: Vec::new(),
+        }
     }
 }
 
@@ -74,14 +78,17 @@ impl FutureOperations {
 }
 
 impl Analysis for FutureOperations {
-    fn annotate(&self, cfg: &Cfg) -> Annotations {
+    fn analyze(&self, cfg: &Cfg) -> AnalysisResult {
         let reversed = reverse(cfg);
         let results = FutureOperations::get_results_impl(&reversed);
-        annotations_from_backward_analysis_results(
-            &reversed,
-            &*LAT_CTX,
-            &mut collect_operation_kind,
-            &results,
-        )
+        AnalysisResult {
+            annotations: annotations_from_backward_analysis_results(
+                &reversed,
+                &*LAT_CTX,
+                &mut collect_operation_kind,
+                &results,
+            ),
+            covered: Vec::new(),
+        }
     }
 }

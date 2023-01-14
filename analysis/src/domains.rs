@@ -206,12 +206,9 @@ pub struct IntervalDomain {
     pub max: i64,
 }
 
-impl From<i32> for IntervalDomain {
-    fn from(val: i32) -> Self {
-        Self {
-            min: val.into(),
-            max: val.into(),
-        }
+impl From<i64> for IntervalDomain {
+    fn from(val: i64) -> Self {
+        Self { min: val, max: val }
     }
 }
 

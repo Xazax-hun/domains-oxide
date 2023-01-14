@@ -64,8 +64,8 @@ impl Drop for DiagnosticEmitter {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Vec2 {
-    pub x: i32,
-    pub y: i32,
+    pub x: i64,
+    pub y: i64,
 }
 
 impl Display for Vec2 {
@@ -107,3 +107,5 @@ impl core::ops::SubAssign<Vec2> for Vec2 {
         *self = *self - rhs;
     }
 }
+
+pub type Polygon = Vec<Vec2>;

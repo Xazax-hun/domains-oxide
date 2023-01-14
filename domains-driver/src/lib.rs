@@ -1,5 +1,5 @@
 use clap::{Parser as CommandLineParser, ValueEnum};
-use domains_lib::analysis::{get_analysis_results, Analyses};
+use domains_lib::analysis::{get_analysis_results, Analyses, AnalysisResult};
 use domains_lib::ast;
 use domains_lib::cfg::{self, Cfg};
 use domains_lib::eval::{annotate_with_walks, create_random_walk};
@@ -103,8 +103,13 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
         return Some(());
     }
 
+    let mut covered = Vec::new();
     if let Some(analysis) = opts.analyze {
-        let annotations = get_analysis_results(Analyses::from(analysis), &cfg);
+        let AnalysisResult {
+            annotations,
+            covered: inferred,
+        } = get_analysis_results(Analyses::from(analysis), &cfg);
+        covered = inferred;
         let annotated = ast::print(ctxt.get_root(), &ctxt, &annotations);
         diag.out_ln(&annotated);
     }
@@ -129,7 +134,7 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
         diag.out_ln(&out);
     }
     if opts.svg {
-        let svg = render_random_walk(&walks, &ctxt, opts.dots_only);
+        let svg = render_random_walk(&walks, &ctxt, &covered, opts.dots_only);
         diag.out(&svg);
     }
 
