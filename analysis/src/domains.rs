@@ -260,7 +260,7 @@ impl JoinSemiLattice for IntervalDomain {
     }
 
     fn widen(&self, prev: &Self, _: usize) -> Self {
-        if *prev == IntervalDomain::bottom(&()) {
+        if *prev == Self::bottom(&()) {
             return *self;
         }
         Self {
@@ -269,11 +269,7 @@ impl JoinSemiLattice for IntervalDomain {
             } else {
                 self.min
             },
-            max: if prev.max < self.max {
-                INF
-            } else {
-                self.max
-            },
+            max: if prev.max < self.max { INF } else { self.max },
         }
     }
 }
@@ -294,7 +290,7 @@ impl Lattice for IntervalDomain {
 
         // We only want one canonical representation for bottom.
         if result.min > result.max {
-            IntervalDomain::bottom(&())
+            Self::bottom(&())
         } else {
             result
         }
@@ -352,15 +348,13 @@ impl<T: Eq + Hash> PartialOrd for PowerSetDomain<T> {
 
 impl<T: Eq + Hash + Display> Display for PowerSetDomain<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "{{{}}}",
-            self.0
-                .iter()
-                .map(std::string::ToString::to_string)
-                .collect::<Vec<String>>()
-                .join(", ")
-        )
+        let mut elements = self
+            .0
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect::<Vec<String>>();
+        elements.sort();
+        write!(f, "{{{}}}", elements.join(", "))
     }
 }
 

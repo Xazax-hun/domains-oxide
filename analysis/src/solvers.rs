@@ -57,7 +57,7 @@ impl SolveMonotone {
                 pre_state = pre_state.join(&post_states[*pred]);
             }
             let mut post_state = transfer(current, cfg, lat_ctx, &pre_state);
-            
+
             if loop_heads.contains(&current) {
                 post_state = post_state.widen(&post_states[current], processed_nodes / node_num);
             }
