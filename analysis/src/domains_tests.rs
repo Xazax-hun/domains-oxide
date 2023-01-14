@@ -93,9 +93,9 @@ fn vec2_domain_tests() {
             y: IntervalDomain { min: 10, max: 20 },
         };
 
-        assert_eq!(singleton.widen(&range, 0usize), top);
-        assert_eq!(range.widen(&singleton, 0usize), range);
-        assert_eq!(bottom.widen(&singleton, 0usize), singleton);
+        assert_eq!(range.widen(&singleton, 0), top);
+        assert_eq!(singleton.widen(&range, 0), singleton);
+        assert_eq!(singleton.widen(&bottom, 0), singleton);
 
         assert_eq!(range.to_string(), "{ x: [0, 10], y: [10, 20] }")
     }
@@ -154,8 +154,8 @@ fn vec2_interval_tests() {
     assert_eq!(large_range.meet(&small_range_b), small_range_b);
 
     // Widening
-    assert_eq!(large_range.widen(&small_range_a, 0usize), large_range);
-    assert_eq!(small_range_a.widen(&large_range, 0usize), top);
+    assert_eq!(small_range_a.widen(&large_range, 0), small_range_a);
+    assert_eq!(large_range.widen(&small_range_a, 0), top);
     let bumped_max = IntervalDomain {
         min: small_range_a.min,
         max: small_range_a.max + 1,
@@ -172,9 +172,9 @@ fn vec2_interval_tests() {
         min: NEG_INF,
         max: small_range_a.max,
     };
-    assert_eq!(small_range_a.widen(&bumped_max, 0usize), widened_max);
-    assert_eq!(small_range_a.widen(&decremented_min, 0usize), widened_min);
-    assert_eq!(bottom.widen(&large_range, 0usize), large_range);
+    assert_eq!(bumped_max.widen(&small_range_a, 0), widened_max);
+    assert_eq!(decremented_min.widen(&small_range_a, 0), widened_min);
+    assert_eq!(large_range.widen(&bottom, 0), large_range);
 
     // Arithmetic
     assert_eq!(singleton + singleton, IntervalDomain::from(10));

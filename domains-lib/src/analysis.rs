@@ -28,7 +28,10 @@ lazy_static! {
     static ref FORWARD_ANALYSES: HashMap<Analyses, Box<dyn Analysis>> = {
         let mut m = HashMap::<Analyses, Box<dyn Analysis>>::new();
         m.insert(Analyses::Sign, Box::new(sign_analysis::SignAnalysis));
-        m.insert(Analyses::Interval, Box::new(interval_analysis::IntervalAnalysis));
+        m.insert(
+            Analyses::Interval,
+            Box::new(interval_analysis::IntervalAnalysis),
+        );
         m
     };
 }

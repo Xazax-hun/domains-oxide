@@ -259,17 +259,17 @@ impl JoinSemiLattice for IntervalDomain {
         }
     }
 
-    fn widen(&self, transferred_state: &Self, _: usize) -> Self {
-        if *self == IntervalDomain::bottom(&()) {
-            return *transferred_state;
+    fn widen(&self, prev: &Self, _: usize) -> Self {
+        if *prev == IntervalDomain::bottom(&()) {
+            return *self;
         }
         Self {
-            min: if transferred_state.min < self.min {
+            min: if prev.min > self.min {
                 NEG_INF
             } else {
                 self.min
             },
-            max: if transferred_state.max > self.max {
+            max: if prev.max < self.max {
                 INF
             } else {
                 self.max
