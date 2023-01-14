@@ -61,10 +61,15 @@ where
     let solver = SolveMonotone::default();
     solver.transfer_operations_in_place(cfg, lat_ctx, &mut states, &mut |op, cfg, pre_state| {
         let post_state = transfer(op, cfg, pre_state);
-        anns.post_annotations
+        let entry = anns
+            .post_annotations
             .entry(Node::Operation(*op))
-            .or_default()
-            .push(post_state.to_string());
+            .or_default();
+        // The solver visits loop heads twice when used for post-processing, we need the
+        // annotations only once.
+        if entry.is_empty() {
+            entry.push(post_state.to_string());
+        }
         post_state
     });
     anns
