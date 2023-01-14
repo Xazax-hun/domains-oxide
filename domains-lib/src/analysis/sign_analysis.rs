@@ -1,5 +1,4 @@
-use analysis::domains::SignDomain;
-use analysis::domains::Vec2Domain;
+use analysis::domains::{SignDomain, Vec2Domain};
 use analysis::solvers::SolveMonotone;
 
 use utils::Vec2;

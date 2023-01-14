@@ -16,6 +16,8 @@ pub enum CLIAnalyses {
     // A simple sign analysis.
     Sign,
     Interval,
+    PastOperations,
+    FutureOperations,
 }
 
 impl From<CLIAnalyses> for Analyses {
@@ -23,6 +25,8 @@ impl From<CLIAnalyses> for Analyses {
         match value {
             CLIAnalyses::Sign => Analyses::Sign,
             CLIAnalyses::Interval => Analyses::Interval,
+            CLIAnalyses::PastOperations => Analyses::PastOperations,
+            CLIAnalyses::FutureOperations => Analyses::FutureOperations,
         }
     }
 }

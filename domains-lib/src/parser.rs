@@ -5,11 +5,11 @@ use crate::{
     lexer::{Token, TokenValue},
 };
 
-pub struct Parser<'a> {
+pub struct Parser<'src> {
     ctx: ASTContext,
     current: usize,
     tokens: Vec<Token>,
-    diag: &'a mut DiagnosticEmitter,
+    diag: &'src mut DiagnosticEmitter,
 }
 
 use TokenValue::*;

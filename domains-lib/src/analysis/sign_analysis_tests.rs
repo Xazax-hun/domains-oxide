@@ -1,17 +1,4 @@
-use crate::{
-    analysis::{sign_analysis::SignAnalysis, Analysis},
-    ast::print,
-    cfg::Cfg,
-    cfg_tests::{parse_string, ParseResult},
-};
-
-fn check_expected_results(source: &str, expected: &str) {
-    let ParseResult { output, ctx } = parse_string(source).unwrap();
-    let cfg = Cfg::new(&ctx);
-    let anns = SignAnalysis.annotate(&cfg);
-    assert!(output.is_empty());
-    assert_eq!(expected, print(ctx.get_root(), &ctx, &anns));
-}
+use crate::{analysis::sign_analysis::SignAnalysis, analysis::test_utils::check_expected_results};
 
 #[test]
 fn test_linear_program() {
@@ -22,7 +9,7 @@ rotation(0, 0, 0)";
 translation(10, 0) /* { x: Positive, y: Positive } */;
 rotation(0, 0, 0) /* { x: Positive, y: Positive } */";
 
-    check_expected_results(source, expected);
+    check_expected_results(SignAnalysis, source, expected);
 }
 
 #[test]
@@ -40,7 +27,7 @@ fn test_branching_program() {
   translation(-10, 0) /* { x: Top, y: Positive } */
 }";
 
-    check_expected_results(source, expected);
+    check_expected_results(SignAnalysis, source, expected);
 }
 
 #[test]
@@ -82,5 +69,5 @@ iter {
   }
 }";
 
-    check_expected_results(source, expected);
+    check_expected_results(SignAnalysis, source, expected);
 }
