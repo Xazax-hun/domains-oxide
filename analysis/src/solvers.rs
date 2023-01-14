@@ -21,7 +21,7 @@ impl SolveMonotone {
     ) where
         Cfg: ControlFlowGraph,
         D: JoinSemiLattice,
-        F: FnMut(usize, &Cfg, &D) -> D,
+        F: FnMut(usize, &Cfg, &D::LatticeContext, &D) -> D,
     {
         let limit = self.node_limit * cfg.blocks().len();
         let mut visited = vec![false; cfg.blocks().len()];
@@ -30,7 +30,7 @@ impl SolveMonotone {
         // Process first node. It is hoisted, so the input state can be other than
         // the bottom value.
         let first_state = post_states[0].clone();
-        post_states[0] = transfer(0, cfg, &first_state);
+        post_states[0] = transfer(0, cfg, lat_ctx, &first_state);
         visited[0] = true;
         worklist.push_successors(0);
 
@@ -45,7 +45,7 @@ impl SolveMonotone {
             for pred in cfg.blocks()[current].predecessors() {
                 pre_state = pre_state.join(&post_states[*pred]);
             }
-            let post_state = transfer(current, cfg, &pre_state);
+            let post_state = transfer(current, cfg, lat_ctx, &pre_state);
 
             processed_nodes += 1;
             if visited[current] && post_states[current] == post_state {
@@ -67,7 +67,7 @@ impl SolveMonotone {
     where
         Cfg: ControlFlowGraph,
         D: JoinSemiLattice,
-        F: FnMut(usize, &Cfg, &D) -> D,
+        F: FnMut(usize, &Cfg, &D::LatticeContext, &D) -> D,
     {
         let mut post_states = vec![D::bottom(lat_ctx); cfg.blocks().len()];
         self.transfer_blocks_in_place(cfg, lat_ctx, &mut post_states, transfer);
@@ -83,15 +83,25 @@ impl SolveMonotone {
     ) where
         Cfg: ControlFlowGraph,
         D: JoinSemiLattice,
-        F: FnMut(&<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation, &Cfg, &D) -> D,
+        F: FnMut(
+            &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
+            &Cfg,
+            &D::LatticeContext,
+            &D,
+        ) -> D,
     {
-        self.transfer_blocks_in_place(cfg, lat_ctx, post_states, &mut |current, cfg, dom: &D| {
-            let mut post_state = dom.clone();
-            for op in cfg.blocks()[current].operations() {
-                post_state = transfer(op, cfg, &post_state);
-            }
-            post_state
-        });
+        self.transfer_blocks_in_place(
+            cfg,
+            lat_ctx,
+            post_states,
+            &mut |current, cfg, lat_ctx, dom: &D| {
+                let mut post_state = dom.clone();
+                for op in cfg.blocks()[current].operations() {
+                    post_state = transfer(op, cfg, lat_ctx, &post_state);
+                }
+                post_state
+            },
+        );
     }
 
     pub fn transfer_operations<Cfg, D, F>(
@@ -103,12 +113,17 @@ impl SolveMonotone {
     where
         Cfg: ControlFlowGraph,
         D: JoinSemiLattice,
-        F: FnMut(&<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation, &Cfg, &D) -> D,
+        F: FnMut(
+            &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
+            &Cfg,
+            &D::LatticeContext,
+            &D,
+        ) -> D,
     {
-        self.transfer_blocks(cfg, lat_ctx, &mut |current, cfg, dom: &D| {
+        self.transfer_blocks(cfg, lat_ctx, &mut |current, cfg, lat_ctx, dom: &D| {
             let mut post_state = dom.clone();
             for op in cfg.blocks()[current].operations() {
-                post_state = transfer(op, cfg, &post_state);
+                post_state = transfer(op, cfg, lat_ctx, &post_state);
             }
             post_state
         })

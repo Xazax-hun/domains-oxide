@@ -62,7 +62,7 @@ impl Drop for DiagnosticEmitter {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Vec2 {
     pub x: i32,
     pub y: i32,

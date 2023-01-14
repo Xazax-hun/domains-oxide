@@ -1,5 +1,6 @@
 use core::fmt::Write;
 use std::collections::HashMap;
+use utils::Vec2;
 
 use crate::lexer::Token;
 
@@ -8,6 +9,15 @@ use crate::lexer::Token;
 pub struct NumPair {
     pub x: Token,
     pub y: Token,
+}
+
+impl From<&NumPair> for Vec2 {
+    fn from(value: &NumPair) -> Self {
+        Self {
+            x: value.x.value.to_num(),
+            y: value.x.value.to_num(),
+        }
+    }
 }
 
 pub struct Init {

@@ -15,12 +15,14 @@ const DEFAULT_LOOPINESS: &str = "1";
 pub enum CLIAnalyses {
     // A simple sign analysis.
     Sign,
+    Interval,
 }
 
 impl From<CLIAnalyses> for Analyses {
     fn from(value: CLIAnalyses) -> Self {
         match value {
             CLIAnalyses::Sign => Analyses::Sign,
+            CLIAnalyses::Interval => Analyses::Interval,
         }
     }
 }

@@ -2,6 +2,8 @@ use analysis::domains::SignDomain;
 use analysis::domains::Vec2Domain;
 use analysis::solvers::SolveMonotone;
 
+use utils::Vec2;
+
 use crate::analysis::annotations_from_forward_analysis_results;
 use crate::ast::{Annotations, NodeRef, Operation};
 use crate::cfg::Cfg;
@@ -18,29 +20,28 @@ impl SignAnalysis {
         solver.transfer_operations(cfg, &(), &mut SignAnalysis::transfer)
     }
 
-    pub fn transfer(&op: &Operation, cfg: &Cfg, pre_state: &Vec2Sign) -> Vec2Sign {
+    pub fn transfer(&op: &Operation, cfg: &Cfg, _: &(), pre_state: &Vec2Sign) -> Vec2Sign {
         let ctx = cfg.context();
         match ctx.op_to_ref(op) {
             NodeRef::Init(init) => {
-                let bot_left_x = init.bottom_left.x.value.to_num();
+                let bot_left = Vec2::from(&init.bottom_left);
                 let width = init.size.x.value.to_num();
-                let x_sign = if bot_left_x > 0 {
+                let x_sign = if bot_left.x > 0 {
                     SignDomain::Positive
-                } else if bot_left_x + width < 0 {
+                } else if bot_left.x + width < 0 {
                     SignDomain::Negative
-                } else if bot_left_x == 0 && width == 0 {
+                } else if bot_left.x == 0 && width == 0 {
                     SignDomain::Zero
                 } else {
                     SignDomain::Top
                 };
 
-                let bot_left_y = init.bottom_left.y.value.to_num();
                 let height = init.size.y.value.to_num();
-                let y_sign = if bot_left_y > 0 {
+                let y_sign = if bot_left.y > 0 {
                     SignDomain::Positive
-                } else if bot_left_y + height < 0 {
+                } else if bot_left.y + height < 0 {
                     SignDomain::Negative
-                } else if bot_left_y == 0 && height == 0 {
+                } else if bot_left.y == 0 && height == 0 {
                     SignDomain::Zero
                 } else {
                     SignDomain::Top
@@ -60,7 +61,7 @@ impl SignAnalysis {
                     return pre_state.clone();
                 }
 
-                if rot.origin.x.value.to_num() == 0 && rot.origin.y.value.to_num() == 0 {
+                if Vec2::from(&rot.origin) == (Vec2 { x: 0, y: 0 }) {
                     if deg == 270 {
                         return Vec2Domain {
                             x: pre_state.y,

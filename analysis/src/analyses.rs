@@ -16,6 +16,7 @@ pub fn calculate_dominators<Cfg: ControlFlowGraph>(
     let solver = SolveMonotone { node_limit };
     solver.transfer_blocks_in_place(cfg, &ctx, &mut states, &mut |id: usize,
                                                                   _cfg: &Cfg,
+                                                                  _lat_ctx,
                                                                   preds_merged: &Flipped<
         BitSetDomain,
     >| {
