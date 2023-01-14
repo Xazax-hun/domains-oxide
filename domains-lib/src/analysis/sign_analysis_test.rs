@@ -1,5 +1,5 @@
 use crate::{
-    analysis::sign_analysis::{self, sign_analysis_results_to_annotations},
+    analysis::{sign_analysis::SignAnalysis, Analysis},
     ast::print,
     cfg::Cfg,
     cfg_tests::{parse_string, ParseResult},
@@ -8,10 +8,8 @@ use crate::{
 fn check_expected_results(source: &str, expected: &str) {
     let ParseResult { output, ctx } = parse_string(source).unwrap();
     let cfg = Cfg::new(&ctx);
-    let results = sign_analysis::get_sign_analysis(&cfg);
-    let anns = sign_analysis_results_to_annotations(&cfg, &results);
+    let anns = SignAnalysis.annotate(&cfg);
     assert!(output.is_empty());
-    assert!(!results.is_empty());
     assert_eq!(expected, print(ctx.get_root(), &ctx, &anns));
 }
 

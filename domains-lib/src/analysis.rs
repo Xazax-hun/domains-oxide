@@ -13,9 +13,8 @@ use crate::{
     cfg::Cfg,
 };
 
-// TODO: maybe a Trait object instead?
-struct AnalysisDescription {
-    annotate: fn(&Cfg) -> Annotations,
+pub trait Analysis: Sync {
+    fn annotate(&self, cfg: &Cfg) -> Annotations;
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -24,24 +23,16 @@ pub enum Analyses {
 }
 
 lazy_static! {
-    static ref FORWARD_ANALYSES: HashMap<Analyses, AnalysisDescription> = {
-        let mut m = HashMap::new();
-        m.insert(
-            Analyses::Sign,
-            AnalysisDescription {
-                annotate: |cfg| {
-                    let results = sign_analysis::get_sign_analysis(cfg);
-                    sign_analysis::sign_analysis_results_to_annotations(cfg, &results)
-                },
-            },
-        );
+    static ref FORWARD_ANALYSES: HashMap<Analyses, Box<dyn Analysis>> = {
+        let mut m = HashMap::<Analyses, Box<dyn Analysis>>::new();
+        m.insert(Analyses::Sign, Box::new(sign_analysis::SignAnalysis));
         m
     };
 }
 
 pub fn get_analysis_results(analysis: Analyses, cfg: &Cfg) -> Annotations {
-    if let Some(desc) = FORWARD_ANALYSES.get(&analysis) {
-        return (desc.annotate)(cfg);
+    if let Some(analysis) = FORWARD_ANALYSES.get(&analysis) {
+        return analysis.annotate(cfg);
     }
     panic!("Unimplemented analysis!")
 }
