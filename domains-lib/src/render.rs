@@ -190,7 +190,9 @@ impl ColorPicker {
 
     fn next(&mut self) -> Rgb {
         if self.current < COLORS.len() {
-            return COLORS[self.current];
+            let rgb = COLORS[self.current];
+            self.current += 1;
+            return rgb;
         }
         Rgb(
             self.rng.gen_range(0.0..=1.0),
