@@ -84,3 +84,14 @@ running `./domains-driver filename.tr --analyze interval --svg --executions 10 -
 The gray area represents the regions  of the 2D space that the analysis deduced as reachable.
 
 ![Interval example output](examples/interval_example.png "Interval example output")
+
+# Abstract interpretation framework
+
+The project is heavily modularized. The `analysis` crate contains a general abstract
+interpretation framework that is independent of the `tr` language. This framework
+should be reusable for other languages. The `domains-lib`
+crate contains the lexer, parser, control flow graph generator and interpreter of the
+`tr` language. It is a reusable library. Finally, the `domains-driver` crate is an
+executable that can be invoked to analyze or execute `tr` programs. In the future,
+I might end up splitting up `domains-lib`, so the parser is reusable without the
+analysis parts.
