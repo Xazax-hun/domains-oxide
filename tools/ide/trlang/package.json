@@ -1,0 +1,26 @@
+{
+    "name": "trlang",
+    "displayName": "trLanguage",
+    "description": "Grammar support for a small research language.",
+    "repository": "https://github.com/Xazax-hun/domains",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.67.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "tr",
+            "aliases": ["Transform", "tr"],
+            "extensions": [".tr"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "tr",
+            "scopeName": "source.tr",
+            "path": "./syntaxes/tr.tmLanguage.json"
+        }]
+    }
+}

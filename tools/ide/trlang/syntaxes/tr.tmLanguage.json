@@ -1,0 +1,72 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Transform",
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#punctuation"
+		},
+		{
+			"include": "#numbers"
+		},
+		{
+			"include": "#comments"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.tr",
+				"match": "\\b(or|iter|;)\\b"
+			},
+			{
+				"name": "keyword.tr",
+				"match": "\\b(init|translation|rotation)\\b"
+			}]
+		},
+		"comments": {
+			"patterns": [{
+				"captures": {
+					"1": {
+						"name": "punctuation.definition.comment.tr"
+					}
+				},
+				"match": "(//).*$\\n?",
+				"name": "comment.line.double-slash.tr"
+			},
+			{
+				"begin": "/\\*",
+				"captures": {
+					"0": {
+						"name": "punctuation.definition.comment.tr"
+					}
+				},
+				"end": "\\*/",
+				"name": "comment.block.tr"
+			}]
+		},
+		"numbers": {
+			"patterns": [{
+				"match": "[0-9]+",
+				"name": "constant.numeric.tr"
+			}]
+		},
+		"punctuation": {
+			"patterns": [{
+					"name": "punctuation.comma.tr",
+					"match": ","
+				},
+				{
+					"name": "punctuation.brackets.curly.tr",
+					"match": "[{}]"
+				},
+				{
+					"name": "punctuation.brackets.round.tr",
+					"match": "[()]"
+				}]
+		}
+	},
+	"scopeName": "source.tr"
+}
