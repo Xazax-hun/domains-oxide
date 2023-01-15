@@ -83,4 +83,4 @@ Alternatively, we can visualize the analysis result along with some executions
 running `./domains-driver filename.tr --analyze interval --svg --executions 10 --loopiness 5`.
 The gray area represents the regions  of the 2D space that the analysis deduced as reachable.
 
-![Interval example output](examples/interval_example.png "Interval example output")# Running the interpreter
+![Interval example output](examples/interval_example.png "Interval example output")
