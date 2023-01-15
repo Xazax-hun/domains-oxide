@@ -263,7 +263,7 @@ impl<T: JoinSemiLattice + RenderableDomain> RenderableDomain for Vec2Domain<T> {
                     y_coords.reverse();
                 }
                 for y in y_coords {
-                    polys.last_mut().unwrap().push(Vec2 { x: x.x, y: y.x })
+                    polys.last_mut().unwrap().push(Vec2 { x: x.x, y: y.x });
                 }
             }
         }

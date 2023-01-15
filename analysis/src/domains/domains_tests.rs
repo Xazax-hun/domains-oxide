@@ -1,4 +1,4 @@
-use super::domains::*;
+use crate::domains::*;
 use std::collections::HashSet;
 
 #[test]
