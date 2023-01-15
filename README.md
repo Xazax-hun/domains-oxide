@@ -10,7 +10,7 @@ This repo is the reimplementation of [domains](https://github.com/Xazax-hun/doma
 
 The goal is to build a framework that helps experimenting with numerical domains and static analysis methods to
 infer which regions in the 2D space are reachable by the programs written in the graphical language.
-To get basic syntax highlight for the language install `utils/ide/trlang/trlang.vsix` extension to VS code.
+To get basic syntax highlight for the language install `tools/ide/trlang/trlang.vsix` extension to VS code.
 
 # Running the interpreter
 
