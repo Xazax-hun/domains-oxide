@@ -1,5 +1,5 @@
 use core::cmp::Ordering;
-use core::fmt::Display;
+use core::fmt::Debug;
 use core::hash::Hash;
 use core::ops::Add;
 use core::ops::Neg;
@@ -11,7 +11,7 @@ use fixedbitset::FixedBitSet;
 // Traits for domains. //
 /////////////////////////
 
-pub trait JoinSemiLattice: Eq + PartialOrd + Clone + Display {
+pub trait JoinSemiLattice: Eq + PartialOrd + Clone + Debug {
     // For some lattices, like the power set lattice, we need to
     // store somewhere the top or the bottom value. When we need
     // no such values, set this to unit.
@@ -49,15 +49,8 @@ pub trait Lattice: JoinSemiLattice {
 // Concrete domain implementations //
 /////////////////////////////////////
 
-
-#[derive(PartialEq, Eq, PartialOrd, Clone, Copy)]
+#[derive(PartialEq, Eq, PartialOrd, Clone, Copy, Debug)]
 pub struct UnitDomain;
-
-impl Display for UnitDomain {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "UnitDomain")
-    }
-}
 
 impl JoinSemiLattice for UnitDomain {
     type LatticeContext = ();
@@ -81,7 +74,7 @@ impl Lattice for UnitDomain {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct PowerSetDomain<T: Eq + Hash>(pub HashSet<T>);
 
 pub struct PowerSetTop<T: Eq + Hash>(pub PowerSetDomain<T>);
@@ -97,19 +90,19 @@ impl<T: Eq + Hash> PartialOrd for PowerSetDomain<T> {
     }
 }
 
-impl<T: Eq + Hash + Display> Display for PowerSetDomain<T> {
+impl<T: Eq + Hash + Debug> Debug for PowerSetDomain<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let mut elements = self
             .0
             .iter()
-            .map(std::string::ToString::to_string)
+            .map(|x| format!("{x:?}"))
             .collect::<Vec<String>>();
         elements.sort();
         write!(f, "{{{}}}", elements.join(", "))
     }
 }
 
-impl<T: Eq + Hash + Display + Clone> JoinSemiLattice for PowerSetDomain<T> {
+impl<T: Eq + Hash + Debug + Clone> JoinSemiLattice for PowerSetDomain<T> {
     type LatticeContext = PowerSetTop<T>;
 
     fn bottom(_: &Self::LatticeContext) -> Self {
@@ -121,7 +114,7 @@ impl<T: Eq + Hash + Display + Clone> JoinSemiLattice for PowerSetDomain<T> {
     }
 }
 
-impl<T: Eq + Hash + Display + Clone> Lattice for PowerSetDomain<T> {
+impl<T: Eq + Hash + Debug + Clone> Lattice for PowerSetDomain<T> {
     // TODO: some impls want to return a value, some want to
     //       return a reference. Try to make the trait flexible,
     //       e.g.: https://stackoverflow.com/questions/43323250/trait-method-that-can-be-implemented-to-either-return-a-reference-or-an-owned-va
@@ -139,7 +132,7 @@ impl<T: Eq + Hash + Display + Clone> Lattice for PowerSetDomain<T> {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct BitSetDomain(pub FixedBitSet);
 
 pub struct BitSetTop(pub usize);
@@ -165,7 +158,7 @@ impl PartialOrd for BitSetDomain {
     }
 }
 
-impl Display for BitSetDomain {
+impl Debug for BitSetDomain {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,

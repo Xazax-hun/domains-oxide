@@ -13,28 +13,35 @@ use crate::cfg::{reverse, Cfg};
 
 use super::Analysis;
 
-type OperationKindsDomain = PowerSetDomain<&'static str>;
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum OpKind {
+    Init,
+    Translation,
+    Rotation,
+}
+
+type OperationKindsDomain = PowerSetDomain<OpKind>;
 
 lazy_static! {
-    static ref LAT_CTX: PowerSetTop<&'static str> =
-        PowerSetTop(PowerSetDomain::<&'static str>(HashSet::from([
-            "Init",
-            "Translation",
-            "Rotation",
+    static ref LAT_CTX: PowerSetTop<OpKind> =
+        PowerSetTop(PowerSetDomain::<OpKind>(HashSet::from([
+            OpKind::Init,
+            OpKind::Translation,
+            OpKind::Rotation,
         ])));
 }
 
 pub fn collect_operation_kind(
     &op: &Operation,
     _cfg: &Cfg,
-    _: &PowerSetTop<&'static str>,
+    _: &PowerSetTop<OpKind>,
     pre_state: &OperationKindsDomain,
 ) -> OperationKindsDomain {
     let mut result = pre_state.clone();
     match op {
-        Operation::Init(_) => result.0.insert("Init"),
-        Operation::Translation(_) => result.0.insert("Translation"),
-        Operation::Rotation(_) => result.0.insert("Rotation"),
+        Operation::Init(_) => result.0.insert(OpKind::Init),
+        Operation::Translation(_) => result.0.insert(OpKind::Translation),
+        Operation::Rotation(_) => result.0.insert(OpKind::Rotation),
     };
     result
 }

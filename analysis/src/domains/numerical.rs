@@ -24,12 +24,6 @@ impl From<i32> for SignDomain {
     }
 }
 
-impl Display for SignDomain {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
 impl PartialOrd for SignDomain {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         if self == other {
@@ -116,7 +110,7 @@ impl Neg for SignDomain {
 pub const INF: i64 = i64::MAX;
 pub const NEG_INF: i64 = i64::MIN;
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct IntervalDomain {
     pub min: i64,
     pub max: i64,
@@ -128,7 +122,7 @@ impl From<i64> for IntervalDomain {
     }
 }
 
-impl Display for IntervalDomain {
+impl Debug for IntervalDomain {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let to_str = |x: i64| match x {
             INF => "inf".to_owned(),

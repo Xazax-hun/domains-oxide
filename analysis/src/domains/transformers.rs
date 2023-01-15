@@ -17,16 +17,15 @@ use crate::domains::*;
 // Add more general building blocks for finite domains and
 // port SignDomain to those facilities.
 
-
-#[derive(PartialEq, Eq, PartialOrd, Clone, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Clone)]
 pub struct Vec2Domain<T: JoinSemiLattice> {
     pub x: T,
     pub y: T,
 }
 
-impl<T: JoinSemiLattice> Display for Vec2Domain<T> {
+impl<T: JoinSemiLattice> Debug for Vec2Domain<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{{ x: {}, y: {} }}", self.x, self.y)
+        write!(f, "{{ x: {:?}, y: {:?} }}", self.x, self.y)
     }
 }
 
@@ -74,12 +73,6 @@ impl<T: Lattice> Lattice for Vec2Domain<T> {
 #[derive(PartialEq, Eq, PartialOrd, Clone, Debug)]
 pub struct Flipped<T: Lattice>(pub T);
 
-impl<T: Display + Lattice> Display for Flipped<T> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
 impl<T: Lattice> JoinSemiLattice for Flipped<T> {
     type LatticeContext = T::LatticeContext;
 
@@ -101,4 +94,3 @@ impl<T: Lattice> Lattice for Flipped<T> {
         Self(self.0.join(&other.0))
     }
 }
-

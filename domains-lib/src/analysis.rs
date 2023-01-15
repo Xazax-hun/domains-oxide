@@ -141,7 +141,7 @@ where
             // The solver visits loop heads twice when used for post-processing, we need the
             // annotations only once.
             if entry.is_empty() {
-                entry.push(post_state.to_string());
+                entry.push(format!("{post_state:?}"));
             }
             post_state
         },

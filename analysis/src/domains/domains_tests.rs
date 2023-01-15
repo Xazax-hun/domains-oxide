@@ -33,7 +33,7 @@ fn sign_domain_tests() {
     assert_eq!(SignDomain::from(-5), SignDomain::Negative);
 
     // Pretty printing
-    assert_eq!(bottom.to_string(), "Bottom");
+    assert_eq!(format!("{bottom:?}"), "Bottom");
 }
 
 #[test]
@@ -75,7 +75,7 @@ fn vec2_domain_tests() {
         assert_eq!(pos_pos.meet(&pos_neg), pos_bot);
 
         // Pretty printing
-        assert_eq!(pos_top.to_string(), "{ x: Positive, y: Top }");
+        assert_eq!(format!("{pos_top:?}"), "{ x: Positive, y: Top }");
     }
 
     // Vec2Interval
@@ -97,7 +97,7 @@ fn vec2_domain_tests() {
         assert_eq!(singleton.widen(&range, 0), singleton);
         assert_eq!(singleton.widen(&bottom, 0), singleton);
 
-        assert_eq!(range.to_string(), "{ x: [0, 10], y: [10, 20] }")
+        assert_eq!(format!("{range:?}"), "{ x: [0, 10], y: [10, 20] }")
     }
 }
 
@@ -190,10 +190,10 @@ fn vec2_interval_tests() {
     assert_eq!(small_range_b + small_range_a, add_expected2);
 
     // Printing
-    assert_eq!(singleton.to_string(), "[5, 5]");
-    assert_eq!(small_range_a.to_string(), "[0, 10]");
-    assert_eq!(top.to_string(), "[-inf, inf]");
-    assert_eq!(bottom.to_string(), "[inf, -inf]");
+    assert_eq!(format!("{singleton:?}"), "[5, 5]");
+    assert_eq!(format!("{small_range_a:?}"), "[0, 10]");
+    assert_eq!(format!("{top:?}"), "[-inf, inf]");
+    assert_eq!(format!("{bottom:?}"), "[inf, -inf]");
 }
 
 #[test]
@@ -238,10 +238,10 @@ fn bitset_domain_tests() {
     assert_eq!(small_set.meet(&small_set2), intersection);
     assert_eq!(small_set2.meet(&small_set), intersection);
 
-    assert_eq!(bottom.to_string(), "{}".to_owned());
-    assert_eq!(small_set.to_string(), "{1, 2, 3}".to_owned());
+    assert_eq!(format!("{bottom:?}"), "{}".to_owned());
+    assert_eq!(format!("{small_set:?}"), "{1, 2, 3}".to_owned());
     assert_eq!(
-        BitSetDomain::top(&ctx).to_string(),
+        format!("{:?}", BitSetDomain::top(&ctx)),
         "{0, 1, 2, 3, 4}".to_owned()
     );
 }
@@ -273,5 +273,5 @@ fn flipped_sign_domain_tests() {
     assert_eq!(negative.meet(&zero), top);
 
     // Pretty printing
-    assert_eq!(bottom.to_string(), "Bottom");
+    assert_eq!(format!("{bottom:?}"), "Flipped(Bottom)");
 }
