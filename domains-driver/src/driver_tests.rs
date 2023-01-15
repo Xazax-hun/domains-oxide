@@ -268,3 +268,31 @@ translation(0, 10) /* { x: Negative, y: Positive } */
     .unwrap();
     assert_eq!(output, expected);
 }
+
+#[test]
+fn render_analysis_results() {
+    let source = r"init(50, 50, 10, 10);
+translation(10, 0);
+rotation(0, 0, 90);
+translation(0, 10)";
+    let expected = r#"<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="500" height="500" viewBox="0 0 500 500">
+<rect x="-50" y="-50" width="600" height="600" fill="rgb(100%, 100%, 100%)" fill-opacity="1"/>
+<path fill-rule="nonzero" fill="rgb(75%, 75%, 75%)" fill-opacity="1" d="M 300 200 L 300 190 L 310 190 L 310 200 Z M 300 200 "/>
+<path fill-rule="nonzero" fill="rgb(75%, 75%, 75%)" fill-opacity="1" d="M 310 200 L 310 190 L 320 190 L 320 200 Z M 310 200 "/>
+<path fill-rule="nonzero" fill="rgb(75%, 75%, 75%)" fill-opacity="1" d="M 190 190 L 190 180 L 200 180 L 200 190 Z M 190 190 "/>
+<path fill-rule="nonzero" fill="rgb(75%, 75%, 75%)" fill-opacity="1" d="M 190 180 L 190 170 L 200 170 L 200 180 Z M 190 180 "/>
+<path fill="none" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 0 -250 L 0 250 M -250 0 L 250 0 " transform="matrix(1, 0, 0, 1, 250, 250)"/>
+</svg>"#;
+    let output = run_driver(
+        source,
+        Opt {
+            analyze: Some(CLIAnalyses::Interval),
+            svg: true,
+            executions: 0,
+            ..Opt::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(summarize_svg(&output), summarize_svg(expected));
+}

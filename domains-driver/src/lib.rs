@@ -110,8 +110,10 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
             covered: inferred,
         } = get_analysis_results(Analyses::from(analysis), &cfg);
         covered = inferred;
-        let annotated = ast::print(ctxt.get_root(), &ctxt, &annotations);
-        diag.out_ln(&annotated);
+        if !opts.svg {
+            let annotated = ast::print(ctxt.get_root(), &ctxt, &annotations);
+            diag.out_ln(&annotated);
+        }
     }
 
     let mut walks = Vec::new();
@@ -128,14 +130,13 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
             }
         }
     }
-    if opts.annotate_trace {
-        let anns = annotate_with_walks(&walks);
-        let out = ast::print(ctxt.get_root(), &ctxt, &anns);
-        diag.out_ln(&out);
-    }
     if opts.svg {
         let svg = render_random_walk(&walks, &ctxt, &covered, opts.dots_only);
         diag.out(&svg);
+    } else if opts.annotate_trace {
+        let anns = annotate_with_walks(&walks);
+        let out = ast::print(ctxt.get_root(), &ctxt, &anns);
+        diag.out_ln(&out);
     }
 
     Some(())
