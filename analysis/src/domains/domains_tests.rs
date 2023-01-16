@@ -1,5 +1,5 @@
 use crate::domains::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 #[test]
 fn sign_domain_tests() {
@@ -376,4 +376,50 @@ fn lifted_domain_test() {
     assert_eq!(false_val.meet(&true_val), false_val);
     assert_eq!(format!("{bottom:?}"), "Bottom");
     assert_eq!(format!("{true_val:?}"), "Element(true)");
+}
+
+#[test]
+fn map_domain_test() {
+    type MyDomain = Map<&'static str, SignDomain>;
+    let ctx = MapCtx(HashSet::from(["Foo", "Bar", "Baz"]), ());
+    let bottom = MyDomain::bottom(&ctx);
+    let top = MyDomain::top(&ctx);
+    let a = Map(HashMap::from([("Foo", SignDomain::Zero)]));
+    let b = Map(HashMap::from([
+        ("Foo", SignDomain::Top),
+        ("Bar", SignDomain::Positive),
+    ]));
+    let c = Map(HashMap::from([
+        ("Foo", SignDomain::Top),
+        ("Bar", SignDomain::Negative),
+    ]));
+
+    assert!(a == a);
+    assert!(bottom < top);
+    assert!(a < top);
+    assert!(bottom < a);
+    assert!(a < b);
+    assert!(!(b < c));
+    assert!(!(b > c));
+    assert_eq!(a.join(&b), b);
+    assert_eq!(
+        b.join(&c),
+        Map(HashMap::from([
+            ("Foo", SignDomain::Top),
+            ("Bar", SignDomain::Top),
+        ]))
+    );
+    assert_eq!(a.meet(&b), Map(HashMap::from([("Foo", SignDomain::Zero),])));
+    assert_eq!(
+        b.meet(&c),
+        Map(HashMap::from([
+            ("Foo", SignDomain::Top),
+            ("Bar", SignDomain::Bottom)
+        ]))
+    );
+    assert_eq!(format!("{bottom:?}"), "Map()");
+    assert_eq!(
+        format!("{top:?}"),
+        r#"Map(("Bar", Top), ("Baz", Top), ("Foo", Top))"#
+    );
 }

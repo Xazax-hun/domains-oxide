@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::domains::*;
 use paste::paste;
 
@@ -6,12 +8,12 @@ use paste::paste;
 /////////////////////////
 
 // TODO:
-// Add operations to built lattices
-// * Map lattice
+// Add operations to build lattices
 // * Reduced product
 // * Disjoint union
 // * Stacking
 // * Finite lattices
+// * Immutable versions of the containers
 
 // TODO:
 // Add more general building blocks for finite domains and
@@ -206,6 +208,136 @@ impl<T: Lattice> Lattice for Flipped<T> {
 
     fn meet(&self, other: &Self) -> Self {
         Self(self.0.join(&other.0))
+    }
+}
+
+/// Warning: M1 without K compares less than M2 with K => Bottom. if this is undesired,
+/// make sure all keys are populated.
+#[derive(PartialEq, Eq, Clone)]
+pub struct Map<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice>(pub HashMap<K, V>);
+
+/// Contains all the keys for top value, can leave it empty for
+/// join semi-lattices.
+pub struct MapCtx<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice>(
+    pub HashSet<K>,
+    pub V::LatticeContext,
+);
+
+impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> Debug for Map<K, V> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let mut elements = self
+            .0
+            .iter()
+            .map(|x| format!("{x:?}"))
+            .collect::<Vec<String>>();
+        elements.sort();
+        write!(f, "Map({})", elements.join(", "))
+    }
+}
+
+impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> PartialOrd for Map<K, V> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if self == other {
+            return Some(Ordering::Equal);
+        }
+        // Unfortunately, HashMap does not have set operations.
+        let mut candidate = None;
+        for (k, v) in &self.0 {
+            // Could be simplified if we could create a bottom value here.
+            if let Some(other_v) = other.0.get(k) {
+                match (candidate, v.partial_cmp(other_v)) {
+                    // If not comparable at a point, the maps are also not comparable.
+                    (_, None) => return None,
+                    // Equal elements will not influence the comparison result.
+                    (_, Some(Ordering::Equal)) => continue,
+                    // The ordering if this element is in agreement with the ordering of others.
+                    (Some(o1), Some(o2)) if o1 == o2 => continue,
+                    // Contradiction found, maps are not comparable.
+                    (Some(_), Some(_)) => continue,
+                    // Found the first non-equal element, set the candidate ordering.
+                    (None, cmp_result) => candidate = cmp_result,
+                };
+            } else if candidate.is_none() {
+                // Non-existent key in the other map, non-existent key compares smaller than
+                // bottom.
+                candidate = Some(Ordering::Greater);
+            } else if candidate != Some(Ordering::Greater) {
+                // Contradiction with the candidate ordering.
+                return None;
+            }
+        }
+        for k in other.0.keys() {
+            if self.0.contains_key(k) {
+                continue;
+            }
+            if candidate.is_none() || candidate == Some(Ordering::Less) {
+                return Some(Ordering::Less);
+            } else {
+                return None;
+            }
+        }
+        candidate
+    }
+}
+
+impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> JoinSemiLattice for Map<K, V> {
+    type LatticeContext = MapCtx<K, V>;
+
+    fn bottom(_ctx: &Self::LatticeContext) -> Self {
+        Self(HashMap::new())
+    }
+
+    fn join(&self, other: &Self) -> Self {
+        let mut result = HashMap::new();
+        for (k, v) in &self.0 {
+            if let Some(other_v) = other.0.get(k) {
+                result.insert(k.clone(), v.join(other_v));
+            } else {
+                result.insert(k.clone(), v.clone());
+            }
+        }
+        for (k, v) in &other.0 {
+            if self.0.contains_key(k) {
+                continue;
+            }
+            result.insert(k.clone(), v.clone());
+        }
+        Self(result)
+    }
+
+    fn widen(&self, previous: &Self, iteration: usize) -> Self {
+        let mut result = HashMap::new();
+        for (k, v) in &self.0 {
+            if let Some(prev_v) = previous.0.get(k) {
+                result.insert(k.clone(), v.widen(prev_v, iteration));
+            }
+            // Leave out new elements since the previous iteration to avoid
+            // unbounded growth. Note that this is not correct. We probably want
+            // to insert top for those elements instead, but the current framework
+            // provides a widen even when a lattice has no top element. This might
+            // change in the future.
+        }
+        Self(result)
+    }
+}
+
+impl<K: Eq + Clone + Hash + Debug, V: Lattice> Lattice for Map<K, V> {
+    fn top(ctx: &Self::LatticeContext) -> Self {
+        let mut result = HashMap::new();
+        for k in &ctx.0 {
+            result.insert(k.clone(), V::top(&ctx.1));
+        }
+        Self(result)
+    }
+
+    fn meet(&self, other: &Self) -> Self {
+        let mut result = HashMap::new();
+        for (k, v) in &self.0 {
+            if let Some(other_v) = other.0.get(k) {
+                result.insert(k.clone(), v.meet(other_v));
+            }
+        }
+        Self(result)
     }
 }
 
