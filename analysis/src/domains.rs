@@ -63,6 +63,28 @@ impl Lattice for () {
     fn meet(&self, _: &Self) -> Self {}
 }
 
+impl JoinSemiLattice for bool {
+    type LatticeContext = ();
+
+    fn bottom(_ctx: &Self::LatticeContext) -> Self {
+        false
+    }
+
+    fn join(&self, other: &Self) -> Self {
+        *self || *other
+    }
+}
+
+impl Lattice for bool {
+    fn top(_ctx: &Self::LatticeContext) -> Self {
+        true
+    }
+
+    fn meet(&self, other: &Self) -> Self {
+        *self && *other
+    }
+}
+
 #[derive(PartialEq, Eq, Clone)]
 pub struct PowerSetDomain<T: Eq + Hash>(pub HashSet<T>);
 

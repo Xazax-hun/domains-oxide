@@ -12,11 +12,64 @@ use paste::paste;
 // * Stacking
 // * Lifting
 // * Finite lattices
-// * Flat
 
 // TODO:
 // Add more general building blocks for finite domains and
 // port SignDomain to those facilities.
+
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub enum Flat<T: Eq + Clone + Debug> {
+    Top,
+    Element(T),
+    Bottom,
+}
+
+impl<T: Eq + Clone + Debug> PartialOrd for Flat<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if self == other {
+            return Some(Ordering::Equal);
+        }
+        if *self == Flat::Top || *other == Flat::Bottom {
+            return Some(Ordering::Greater);
+        }
+        if *self == Flat::Bottom || *other == Flat::Top {
+            return Some(Ordering::Less);
+        }
+        None
+    }
+}
+
+impl<T: Eq + Clone + Debug> JoinSemiLattice for Flat<T> {
+    type LatticeContext = ();
+
+    fn bottom(_ctx: &Self::LatticeContext) -> Self {
+        Flat::Bottom
+    }
+
+    fn join(&self, other: &Self) -> Self {
+        match (self, other) {
+            (_, &Flat::Bottom) => self.clone(),
+            (&Flat::Bottom, _) => other.clone(),
+            (_, _) if self == other => other.clone(),
+            _ => Flat::Top,
+        }
+    }
+}
+
+impl<T: Eq + Clone + Debug> Lattice for Flat<T> {
+    fn top(_ctx: &Self::LatticeContext) -> Self {
+        Flat::Top
+    }
+
+    fn meet(&self, other: &Self) -> Self {
+        match (self, other) {
+            (_, &Flat::Top) => self.clone(),
+            (&Flat::Top, _) => other.clone(),
+            (_, _) if self == other => other.clone(),
+            _ => Flat::Bottom,
+        }
+    }
+}
 
 #[derive(PartialEq, Eq, PartialOrd, Clone)]
 pub struct Vec2Domain<T: JoinSemiLattice> {

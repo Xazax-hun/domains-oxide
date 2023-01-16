@@ -291,6 +291,50 @@ fn product_domain_test() {
     assert!(top > a);
     assert!(bottom < a);
     assert!(!(b > a));
+    assert!(!(b < a));
     assert!(c > a);
+    assert!(a == a);
+    assert_eq!(a.join(&b), Prod3(SignDomain::Top, (), BitSetDomain::from(&bit_ctx, &[1])));
+    assert_eq!(a.meet(&c), Prod3(SignDomain::Zero, (), BitSetDomain::from(&bit_ctx, &[1])));
+    assert_eq!(b.meet(&c), Prod3(SignDomain::Zero, (), BitSetDomain::bottom(&bit_ctx)));
     assert_eq!(format!("{top:?}"), "Prod3(Top, (), {0, 1})");
+}
+
+#[test]
+fn flat_domain_test() {
+    let bottom = Flat::bottom(&());
+    let top = Flat::top(&());
+    let a = Flat::Element(5);
+    let b = Flat::Element(3);
+
+    assert!(top > bottom);
+    assert!(top > a);
+    assert!(bottom < a);
+    assert!(a == a);
+    assert!(a != b);
+    assert!(!(a < b));
+    assert!(!(a > b));
+    assert_eq!(a.join(&b), top);
+    assert_eq!(a.meet(&b), bottom);
+    assert_eq!(a.join(&a), a);
+    assert_eq!(a.meet(&a), a);
+    assert_eq!(format!("{top:?}"), "Top");
+    assert_eq!(format!("{a:?}"), "Element(5)");
+    assert_eq!(format!("{bottom:?}"), "Bottom");
+}
+
+#[test]
+fn bool_domain_test() {
+    let bottom = bool::bottom(&());
+    let top = bool::top(&());
+
+    assert!(top > bottom);
+    assert!(top == top);
+    assert!(bottom == bottom);
+    assert_eq!(top.join(&bottom), top);
+    assert_eq!(top.meet(&bottom), bottom);
+    assert_eq!(top.join(&top), top);
+    assert_eq!(top.meet(&top), top);
+    assert_eq!(bottom.join(&bottom), bottom);
+    assert_eq!(bottom.meet(&bottom), bottom);
 }
