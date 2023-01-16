@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::usize;
 
 use super::cfg::*;
-use super::domains::*;
 use super::solvers::*;
 
 #[derive(Default, Clone)]
@@ -330,7 +329,7 @@ fn basic_solver_visit_nodes() {
     let mut visited = Vec::new();
 
     let solver = SolveMonotone::default();
-    let result = solver.transfer_blocks(&cfg, &(), &mut |id, _, _, &dom: &UnitDomain| {
+    let result = solver.transfer_blocks(&cfg, &(), &mut |id, _, _, &dom: &()| {
         visited.push(id);
         dom
     });

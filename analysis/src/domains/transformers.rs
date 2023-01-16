@@ -1,4 +1,5 @@
 use crate::domains::*;
+use paste::paste;
 
 /////////////////////////
 // Domain transformers //
@@ -6,12 +7,12 @@ use crate::domains::*;
 
 // TODO:
 // Add operations to built lattices
-// * Product, Pair
 // * Reduced product
 // * Disjoint union
 // * Stacking
 // * Lifting
 // * Finite lattices
+// * Flat
 
 // TODO:
 // Add more general building blocks for finite domains and
@@ -94,3 +95,77 @@ impl<T: Lattice> Lattice for Flipped<T> {
         Self(self.0.join(&other.0))
     }
 }
+
+///////////////////////////////////////
+// Product lattices up to 5 elements //
+///////////////////////////////////////
+
+macro_rules! tuple_join_semi_lattice {
+    ( $prod:ident $( $name:ident )+ ) => {
+        paste! {
+            #[derive(Clone, PartialEq, Eq, Debug)]
+            pub struct $prod<$($name: JoinSemiLattice),+>($(pub $name,)+);
+
+            impl<$($name: JoinSemiLattice),+> PartialOrd for $prod<$($name),+> {
+                fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                    if self == other {
+                        return Some(Ordering::Equal);
+                    }
+                    let $prod($([<$name:lower 1>],)+) = self;
+                    let $prod($([<$name:lower 2>],)+) = other;
+                    if $([<$name:lower 1>] <= [<$name:lower 2>] && )* true {
+                        return Some(Ordering::Less);
+                    }
+                    if $([<$name:lower 1>] >= [<$name:lower 2>] && )* true {
+                        return Some(Ordering::Greater);
+                    }
+                    None
+                }
+            }
+
+            impl<$($name: JoinSemiLattice),+> JoinSemiLattice for $prod<$($name,)+>
+            {
+                type LatticeContext = ($($name::LatticeContext,)+);
+
+                fn bottom(ctx: &Self::LatticeContext) -> Self {
+                    let ($([<$name:lower 1>],)+) = ctx;
+                    $prod($($name::bottom([<$name:lower 1>]),)+)
+                }
+
+                fn join(&self, other: &Self) -> Self {
+                    let $prod($([<$name:lower 1>],)+) = self;
+                    let $prod($([<$name:lower 2>],)+) = other;
+                    $prod($([<$name:lower 1>].join([<$name:lower 2>]),)*)
+                }
+
+                fn widen(&self, previous: &Self, iteration: usize) -> Self {
+                    let $prod($([<$name:lower 1>],)+) = self;
+                    let $prod($([<$name:lower 2>],)+) = previous;
+                    $prod(
+                    $([<$name:lower 1>].widen([<$name:lower 2>], iteration),)*
+                    )
+                }
+            }
+
+            impl<$($name: Lattice),+> Lattice for $prod<$($name,)+>
+            {
+                fn top(ctx: &Self::LatticeContext) -> Self {
+                    let ($([<$name:lower 1>],)+) = ctx;
+                    $prod($($name::top([<$name:lower 1>]),)+)
+                }
+
+                fn meet(&self, other: &Self) -> Self {
+                    let $prod($([<$name:lower 1>],)+) = self;
+                    let $prod($([<$name:lower 2>],)+) = other;
+                    $prod($([<$name:lower 1>].meet([<$name:lower 2>]),)*)
+                }
+            }
+        }
+    };
+}
+
+tuple_join_semi_lattice!(Prod1 D1);
+tuple_join_semi_lattice!(Prod2 D1 D2);
+tuple_join_semi_lattice!(Prod3 D1 D2 D3);
+tuple_join_semi_lattice!(Prod4 D1 D2 D3 D4);
+tuple_join_semi_lattice!(Prod5 D1 D2 D3 D4 D5);

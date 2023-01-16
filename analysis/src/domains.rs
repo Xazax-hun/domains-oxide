@@ -49,29 +49,18 @@ pub trait Lattice: JoinSemiLattice {
 // Concrete domain implementations //
 /////////////////////////////////////
 
-#[derive(PartialEq, Eq, PartialOrd, Clone, Copy, Debug)]
-pub struct UnitDomain;
-
-impl JoinSemiLattice for UnitDomain {
+impl JoinSemiLattice for () {
     type LatticeContext = ();
 
-    fn bottom(_: &Self::LatticeContext) -> Self {
-        Self
-    }
+    fn bottom(_: &Self::LatticeContext) -> Self {}
 
-    fn join(&self, _: &Self) -> Self {
-        Self
-    }
+    fn join(&self, _: &Self) -> Self {}
 }
 
-impl Lattice for UnitDomain {
-    fn top(_: &Self::LatticeContext) -> Self {
-        Self
-    }
+impl Lattice for () {
+    fn top(_: &Self::LatticeContext) -> Self {}
 
-    fn meet(&self, _: &Self) -> Self {
-        Self
-    }
+    fn meet(&self, _: &Self) -> Self {}
 }
 
 #[derive(PartialEq, Eq, Clone)]
@@ -135,6 +124,7 @@ impl<T: Eq + Hash + Debug + Clone> Lattice for PowerSetDomain<T> {
 #[derive(PartialEq, Eq, Clone)]
 pub struct BitSetDomain(pub FixedBitSet);
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BitSetTop(pub usize);
 
 impl BitSetDomain {

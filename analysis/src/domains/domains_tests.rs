@@ -275,3 +275,22 @@ fn flipped_sign_domain_tests() {
     // Pretty printing
     assert_eq!(format!("{bottom:?}"), "Flipped(Bottom)");
 }
+
+#[test]
+fn product_domain_test() {
+    type MyDomain = Prod3<SignDomain, (), BitSetDomain>;
+    let bit_ctx = BitSetTop(2);
+    let ctx = ((), (), bit_ctx);
+    let bottom = MyDomain::bottom(&ctx);
+    let top = MyDomain::top(&ctx);
+    let a = Prod3(SignDomain::Zero, (), BitSetDomain::from(&bit_ctx, &[1]));
+    let b = Prod3(SignDomain::Top, (), BitSetDomain::bottom(&bit_ctx));
+    let c = Prod3(SignDomain::Zero, (), BitSetDomain::from(&bit_ctx, &[0, 1]));
+
+    assert!(top > bottom);
+    assert!(top > a);
+    assert!(bottom < a);
+    assert!(!(b > a));
+    assert!(c > a);
+    assert_eq!(format!("{top:?}"), "Prod3(Top, (), {0, 1})");
+}
