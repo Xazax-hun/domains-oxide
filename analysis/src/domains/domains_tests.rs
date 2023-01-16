@@ -294,9 +294,18 @@ fn product_domain_test() {
     assert!(!(b < a));
     assert!(c > a);
     assert!(a == a);
-    assert_eq!(a.join(&b), Prod3(SignDomain::Top, (), BitSetDomain::from(&bit_ctx, &[1])));
-    assert_eq!(a.meet(&c), Prod3(SignDomain::Zero, (), BitSetDomain::from(&bit_ctx, &[1])));
-    assert_eq!(b.meet(&c), Prod3(SignDomain::Zero, (), BitSetDomain::bottom(&bit_ctx)));
+    assert_eq!(
+        a.join(&b),
+        Prod3(SignDomain::Top, (), BitSetDomain::from(&bit_ctx, &[1]))
+    );
+    assert_eq!(
+        a.meet(&c),
+        Prod3(SignDomain::Zero, (), BitSetDomain::from(&bit_ctx, &[1]))
+    );
+    assert_eq!(
+        b.meet(&c),
+        Prod3(SignDomain::Zero, (), BitSetDomain::bottom(&bit_ctx))
+    );
     assert_eq!(format!("{top:?}"), "Prod3(Top, (), {0, 1})");
 }
 
@@ -337,4 +346,34 @@ fn bool_domain_test() {
     assert_eq!(top.meet(&top), top);
     assert_eq!(bottom.join(&bottom), bottom);
     assert_eq!(bottom.meet(&bottom), bottom);
+}
+
+#[test]
+fn natural_domain_test() {
+    let bottom = u64::bottom(&());
+
+    assert!(5 > bottom);
+    assert_eq!(bottom.join(&bottom), bottom);
+    assert_eq!(bottom.join(&5), bottom);
+    assert_eq!(5.join(&3), 3);
+}
+
+#[test]
+fn lifted_domain_test() {
+    let bottom = Lift::<bool>::bottom(&());
+    let false_val = Lift::Element(false);
+    let true_val = Lift::Element(true);
+
+    assert!(false_val > bottom);
+    assert!(true_val > bottom);
+    assert!(true_val > false_val);
+    assert_eq!(bottom, bottom);
+    assert_eq!(true_val, true_val);
+    assert_eq!(bottom.join(&bottom), bottom);
+    assert_eq!(bottom.join(&true_val), true_val);
+    assert_eq!(bottom.meet(&true_val), bottom);
+    assert_eq!(false_val.join(&true_val), true_val);
+    assert_eq!(false_val.meet(&true_val), false_val);
+    assert_eq!(format!("{bottom:?}"), "Bottom");
+    assert_eq!(format!("{true_val:?}"), "Element(true)");
 }

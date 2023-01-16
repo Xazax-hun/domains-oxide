@@ -85,6 +85,18 @@ impl Lattice for bool {
     }
 }
 
+impl JoinSemiLattice for u64 {
+    type LatticeContext = ();
+
+    fn bottom(_ctx: &Self::LatticeContext) -> Self {
+        0
+    }
+
+    fn join(&self, other: &Self) -> Self {
+        *self.min(other)
+    }
+}
+
 #[derive(PartialEq, Eq, Clone)]
 pub struct PowerSetDomain<T: Eq + Hash>(pub HashSet<T>);
 

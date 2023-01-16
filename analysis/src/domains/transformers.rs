@@ -7,10 +7,10 @@ use paste::paste;
 
 // TODO:
 // Add operations to built lattices
+// * Map lattice
 // * Reduced product
 // * Disjoint union
 // * Stacking
-// * Lifting
 // * Finite lattices
 
 // TODO:
@@ -67,6 +67,66 @@ impl<T: Eq + Clone + Debug> Lattice for Flat<T> {
             (&Flat::Top, _) => other.clone(),
             (_, _) if self == other => other.clone(),
             _ => Flat::Bottom,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Lift<T: JoinSemiLattice> {
+    Element(T),
+    Bottom,
+}
+
+impl<T: JoinSemiLattice> PartialOrd for Lift<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if self == other {
+            return Some(Ordering::Equal);
+        }
+        match (self, other) {
+            (&Lift::Bottom, _) => Some(Ordering::Less),
+            (_, &Lift::Bottom) => Some(Ordering::Greater),
+            (Lift::Element(s), Lift::Element(o)) => s.partial_cmp(o),
+        }
+    }
+}
+
+impl<T: JoinSemiLattice> JoinSemiLattice for Lift<T> {
+    type LatticeContext = T::LatticeContext;
+
+    fn bottom(_ctx: &Self::LatticeContext) -> Self {
+        Lift::Bottom
+    }
+
+    fn join(&self, other: &Self) -> Self {
+        match (self, other) {
+            (&Lift::Bottom, _) => other.clone(),
+            (_, &Lift::Bottom) => self.clone(),
+            (Lift::Element(s), Lift::Element(o)) => Lift::Element(s.join(o)),
+        }
+    }
+
+    fn widen(&self, previous: &Self, iteration: usize) -> Self {
+        if let Lift::Element(inner) = self {
+            if let Lift::Element(prev) = previous {
+                Lift::Element(inner.widen(prev, iteration))
+            } else {
+                self.clone()
+            }
+        } else {
+            Lift::Bottom
+        }
+    }
+}
+
+impl<T: Lattice> Lattice for Lift<T> {
+    fn top(ctx: &Self::LatticeContext) -> Self {
+        Lift::Element(T::top(ctx))
+    }
+
+    fn meet(&self, other: &Self) -> Self {
+        match (self, other) {
+            (&Lift::Bottom, _) | (_, &Lift::Bottom) => Lift::Bottom,
+            (Lift::Element(s), Lift::Element(o)) => Lift::Element(s.meet(o)),
         }
     }
 }
