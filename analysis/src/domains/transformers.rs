@@ -11,7 +11,6 @@ use paste::paste;
 // Add operations to build lattices
 // * Reduced product
 // * Disjoint union
-// * Stacking
 // * Finite lattices
 // * Immutable versions of the containers
 
@@ -345,7 +344,7 @@ impl<K: Eq + Clone + Hash + Debug, V: Lattice> Lattice for Map<K, V> {
 // Product lattices up to 5 elements //
 ///////////////////////////////////////
 
-macro_rules! tuple_join_semi_lattice {
+macro_rules! tuple_lattice {
     ( $prod:ident $( $name:ident )+ ) => {
         paste! {
             #[derive(Clone, PartialEq, Eq, Debug)]
@@ -409,8 +408,89 @@ macro_rules! tuple_join_semi_lattice {
     };
 }
 
-tuple_join_semi_lattice!(Prod1 D1);
-tuple_join_semi_lattice!(Prod2 D1 D2);
-tuple_join_semi_lattice!(Prod3 D1 D2 D3);
-tuple_join_semi_lattice!(Prod4 D1 D2 D3 D4);
-tuple_join_semi_lattice!(Prod5 D1 D2 D3 D4 D5);
+tuple_lattice!(Prod1 D1);
+tuple_lattice!(Prod2 D1 D2);
+tuple_lattice!(Prod3 D1 D2 D3);
+tuple_lattice!(Prod4 D1 D2 D3 D4);
+tuple_lattice!(Prod5 D1 D2 D3 D4 D5);
+
+
+/////////////////////////////////////
+// Stack lattices up to 5 elements //
+/////////////////////////////////////
+
+macro_rules! stack_lattice {
+    ( $stack:ident $top:tt $( $name:tt )+ ) => {
+        paste! {
+            #[derive(Clone, PartialEq, Eq, Debug, PartialOrd)]
+            pub enum $stack<$([<T $name>]: JoinSemiLattice),+>{
+                Bottom,
+                $([<S $name>]([<T $name>])),+
+            }
+
+            impl<$([<T $name>]: JoinSemiLattice),+> JoinSemiLattice
+                for $stack<$([<T $name>],)+>
+            {
+                type LatticeContext = [<T $top>]::LatticeContext;
+
+                fn bottom(_ctx: &Self::LatticeContext) -> Self {
+                    $stack::Bottom
+                }
+
+                fn join(&self, other: &Self) -> Self {
+                    if std::mem::discriminant(self) == std::mem::discriminant(other) {
+                        match (self, other) {
+                            $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) => 
+                                $stack::[<S $name>]([<s $name 1>].join([<s $name 2>]))),+,
+                            _ => panic!("Unexpected combination"),
+                        }
+                    } else if self < other {
+                        other.clone()
+                    } else {
+                        self.clone()
+                    }
+                }
+
+                fn widen(&self, previous: &Self, iteration: usize) -> Self {
+                    if std::mem::discriminant(self) == std::mem::discriminant(previous) {
+                        match (self, previous) {
+                            $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) => 
+                                $stack::[<S $name>]([<s $name 1>].widen([<s $name 2>], iteration))),+,
+                            _ => panic!("Unexpected combination"),
+                        }
+                    } else {
+                        self.clone()
+                    }
+                }
+            }
+
+            impl<$([<T $name>]: Lattice),+> Lattice
+                for $stack<$([<T $name>],)+>
+            {
+                fn top(ctx: &Self::LatticeContext) -> Self {
+                    $stack::[<S $top>]([<T $top>]::top(ctx))
+                }
+
+                fn meet(&self, other: &Self) -> Self {
+                    if std::mem::discriminant(self) == std::mem::discriminant(other) {
+                        match (self, other) {
+                            $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) => 
+                                $stack::[<S $name>]([<s $name 1>].meet([<s $name 2>]))),+,
+                            _ => panic!("Unexpected combination"),
+                        }
+                    } else if self > other {
+                        other.clone()
+                    } else {
+                        self.clone()
+                    }
+                }
+            }
+        }
+    };
+}
+
+stack_lattice!(Stack2 2 1 2);
+stack_lattice!(Stack3 3 1 2 3);
+stack_lattice!(Stack4 4 1 2 3 4);
+stack_lattice!(Stack5 5 1 2 3 4 5);
+
