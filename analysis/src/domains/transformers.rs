@@ -10,7 +10,6 @@ use paste::paste;
 // TODO:
 // Add operations to build lattices
 // * Reduced product
-// * Disjoint union
 // * Finite lattices
 // * Immutable versions of the containers
 
@@ -438,28 +437,19 @@ macro_rules! stack_lattice {
                 }
 
                 fn join(&self, other: &Self) -> Self {
-                    if std::mem::discriminant(self) == std::mem::discriminant(other) {
-                        match (self, other) {
-                            $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) => 
-                                $stack::[<S $name>]([<s $name 1>].join([<s $name 2>]))),+,
-                            _ => panic!("Unexpected combination"),
-                        }
-                    } else if self < other {
-                        other.clone()
-                    } else {
-                        self.clone()
+                    match (self, other) {
+                        $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) => 
+                            $stack::[<S $name>]([<s $name 1>].join([<s $name 2>]))),+,
+                        _ if self < other => other.clone(),
+                        _ => self.clone()
                     }
                 }
 
                 fn widen(&self, previous: &Self, iteration: usize) -> Self {
-                    if std::mem::discriminant(self) == std::mem::discriminant(previous) {
-                        match (self, previous) {
-                            $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) => 
-                                $stack::[<S $name>]([<s $name 1>].widen([<s $name 2>], iteration))),+,
-                            _ => panic!("Unexpected combination"),
-                        }
-                    } else {
-                        self.clone()
+                    match (self, previous) {
+                        $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) => 
+                            $stack::[<S $name>]([<s $name 1>].widen([<s $name 2>], iteration))),+,
+                        _ => self.clone(),
                     }
                 }
             }
@@ -472,16 +462,11 @@ macro_rules! stack_lattice {
                 }
 
                 fn meet(&self, other: &Self) -> Self {
-                    if std::mem::discriminant(self) == std::mem::discriminant(other) {
-                        match (self, other) {
-                            $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) => 
-                                $stack::[<S $name>]([<s $name 1>].meet([<s $name 2>]))),+,
-                            _ => panic!("Unexpected combination"),
-                        }
-                    } else if self > other {
-                        other.clone()
-                    } else {
-                        self.clone()
+                    match (self, other) {
+                        $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) => 
+                            $stack::[<S $name>]([<s $name 1>].meet([<s $name 2>]))),+,
+                        _ if self > other => other.clone(),
+                        _ => self.clone()
                     }
                 }
             }
@@ -494,3 +479,90 @@ stack_lattice!(Stack3 3 1 2 3);
 stack_lattice!(Stack4 4 1 2 3 4);
 stack_lattice!(Stack5 5 1 2 3 4 5);
 
+
+//////////////////////////////////////////////
+// Disjoint union lattices up to 5 elements //
+//////////////////////////////////////////////
+
+macro_rules! distjoint_union_lattice {
+    ( $union:ident $( $name:tt )+ ) => {
+        paste! {
+            #[derive(Clone, PartialEq, Eq, Debug)]
+            pub enum $union<$([<T $name>]: JoinSemiLattice),+>{
+                Bottom,
+                $([<U $name>]([<T $name>])),+,
+                Top
+            }
+
+            impl<$([<T $name>]: JoinSemiLattice),+> PartialOrd
+                for $union<$([<T $name>],)+> {
+                    
+                fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                    if self == other {
+                        return Some(Ordering::Equal);
+                    }
+                    match (self, other) {
+                        $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) => 
+                            [<u $name 1>].partial_cmp([<u $name 2>])),+,
+                        ($union::Bottom, _) => Some(Ordering::Less),
+                        ($union::Top, _) => Some(Ordering::Greater),
+                        (_, $union::Bottom) => Some(Ordering::Greater),
+                        (_, $union::Top) => Some(Ordering::Less),
+                        _ => None,
+                    }
+                }
+            }
+
+            impl<$([<T $name>]: JoinSemiLattice),+> JoinSemiLattice
+                for $union<$([<T $name>],)+>
+            {
+                type LatticeContext = ();
+
+                fn bottom(_ctx: &Self::LatticeContext) -> Self {
+                    $union::Bottom
+                }
+
+                fn join(&self, other: &Self) -> Self {
+                    match (self, other) {
+                        ($union::Bottom, _) => other.clone(),
+                        (_, $union::Bottom) => self.clone(),
+                        $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) => 
+                            $union::[<U $name>]([<u $name 1>].join([<u $name 2>]))),+,
+                        _ => $union::Top
+                    }
+                }
+
+                fn widen(&self, previous: &Self, iteration: usize) -> Self {
+                    match (self, previous) {
+                        $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) => 
+                            $union::[<U $name>]([<u $name 1>].widen([<u $name 2>], iteration))),+,
+                        _ => self.clone(),
+                    }
+                }
+            }
+
+            impl<$([<T $name>]: Lattice),+> Lattice
+                for $union<$([<T $name>],)+>
+            {
+                fn top(_ctx: &Self::LatticeContext) -> Self {
+                    $union::Top
+                }
+
+                fn meet(&self, other: &Self) -> Self {
+                    match (self, other) {
+                        ($union::Top, _) => other.clone(),
+                        (_, $union::Top) => self.clone(),
+                        $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) => 
+                            $union::[<U $name>]([<u $name 1>].meet([<u $name 2>]))),+,
+                        _ => $union::Bottom,
+                    }
+                }
+            }
+        }
+    };
+}
+
+distjoint_union_lattice!(Union2 1 2);
+distjoint_union_lattice!(Union3 1 2 3);
+distjoint_union_lattice!(Union4 1 2 3 4);
+distjoint_union_lattice!(Union5 1 2 3 4 5);

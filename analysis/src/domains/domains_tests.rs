@@ -439,8 +439,10 @@ fn stack_domain_test() {
     assert!(top > bottom);
     assert!(top > a);
     assert!(a > bottom);
+    assert!(a == a);
     assert!(!(a < b));
     assert!(!(a > b));
+    assert!(a < e);
     assert!(d < e);
     assert_eq!(a.join(&top), top);
     assert_eq!(a.join(&bottom), a);
@@ -456,4 +458,40 @@ fn stack_domain_test() {
     assert_eq!(format!("{top:?}"), "S2([-inf, inf])");
     assert_eq!(format!("{a:?}"), "S1(Negative)");
     assert_eq!(format!("{e:?}"), "S2([4, 13])");
+}
+
+#[test]
+fn union_domain_test() {
+    type MyDomain = Union2<SignDomain, IntervalDomain>;
+    let bottom = MyDomain::bottom(&());
+    let top = MyDomain::top(&());
+    let a = MyDomain::U1(SignDomain::Negative);
+    let b = MyDomain::U1(SignDomain::Positive);
+    let c = MyDomain::U2(IntervalDomain { min: 5, max: 10 });
+    let d = MyDomain::U2(IntervalDomain { min: 8, max: 12 });
+    let e = MyDomain::U2(IntervalDomain { min: 4, max: 13 });
+
+    assert!(top > bottom);
+    assert!(top > a);
+    assert!(a > bottom);
+    assert!(a == a);
+    assert!(!(a < b));
+    assert!(!(a > b));
+    assert!(d < e);
+    assert!(!(a < e));
+    assert!(!(a > e));
+    assert_eq!(a.join(&top), top);
+    assert_eq!(a.join(&bottom), a);
+    assert_eq!(a.meet(&top), a);
+    assert_eq!(a.meet(&bottom), bottom);
+    assert_eq!(a.join(&b), MyDomain::U1(SignDomain::Top));
+    assert_eq!(a.join(&c), top);
+    assert_eq!(a.meet(&c), bottom);
+    assert_eq!(c.join(&d), MyDomain::U2(IntervalDomain { min: 5, max: 12 }));
+    assert_eq!(c.meet(&d), MyDomain::U2(IntervalDomain { min: 8, max: 10 }));
+
+    assert_eq!(format!("{bottom:?}"), "Bottom");
+    assert_eq!(format!("{top:?}"), "Top");
+    assert_eq!(format!("{a:?}"), "U1(Negative)");
+    assert_eq!(format!("{e:?}"), "U2([4, 13])");
 }
