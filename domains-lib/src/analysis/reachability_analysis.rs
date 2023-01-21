@@ -39,9 +39,9 @@ pub fn collect_operation_kind(
 ) -> OperationKindsDomain {
     let mut result = pre_state.clone();
     match op {
-        Operation::Init(_) => result.0.insert(OpKind::Init),
-        Operation::Translation(_) => result.0.insert(OpKind::Translation),
-        Operation::Rotation(_) => result.0.insert(OpKind::Rotation),
+        Operation::Init(_) => result.insert(OpKind::Init),
+        Operation::Translation(_) => result.insert(OpKind::Translation),
+        Operation::Rotation(_) => result.insert(OpKind::Rotation),
     };
     result
 }

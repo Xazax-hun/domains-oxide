@@ -424,7 +424,6 @@ fn map_domain_test() {
     );
 }
 
-
 #[test]
 fn stack_domain_test() {
     type MyDomain = Stack2<SignDomain, IntervalDomain>;

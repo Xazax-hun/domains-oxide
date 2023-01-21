@@ -221,10 +221,23 @@ pub struct MapCtx<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice>(
     pub V::LatticeContext,
 );
 
+impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> Deref for Map<K, V> {
+    type Target = HashMap<K, V>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> DerefMut for Map<K, V> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> Debug for Map<K, V> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let mut elements = self
-            .0
             .iter()
             .map(|x| format!("{x:?}"))
             .collect::<Vec<String>>();
@@ -242,7 +255,7 @@ impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> PartialOrd for Map<K, V> 
         let mut candidate = None;
         for (k, v) in &self.0 {
             // Could be simplified if we could create a bottom value here.
-            if let Some(other_v) = other.0.get(k) {
+            if let Some(other_v) = other.get(k) {
                 match (candidate, v.partial_cmp(other_v)) {
                     // If not comparable at a point, the maps are also not comparable.
                     (_, None) => return None,
@@ -264,8 +277,8 @@ impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> PartialOrd for Map<K, V> 
                 return None;
             }
         }
-        for k in other.0.keys() {
-            if self.0.contains_key(k) {
+        for k in other.keys() {
+            if self.contains_key(k) {
                 continue;
             }
             if candidate.is_none() || candidate == Some(Ordering::Less) {
@@ -288,14 +301,14 @@ impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> JoinSemiLattice for Map<K
     fn join(&self, other: &Self) -> Self {
         let mut result = HashMap::new();
         for (k, v) in &self.0 {
-            if let Some(other_v) = other.0.get(k) {
+            if let Some(other_v) = other.get(k) {
                 result.insert(k.clone(), v.join(other_v));
             } else {
                 result.insert(k.clone(), v.clone());
             }
         }
         for (k, v) in &other.0 {
-            if self.0.contains_key(k) {
+            if self.contains_key(k) {
                 continue;
             }
             result.insert(k.clone(), v.clone());
@@ -306,7 +319,7 @@ impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> JoinSemiLattice for Map<K
     fn widen(&self, previous: &Self, iteration: usize) -> Self {
         let mut result = HashMap::new();
         for (k, v) in &self.0 {
-            if let Some(prev_v) = previous.0.get(k) {
+            if let Some(prev_v) = previous.get(k) {
                 result.insert(k.clone(), v.widen(prev_v, iteration));
             }
             // Leave out new elements since the previous iteration to avoid
@@ -331,7 +344,7 @@ impl<K: Eq + Clone + Hash + Debug, V: Lattice> Lattice for Map<K, V> {
     fn meet(&self, other: &Self) -> Self {
         let mut result = HashMap::new();
         for (k, v) in &self.0 {
-            if let Some(other_v) = other.0.get(k) {
+            if let Some(other_v) = other.get(k) {
                 result.insert(k.clone(), v.meet(other_v));
             }
         }
@@ -413,7 +426,6 @@ tuple_lattice!(Prod3 D1 D2 D3);
 tuple_lattice!(Prod4 D1 D2 D3 D4);
 tuple_lattice!(Prod5 D1 D2 D3 D4 D5);
 
-
 /////////////////////////////////////
 // Stack lattices up to 5 elements //
 /////////////////////////////////////
@@ -438,7 +450,7 @@ macro_rules! stack_lattice {
 
                 fn join(&self, other: &Self) -> Self {
                     match (self, other) {
-                        $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) => 
+                        $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) =>
                             $stack::[<S $name>]([<s $name 1>].join([<s $name 2>]))),+,
                         _ if self < other => other.clone(),
                         _ => self.clone()
@@ -447,7 +459,7 @@ macro_rules! stack_lattice {
 
                 fn widen(&self, previous: &Self, iteration: usize) -> Self {
                     match (self, previous) {
-                        $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) => 
+                        $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) =>
                             $stack::[<S $name>]([<s $name 1>].widen([<s $name 2>], iteration))),+,
                         _ => self.clone(),
                     }
@@ -463,7 +475,7 @@ macro_rules! stack_lattice {
 
                 fn meet(&self, other: &Self) -> Self {
                     match (self, other) {
-                        $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) => 
+                        $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) =>
                             $stack::[<S $name>]([<s $name 1>].meet([<s $name 2>]))),+,
                         _ if self > other => other.clone(),
                         _ => self.clone()
@@ -478,7 +490,6 @@ stack_lattice!(Stack2 2 1 2);
 stack_lattice!(Stack3 3 1 2 3);
 stack_lattice!(Stack4 4 1 2 3 4);
 stack_lattice!(Stack5 5 1 2 3 4 5);
-
 
 //////////////////////////////////////////////
 // Disjoint union lattices up to 5 elements //
@@ -496,13 +507,13 @@ macro_rules! distjoint_union_lattice {
 
             impl<$([<T $name>]: JoinSemiLattice),+> PartialOrd
                 for $union<$([<T $name>],)+> {
-                    
+
                 fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
                     if self == other {
                         return Some(Ordering::Equal);
                     }
                     match (self, other) {
-                        $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) => 
+                        $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) =>
                             [<u $name 1>].partial_cmp([<u $name 2>])),+,
                         ($union::Bottom, _) => Some(Ordering::Less),
                         ($union::Top, _) => Some(Ordering::Greater),
@@ -526,7 +537,7 @@ macro_rules! distjoint_union_lattice {
                     match (self, other) {
                         ($union::Bottom, _) => other.clone(),
                         (_, $union::Bottom) => self.clone(),
-                        $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) => 
+                        $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) =>
                             $union::[<U $name>]([<u $name 1>].join([<u $name 2>]))),+,
                         _ => $union::Top
                     }
@@ -534,7 +545,7 @@ macro_rules! distjoint_union_lattice {
 
                 fn widen(&self, previous: &Self, iteration: usize) -> Self {
                     match (self, previous) {
-                        $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) => 
+                        $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) =>
                             $union::[<U $name>]([<u $name 1>].widen([<u $name 2>], iteration))),+,
                         _ => self.clone(),
                     }
@@ -552,7 +563,7 @@ macro_rules! distjoint_union_lattice {
                     match (self, other) {
                         ($union::Top, _) => other.clone(),
                         (_, $union::Top) => self.clone(),
-                        $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) => 
+                        $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) =>
                             $union::[<U $name>]([<u $name 1>].meet([<u $name 2>]))),+,
                         _ => $union::Bottom,
                     }

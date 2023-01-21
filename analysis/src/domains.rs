@@ -1,8 +1,7 @@
 use core::cmp::Ordering;
 use core::fmt::Debug;
 use core::hash::Hash;
-use core::ops::Add;
-use core::ops::Neg;
+use core::ops::{Add, Deref, DerefMut, Neg};
 use std::collections::HashSet;
 
 use fixedbitset::FixedBitSet;
@@ -100,11 +99,25 @@ impl JoinSemiLattice for u64 {
 #[derive(PartialEq, Eq, Clone)]
 pub struct PowerSetDomain<T: Eq + Hash>(pub HashSet<T>);
 
+impl<T: Eq + Hash> Deref for PowerSetDomain<T> {
+    type Target = HashSet<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T: Eq + Hash> DerefMut for PowerSetDomain<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 pub struct PowerSetTop<T: Eq + Hash>(pub PowerSetDomain<T>);
 
 impl<T: Eq + Hash> PartialOrd for PowerSetDomain<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match (self.0.is_superset(&other.0), other.0.is_superset(&self.0)) {
+        match (self.is_superset(other), other.is_superset(self)) {
             (true, true) => Some(Ordering::Equal),
             (true, false) => Some(Ordering::Greater),
             (false, true) => Some(Ordering::Less),
@@ -116,7 +129,6 @@ impl<T: Eq + Hash> PartialOrd for PowerSetDomain<T> {
 impl<T: Eq + Hash + Debug> Debug for PowerSetDomain<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let mut elements = self
-            .0
             .iter()
             .map(|x| format!("{x:?}"))
             .collect::<Vec<String>>();
@@ -133,7 +145,7 @@ impl<T: Eq + Hash + Debug + Clone> JoinSemiLattice for PowerSetDomain<T> {
     }
 
     fn join(&self, other: &Self) -> Self {
-        Self(self.0.union(&other.0).cloned().collect::<HashSet<T>>())
+        Self(self.union(other).cloned().collect::<HashSet<T>>())
     }
 }
 
@@ -146,17 +158,26 @@ impl<T: Eq + Hash + Debug + Clone> Lattice for PowerSetDomain<T> {
     }
 
     fn meet(&self, other: &Self) -> Self {
-        Self(
-            self.0
-                .intersection(&other.0)
-                .cloned()
-                .collect::<HashSet<T>>(),
-        )
+        Self(self.intersection(other).cloned().collect::<HashSet<T>>())
     }
 }
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct BitSetDomain(pub FixedBitSet);
+
+impl Deref for BitSetDomain {
+    type Target = FixedBitSet;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for BitSetDomain {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BitSetTop(pub usize);
@@ -173,7 +194,7 @@ impl BitSetDomain {
 
 impl PartialOrd for BitSetDomain {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match (self.0.is_superset(&other.0), other.0.is_superset(&self.0)) {
+        match (self.is_superset(other), other.is_superset(self)) {
             (true, true) => Some(Ordering::Equal),
             (true, false) => Some(Ordering::Greater),
             (false, true) => Some(Ordering::Less),
@@ -187,8 +208,7 @@ impl Debug for BitSetDomain {
         write!(
             f,
             "{{{}}}",
-            self.0
-                .ones()
+            self.ones()
                 .map(|x| x.to_string())
                 .collect::<Vec<String>>()
                 .join(", ")
@@ -204,9 +224,9 @@ impl JoinSemiLattice for BitSetDomain {
     }
 
     fn join(&self, other: &Self) -> Self {
-        let mut result = self.0.clone();
-        result.union_with(&other.0);
-        Self(result)
+        let mut result = self.clone();
+        result.union_with(other);
+        result
     }
 }
 
@@ -218,9 +238,9 @@ impl Lattice for BitSetDomain {
     }
 
     fn meet(&self, other: &Self) -> Self {
-        let mut result = self.0.clone();
-        result.intersect_with(&other.0);
-        Self(result)
+        let mut result = self.clone();
+        result.intersect_with(other);
+        result
     }
 }
 
