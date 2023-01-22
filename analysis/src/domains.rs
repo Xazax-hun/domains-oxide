@@ -10,44 +10,102 @@ use fixedbitset::FixedBitSet;
 // Traits for domains. //
 /////////////////////////
 
+/// A join semi-lattice is a partially ordered set that where the least upper
+/// bound exists for every subset. Usually, the ordering relation can be viewed
+/// as "safe approximation". For example, the interval \[4, 7\] is a safe
+/// approximation of \[5, 6\]. The goal of abstract interpretation is to calculate
+/// a precise but safe approximation of the program behavior. In this library,
+/// Top represents the biggest element (largest approximation), Bottom represents
+/// the smallest one.
 pub trait JoinSemiLattice: Eq + PartialOrd + Clone + Debug {
-    // For some lattices, like the power set lattice, we need to
-    // store somewhere the top or the bottom value. When we need
-    // no such values, set this to unit.
+    /// A type to hold some information about the lattice on the side.
+    ///
+    /// For some lattices, like the power set lattice, we need to
+    /// store somewhere the top or the bottom value. When we need
+    /// no such values, set this to unit.
     type LatticeContext;
 
+    /// The unit element of the join operation. Strictly speaking a join
+    /// semi-lattice does not need to have a bottom element, but having one
+    /// makes certain computations simpler. In case a domain lacks a bottom
+    /// element consider using the [Lift] transformer to introduce one.
+    /// Bottom values in the analysis result often stand for dead code.
+    ///
     /// Required to be the smallest element according to the ordering.
     fn bottom(ctx: &Self::LatticeContext) -> Self;
 
+    /// Given two elements of the lattice the join operation will compute a
+    /// precise and safe over approximation of its arguments. It computes
+    /// the least upper bound. It is typically useful to calculate the
+    /// analysis state after merge points where the program location after
+    /// the branching needs to over approximate all predecessors.
+    ///
     /// Requirements:
-    /// * a.join(a) == a
-    /// * a.join(b) == b.join(a)
-    /// * a.join(b) >= a
-    /// * a.join(b) >= b
-    /// * top.join(b) == top
-    /// * bottom.join(b) == b
+    /// * Reflexive: a.join(a) == a
+    /// * Commutative: a.join(b) == b.join(a)
+    /// * Bottom is unit: bottom.join(b) == b
+    /// * Upper bound: a.join(b) >= a and a.join(b) >= b
+    /// * Top is the largest: top.join(b) == top
+    /// * Ordering is respected: a <= b => a.join(b) == b
     fn join(&self, other: &Self) -> Self;
 
+    /// In case a lattice has infinite (or very long) ascending chains,
+    /// the widening operation can ensure convergence. Other lattices
+    /// can use the default implementation. Widening is a larger
+    /// over approximation step, usually by removing certain constraints
+    /// that did not stabilize from a numerical domain. The analysis
+    /// state from the previous iteration can inform this operation what
+    /// parts of the state needs widened. Widening also gets an iteration
+    /// number that is an approximation of the number iterations over
+    /// the whole control flow graph. This number can be helpful to
+    /// implement a tiered widening, where later tiers are approximating
+    /// more aggressively.
+    ///
     /// Requirements:
-    /// * a.widen(a, x) == a
-    /// * b.widen(a, x) == b if a <= b
+    /// * Reflexive: a.widen(a, x, i) == a
+    /// * b.widen(a, x, i) == b if a <= b
     fn widen(&self, _previous: &Self, _iteration: usize) -> Self {
         self.clone()
     }
 }
 
+/// A lattice is a join semi-lattice that is also a meet semi-lattice, i.e.,
+/// the greatest lower bound (meet) also exists for all subsets.
 pub trait Lattice: JoinSemiLattice {
+    /// The unit element of the meet operation, the largest element of the
+    /// lattice.
+    ///
     /// Requirements:
     /// Top is the greatest element of the lattice.
     fn top(ctx: &Self::LatticeContext) -> Self;
 
+    /// Given two elements of the lattice the meet operation will compute the
+    /// greatest lower bound. This is usually useful to exclude infeasible
+    /// program states. Often used to implement the evaluation of conditions
+    /// or assertions.
+    ///
+    /// * Reflexive: a.meet(a) == a
+    /// * Commutative: a.meet(b) == b.meet(a)
+    /// * Top is unit: top.meet(b) == b
+    /// * Lower bound: a.meet(b) <= a and a.meet(b) <= b
+    /// * Bottom is the smallest: bottom.meet(b) == bottom
+    /// * Ordering is respected: a <= b => a.meet(b) == a
+    // TODO: add algebraic identities.
     fn meet(&self, other: &Self) -> Self;
+
+    // TODO: consider a narrow operation as the opposite of widen for lattices
+    //       that have infinite descending chains.
 }
+
+// TODO: add helper to compute meet/join of a set of lattice elements.
 
 /////////////////////////////////////
 // Concrete domain implementations //
 /////////////////////////////////////
 
+/// The unit lattice is useful for testing, as a placeholder,
+/// or as a building block in one of the lattice construction
+/// methods (transformers) like the product lattice.
 impl JoinSemiLattice for () {
     type LatticeContext = ();
 
@@ -62,6 +120,8 @@ impl Lattice for () {
     fn meet(&self, _: &Self) -> Self {}
 }
 
+/// Bool is a lattice, where false is bottom and true is top,
+/// join is or, meet is and.
 impl JoinSemiLattice for bool {
     type LatticeContext = ();
 
@@ -84,11 +144,13 @@ impl Lattice for bool {
     }
 }
 
+/// The set of natural numbers is a join semi-lattice, where
+/// 0 is the largest element and minimum is the join operation.
 impl JoinSemiLattice for u64 {
     type LatticeContext = ();
 
     fn bottom(_ctx: &Self::LatticeContext) -> Self {
-        0
+        u64::MIN
     }
 
     fn join(&self, other: &Self) -> Self {
@@ -96,6 +158,12 @@ impl JoinSemiLattice for u64 {
     }
 }
 
+/// In the power set lattice, the empty set is bottom, union is join
+/// intersect is meet, and the full set is top. Note that, we rarely
+/// need a general power set lattice. Usually, we can get a more
+/// efficient implementation by using a bit set lattice by creating
+/// a mapping between the natural numbers and the elements of the
+/// set.
 #[derive(PartialEq, Eq, Clone)]
 pub struct PowerSetDomain<T: Eq + Hash>(pub HashSet<T>);
 
@@ -162,6 +230,8 @@ impl<T: Eq + Hash + Debug + Clone> Lattice for PowerSetDomain<T> {
     }
 }
 
+/// An efficient implementation of a power set lattice. Use this over
+/// the PowerSetDomain whenever possible.
 #[derive(PartialEq, Eq, Clone)]
 pub struct BitSetDomain(pub FixedBitSet);
 

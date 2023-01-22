@@ -1,10 +1,15 @@
 use crate::domains::*;
 
+/// Lattice to represent the signs of integral values:
+/// ```txt
 ///     Top
 ///   /  |  \
 ///   N  Z  P
 ///   \  |  /
 ///    Bottom
+/// ```
+/// A small lattice that lends itself to a fast, efficient analysis.
+/// For more precision, consider using [IntervalDomain].
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum SignDomain {
     Top,
@@ -107,9 +112,15 @@ impl Neg for SignDomain {
     }
 }
 
+// TODO: add more arithmetic operations.
+
 pub const INF: i64 = i64::MAX;
 pub const NEG_INF: i64 = i64::MIN;
 
+/// IntervalDomain is often used to represent a possible range of values.
+/// The lattice is ordered by inclusion and has very long ascending and
+/// descending chains, thus it implements widening. It also implements
+/// some basic arithmetic operations.
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub struct IntervalDomain {
     pub min: i64,
@@ -236,3 +247,8 @@ impl core::ops::Neg for IntervalDomain {
         }
     }
 }
+
+// TODO: add other arithmetic operations.
+
+// TODO: add congruence domain.
+// TODO: add relational domains like octagons and polyhedra.

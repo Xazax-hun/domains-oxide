@@ -17,6 +17,17 @@ use paste::paste;
 // Add more general building blocks for finite domains and
 // port SignDomain to those facilities.
 
+/// A lattice with a height of 3, where all non-equal elements have top
+/// and bottom as their least upper bound and greatest lower bound
+/// respectively. It is often used to implement constant propagation.
+///  
+/// ```txt
+///       Top
+///     /  |  \
+/// ... e1 e2 e3 ...
+///     \  |  /
+///      Bottom
+/// ```
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Flat<T: Eq + Clone + Debug> {
     Top,
@@ -71,6 +82,11 @@ impl<T: Eq + Clone + Debug> Lattice for Flat<T> {
     }
 }
 
+/// Add a bottom element to an existing join semi-lattice.
+/// It can be useful when the original lattice did not have a
+/// bottom element, or if we want to encode more information
+/// into the analysis. E.g., to encode the reason why a
+/// piece of code was inferred to be dead.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Lift<T: JoinSemiLattice> {
     Element(T),
@@ -131,6 +147,8 @@ impl<T: Lattice> Lattice for Lift<T> {
     }
 }
 
+/// A simple homogenous pair. It can be useful to represent the analysis
+/// state for small vectors.
 #[derive(PartialEq, Eq, PartialOrd, Clone)]
 pub struct Vec2Domain<T: JoinSemiLattice> {
     pub x: T,
@@ -184,6 +202,8 @@ impl<T: Lattice> Lattice for Vec2Domain<T> {
     }
 }
 
+/// Flip a lattice by swapping the join and meet operations,
+/// and the top and bottom elements.
 #[derive(PartialEq, Eq, PartialOrd, Clone, Debug)]
 pub struct Flipped<T: Lattice>(pub T);
 
@@ -209,6 +229,11 @@ impl<T: Lattice> Lattice for Flipped<T> {
     }
 }
 
+/// The map lattice is often used to encode information about multiple
+/// elements of the program state like variables. In those cases the key
+/// would be the unique resolutions of the variables (e.g., fully qualified name),
+/// and the value would be the tracked state for each variable (e.g., IntervalDomain).
+///
 /// Warning: M1 without K compares less than M2 with K => Bottom. if this is undesired,
 /// make sure all keys are populated.
 #[derive(PartialEq, Eq, Clone)]
@@ -283,9 +308,8 @@ impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> PartialOrd for Map<K, V> 
             }
             if candidate.is_none() || candidate == Some(Ordering::Less) {
                 return Some(Ordering::Less);
-            } else {
-                return None;
             }
+            return None;
         }
         candidate
     }
@@ -359,6 +383,7 @@ impl<K: Eq + Clone + Hash + Debug, V: Lattice> Lattice for Map<K, V> {
 macro_rules! tuple_lattice {
     ( $prod:ident $( $name:ident )+ ) => {
         paste! {
+            /// Product lattice with point-wise ordering.
             #[derive(Clone, PartialEq, Eq, Debug)]
             pub struct $prod<$($name: JoinSemiLattice),+>($(pub $name,)+);
 
@@ -433,6 +458,9 @@ tuple_lattice!(Prod5 D1 D2 D3 D4 D5);
 macro_rules! stack_lattice {
     ( $stack:ident $top:tt $( $name:tt )+ ) => {
         paste! {
+            /// Stack lattice, the generic arguments are ordered:
+            /// elements of the type to the left are smaller than the
+            /// elements of the type to the right.
             #[derive(Clone, PartialEq, Eq, Debug, PartialOrd)]
             pub enum $stack<$([<T $name>]: JoinSemiLattice),+>{
                 Bottom,
@@ -498,6 +526,7 @@ stack_lattice!(Stack5 5 1 2 3 4 5);
 macro_rules! distjoint_union_lattice {
     ( $union:ident $( $name:tt )+ ) => {
         paste! {
+            /// A disjoint union lattice.
             #[derive(Clone, PartialEq, Eq, Debug)]
             pub enum $union<$([<T $name>]: JoinSemiLattice),+>{
                 Bottom,

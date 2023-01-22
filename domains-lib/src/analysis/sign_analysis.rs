@@ -97,20 +97,15 @@ impl SignAnalysis {
 
 impl Analysis for SignAnalysis {
     fn analyze(&self, cfg: &Cfg) -> AnalysisResult {
-        let results = SignAnalysis::get_results(cfg);
+        let results = Self::get_results(cfg);
         AnalysisResult {
             annotations: annotations_from_forward_analysis_results(
                 cfg,
                 &(),
-                &mut SignAnalysis::transfer,
+                &mut Self::transfer,
                 &results,
             ),
-            covered: covered_area_from_analysis_results(
-                cfg,
-                &(),
-                &mut SignAnalysis::transfer,
-                &results,
-            ),
+            covered: covered_area_from_analysis_results(cfg, &(), &mut Self::transfer, &results),
         }
     }
 }

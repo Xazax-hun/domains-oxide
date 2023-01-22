@@ -43,8 +43,8 @@ impl IntervalAnalysis {
                 }
             }
             NodeRef::Translation(trans) => Vec2Domain {
-                x: pre_state.x + IntervalDomain::from(trans.vector.x.value.to_num() as i64),
-                y: pre_state.y + IntervalDomain::from(trans.vector.y.value.to_num() as i64),
+                x: pre_state.x + IntervalDomain::from(i64::from(trans.vector.x.value.to_num())),
+                y: pre_state.y + IntervalDomain::from(i64::from(trans.vector.y.value.to_num())),
             },
             NodeRef::Rotation(rot) => {
                 let degree = rot.deg.value.to_num() % 360;
@@ -148,15 +148,10 @@ impl IntervalAnalysis {
 
 impl Analysis for IntervalAnalysis {
     fn analyze(&self, cfg: &Cfg) -> AnalysisResult {
-        let results = IntervalAnalysis::get_results(cfg);
-        let annotations = annotations_from_forward_analysis_results(
-            cfg,
-            &(),
-            &mut IntervalAnalysis::transfer,
-            &results,
-        );
-        let covered =
-            covered_area_from_analysis_results(cfg, &(), &mut IntervalAnalysis::transfer, &results);
+        let results = Self::get_results(cfg);
+        let annotations =
+            annotations_from_forward_analysis_results(cfg, &(), &mut Self::transfer, &results);
+        let covered = covered_area_from_analysis_results(cfg, &(), &mut Self::transfer, &results);
         AnalysisResult {
             annotations,
             covered,

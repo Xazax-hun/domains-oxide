@@ -29,7 +29,7 @@ impl SolveMonotone {
         // loop header.
         let loop_heads: HashSet<_> = get_back_edges(cfg)
             .iter()
-            .map(|(_, target)| *target)
+            .map(|&(_, target)| target)
             .collect();
 
         // Process first node. It is hoisted, so the input state can be other than

@@ -57,7 +57,7 @@ impl PastOperations {
 
 impl Analysis for PastOperations {
     fn analyze(&self, cfg: &Cfg) -> AnalysisResult {
-        let results = PastOperations::get_results(cfg);
+        let results = Self::get_results(cfg);
         AnalysisResult {
             annotations: annotations_from_forward_analysis_results(
                 cfg,
@@ -87,7 +87,7 @@ impl FutureOperations {
 impl Analysis for FutureOperations {
     fn analyze(&self, cfg: &Cfg) -> AnalysisResult {
         let reversed = reverse(cfg);
-        let results = FutureOperations::get_results_impl(&reversed);
+        let results = Self::get_results_impl(&reversed);
         AnalysisResult {
             annotations: annotations_from_backward_analysis_results(
                 &reversed,
