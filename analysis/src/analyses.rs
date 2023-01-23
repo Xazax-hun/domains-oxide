@@ -48,3 +48,8 @@ pub fn calculate_post_dominators<Cfg: BlockMutableCfg + Default>(
         })
         .collect()
 }
+
+// TODO: add a proper dominator tree type:
+//  * It should be traversable
+//  * It should answer queries efficiently
+// TODO: add other utilities like calculating control dependence.

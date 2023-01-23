@@ -3,7 +3,17 @@ use std::collections::HashSet;
 use super::cfg::{get_back_edges, CfgBlock, ControlFlowGraph, RPOWorklist};
 use super::domains::JoinSemiLattice;
 
+/// A basic solver for monotonic transfer functions. It is also doing
+/// widening on loop heads. The solver is using a worklist that visits
+/// the queued nodes in reverse post-order.
+/// 
+/// Requirements:
+/// * All the back edges must target the loop head (node dominating every
+///   node within the loop.)
 pub struct SolveMonotone {
+    /// Set the approximate iteration limit per node. If the limit is reached
+    /// (the analysis did not converge in the permitted number of steps),
+    /// the solver terminates without a result.
     pub node_limit: usize,
 }
 
@@ -14,6 +24,13 @@ impl Default for SolveMonotone {
 }
 
 impl SolveMonotone {
+    /// Run the solver on a CFG mutating the analysis states in place. The
+    /// `post_states` vector is cleared when the analysis did not converge.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `post_states` - The analysis state after each CFG block.
+    /// * `transfer` - Function to apply the effects of a block to the state.
     pub fn transfer_blocks_in_place<Cfg, D, F>(
         self,
         cfg: &Cfg,
@@ -73,6 +90,15 @@ impl SolveMonotone {
         }
     }
 
+
+    /// Run the solver on a CFG returning the analysis states at the end of
+    /// each basic block. Returns an empty vector when the analysis did not
+    /// converge.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `post_states` - The analysis state after each CFG block.
+    /// * `transfer` - Function to apply the effects of a block to the state.
     pub fn transfer_blocks<Cfg, D, F>(
         self,
         cfg: &Cfg,
@@ -89,6 +115,17 @@ impl SolveMonotone {
         post_states
     }
 
+    /// Run the solver on a CFG mutating the analysis states in place. The
+    /// `post_states` vector is cleared when the analysis did not converge.
+    /// This method can be used as a second pass (after the first pass
+    /// converged), to collect per-operation analysis states from the
+    /// per-block states. Alternatively, a second pass can also be used
+    /// to report errors in a program analysis tool.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `post_states` - The analysis state after each CFG block.
+    /// * `transfer` - Function to apply the effects of an operation to the state.
     pub fn transfer_operations_in_place<Cfg, D, F>(
         self,
         cfg: &Cfg,
@@ -119,6 +156,14 @@ impl SolveMonotone {
         );
     }
 
+    /// Run the solver on a CFG returning the analysis states at the end of
+    /// each basic block. Returns an empty vector when the analysis did not
+    /// converge.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `post_states` - The analysis state after each CFG block.
+    /// * `transfer` - Function to apply the effects of an operation to the state.
     pub fn transfer_operations<Cfg, D, F>(
         self,
         cfg: &Cfg,
