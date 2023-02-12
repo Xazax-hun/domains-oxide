@@ -31,6 +31,20 @@ fn sign_domain_tests() {
     assert_eq!(SignDomain::from(5), SignDomain::Positive);
     assert_eq!(SignDomain::from(0), SignDomain::Zero);
     assert_eq!(SignDomain::from(-5), SignDomain::Negative);
+    assert_eq!(
+        SignDomain::from(IntervalDomain::bottom(&())),
+        SignDomain::Bottom
+    );
+    assert_eq!(SignDomain::from(IntervalDomain::top(&())), SignDomain::Top);
+    assert_eq!(SignDomain::from(IntervalDomain::from(0)), SignDomain::Zero);
+    assert_eq!(
+        SignDomain::from(IntervalDomain::from(5)),
+        SignDomain::Positive
+    );
+    assert_eq!(
+        SignDomain::from(IntervalDomain::from(-5)),
+        SignDomain::Negative
+    );
 
     // Pretty printing
     assert_eq!(format!("{bottom:?}"), "Bottom");
@@ -102,7 +116,7 @@ fn vec2_domain_tests() {
 }
 
 #[test]
-fn vec2_interval_tests() {
+fn interval_domain_tests() {
     let bottom = IntervalDomain::bottom(&());
     let top = IntervalDomain::top(&());
     let singleton = IntervalDomain::from(5);
@@ -175,6 +189,16 @@ fn vec2_interval_tests() {
     assert_eq!(bumped_max.widen(&small_range_a, 0), widened_max);
     assert_eq!(decremented_min.widen(&small_range_a, 0), widened_min);
     assert_eq!(large_range.widen(&bottom, 0), large_range);
+
+    // Conversions
+    assert_eq!(IntervalDomain::from(SignDomain::Bottom), bottom);
+    assert_eq!(IntervalDomain::from(SignDomain::Top), top);
+    assert_eq!(
+        IntervalDomain::from(SignDomain::Zero),
+        IntervalDomain::from(0)
+    );
+    assert!(singleton < IntervalDomain::from(SignDomain::Positive));
+    assert!(!(singleton < IntervalDomain::from(SignDomain::Negative)));
 
     // Arithmetic
     assert_eq!(singleton + singleton, IntervalDomain::from(10));

@@ -29,6 +29,24 @@ impl From<i32> for SignDomain {
     }
 }
 
+impl From<IntervalDomain> for SignDomain {
+    fn from(value: IntervalDomain) -> Self {
+        if value == IntervalDomain::bottom(&()) {
+            return SignDomain::Bottom;
+        }
+        if value == IntervalDomain::from(0) {
+            return SignDomain::Zero;
+        }
+        if value.max < 0 {
+            return SignDomain::Negative;
+        }
+        if value.min > 0 {
+            return SignDomain::Positive;
+        }
+        SignDomain::Top
+    }
+}
+
 impl PartialOrd for SignDomain {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         if self == other {
@@ -211,6 +229,21 @@ impl Lattice for IntervalDomain {
             Self::bottom(&())
         } else {
             result
+        }
+    }
+}
+
+impl From<SignDomain> for IntervalDomain {
+    fn from(value: SignDomain) -> Self {
+        match value {
+            SignDomain::Top => IntervalDomain::top(&()),
+            SignDomain::Bottom => IntervalDomain::bottom(&()),
+            SignDomain::Zero => IntervalDomain::from(0),
+            SignDomain::Positive => IntervalDomain { min: 1, max: INF },
+            SignDomain::Negative => IntervalDomain {
+                min: NEG_INF,
+                max: -1,
+            },
         }
     }
 }
