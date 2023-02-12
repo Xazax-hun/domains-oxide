@@ -6,7 +6,7 @@ use super::domains::JoinSemiLattice;
 /// A basic solver for monotonic transfer functions. It is also doing
 /// widening on loop heads. The solver is using a worklist that visits
 /// the queued nodes in reverse post-order.
-/// 
+///
 /// Requirements:
 /// * All the back edges must target the loop head (node dominating every
 ///   node within the loop.)
@@ -26,9 +26,9 @@ impl Default for SolveMonotone {
 impl SolveMonotone {
     /// Run the solver on a CFG mutating the analysis states in place. The
     /// `post_states` vector is cleared when the analysis did not converge.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `post_states` - The analysis state after each CFG block.
     /// * `transfer` - Function to apply the effects of a block to the state.
     pub fn transfer_blocks_in_place<Cfg, D, F>(
@@ -90,13 +90,12 @@ impl SolveMonotone {
         }
     }
 
-
     /// Run the solver on a CFG returning the analysis states at the end of
     /// each basic block. Returns an empty vector when the analysis did not
     /// converge.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `post_states` - The analysis state after each CFG block.
     /// * `transfer` - Function to apply the effects of a block to the state.
     pub fn transfer_blocks<Cfg, D, F>(
@@ -121,9 +120,9 @@ impl SolveMonotone {
     /// converged), to collect per-operation analysis states from the
     /// per-block states. Alternatively, a second pass can also be used
     /// to report errors in a program analysis tool.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `post_states` - The analysis state after each CFG block.
     /// * `transfer` - Function to apply the effects of an operation to the state.
     pub fn transfer_operations_in_place<Cfg, D, F>(
@@ -159,9 +158,9 @@ impl SolveMonotone {
     /// Run the solver on a CFG returning the analysis states at the end of
     /// each basic block. Returns an empty vector when the analysis did not
     /// converge.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `post_states` - The analysis state after each CFG block.
     /// * `transfer` - Function to apply the effects of an operation to the state.
     pub fn transfer_operations<Cfg, D, F>(

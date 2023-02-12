@@ -26,11 +26,11 @@ pub trait CfgBlock {
 /// Trait for an immutable control flow graph. It has a list
 /// of basic blocks containing sequentially executed code, and
 /// directed edges between these blocks.
-/// 
+///
 /// Use [RPOWorklist] to traverse the graph.
 pub trait ControlFlowGraph {
     type Block: CfgBlock;
-    
+
     /// Returns the list of basic blocks in the control flow graph.
     /// The first element of the result is the entry block of the
     /// graph.
@@ -45,10 +45,24 @@ pub trait MutableCfg: ControlFlowGraph {
     fn new_block(&mut self) -> usize;
     fn add_block(&mut self, block: <Self as ControlFlowGraph>::Block) -> usize;
     fn remove_block(&mut self, block: usize) -> <Self as ControlFlowGraph>::Block;
+
+    fn add_edges(&mut self, edges: &[(usize, usize)]) -> &mut Self {
+        for &(from, to) in edges {
+            self.add_edge(from, to);
+        }
+        self
+    }
+
+    fn remove_edges(&mut self, edges: &[(usize, usize)]) -> &mut Self {
+        for &(from, to) in edges {
+            self.remove_edge(from, to);
+        }
+        self
+    }
 }
 
 /// Trait for a control flow graph where both the shape and the individual
-/// operations can be edited. It is useful to do transformations on the 
+/// operations can be edited. It is useful to do transformations on the
 /// control flow graph like reversing it, or removing unreachable nodes.
 pub trait BlockMutableCfg: MutableCfg {
     fn extend_block<'cfg>(
@@ -87,7 +101,7 @@ pub fn reverse_in_place<Cfg: BlockMutableCfg>(cfg: &Cfg, empty: &mut Cfg) {
 
 /// Print the control flow graph in dot language that can be rendered
 /// as a picture using graphviz. The `printer` is responsible for
-/// rendering the individual operations and it has to do its own 
+/// rendering the individual operations and it has to do its own
 /// dot escaping.
 pub fn print<Cfg, OpPrinter>(cfg: &Cfg, printer: OpPrinter) -> String
 where
@@ -170,7 +184,7 @@ where
     back_edges
 }
 
-/// A worklist to visit the nodes of a control flow graph in 
+/// A worklist to visit the nodes of a control flow graph in
 /// reverse post-order. The worklist can contain each node
 /// at most once at a given time.
 #[derive(Debug)]
@@ -242,7 +256,7 @@ impl<'cfg, Cfg: ControlFlowGraph> RPOWorklist<'cfg, Cfg> {
     }
 
     /// Returns the position of a node in the reverse post-order.
-    /// The lower the returned value, the earlier a node would 
+    /// The lower the returned value, the earlier a node would
     /// be visited.
     pub fn get_rpo_order(&self, block: usize) -> usize {
         self.rpo_order.len() - 1 - self.rpo_order[block]

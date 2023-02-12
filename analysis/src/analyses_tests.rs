@@ -16,11 +16,7 @@ fn test_dominators() {
     //    \ /
     //     4
     let mut cfg = TestCfg::new(5);
-    cfg.add_edge(0, 1)
-        .add_edge(0, 2)
-        .add_edge(1, 4)
-        .add_edge(2, 3)
-        .add_edge(3, 4);
+    cfg.add_edges(&[(0, 1), (0, 2), (1, 4), (2, 3), (3, 4)]);
     let ctx = BitSetTop(cfg.blocks().len());
 
     let dominators = calculate_dominators(&cfg, 20);
@@ -41,11 +37,7 @@ fn test_post_dominators() {
     //    \ /
     //     4
     let mut cfg = TestCfg::new(5);
-    cfg.add_edge(0, 1)
-        .add_edge(0, 2)
-        .add_edge(1, 4)
-        .add_edge(2, 3)
-        .add_edge(3, 4);
+    cfg.add_edges(&[(0, 1), (0, 2), (1, 4), (2, 3), (3, 4)]);
     let ctx = BitSetTop(cfg.blocks().len());
 
     let post_dominators = calculate_post_dominators(&cfg, 20);

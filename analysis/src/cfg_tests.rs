@@ -101,11 +101,7 @@ fn test_cfg_print() {
     //    \ /
     //     4
     let mut cfg = TestCfg::new(5);
-    cfg.add_edge(0, 1)
-        .add_edge(0, 2)
-        .add_edge(1, 4)
-        .add_edge(2, 3)
-        .add_edge(3, 4);
+    cfg.add_edges(&[(0, 1), (0, 2), (1, 4), (2, 3), (3, 4)]);
 
     let printed = print(&cfg, |_| "".to_owned());
     let expected = r#"digraph CFG {
@@ -135,11 +131,7 @@ fn test_cfg_reverse() {
     //     |
     //     4
     let mut cfg = TestCfg::new(5);
-    cfg.add_edge(0, 1)
-        .add_edge(0, 2)
-        .add_edge(1, 3)
-        .add_edge(2, 3)
-        .add_edge(3, 4);
+    cfg.add_edges(&[(0, 1), (0, 2), (1, 3), (2, 3), (3, 4)]);
 
     //     0
     //     |
@@ -177,11 +169,7 @@ fn test_rpo_order() {
     //    \ /
     //     4
     let mut cfg = TestCfg::new(5);
-    cfg.add_edge(0, 1)
-        .add_edge(0, 2)
-        .add_edge(1, 4)
-        .add_edge(2, 3)
-        .add_edge(3, 4);
+    cfg.add_edges(&[(0, 1), (0, 2), (1, 4), (2, 3), (3, 4)]);
 
     let mut worklist = RPOWorklist::new(&cfg);
     assert_eq!(worklist.get_rpo_order(0), 0);
@@ -207,11 +195,7 @@ fn test_rpo_order_mirrored() {
     //    \ /
     //     4
     let mut cfg = TestCfg::new(5);
-    cfg.add_edge(0, 2)
-        .add_edge(0, 1)
-        .add_edge(1, 4)
-        .add_edge(2, 3)
-        .add_edge(3, 4);
+    cfg.add_edges(&[(0, 2), (0, 1), (1, 4), (2, 3), (3, 4)]);
 
     let worklist = RPOWorklist::new(&cfg);
     assert_eq!(worklist.get_rpo_order(0), 0);
@@ -231,13 +215,7 @@ fn test_rpo_order_with_back_edges() {
     //     \ /
     //      4
     let mut cfg = TestCfg::new(5);
-    cfg.add_edge(0, 1)
-        .add_edge(0, 2)
-        .add_edge(1, 4)
-        .add_edge(2, 3)
-        .add_edge(2, 0)
-        .add_edge(3, 4)
-        .add_edge(3, 0);
+    cfg.add_edges(&[(0, 1), (0, 2), (1, 4), (2, 3), (2, 0), (3, 4), (3, 0)]);
 
     let worklist = RPOWorklist::new(&cfg);
     assert_eq!(worklist.get_rpo_order(0), 0);
@@ -257,14 +235,16 @@ fn test_rpo_order_with_back_edges_2() {
     // |   \ /
     // |----4
     let mut cfg = TestCfg::new(5);
-    cfg.add_edge(0, 1)
-        .add_edge(0, 2)
-        .add_edge(1, 4)
-        .add_edge(2, 3)
-        .add_edge(2, 0)
-        .add_edge(3, 4)
-        .add_edge(3, 0)
-        .add_edge(4, 1);
+    cfg.add_edges(&[
+        (0, 1),
+        (0, 2),
+        (1, 4),
+        (2, 3),
+        (2, 0),
+        (3, 4),
+        (3, 0),
+        (4, 1),
+    ]);
 
     let worklist = RPOWorklist::new(&cfg);
     // TODO: is this actually the order we want?
@@ -290,14 +270,16 @@ fn test_get_back_edges() {
     // |   \ /
     // |----4
     let mut cfg = TestCfg::new(5);
-    cfg.add_edge(0, 1)
-        .add_edge(0, 2)
-        .add_edge(1, 4)
-        .add_edge(2, 3)
-        .add_edge(2, 0)
-        .add_edge(3, 4)
-        .add_edge(3, 0)
-        .add_edge(4, 1);
+    cfg.add_edges(&[
+        (0, 1),
+        (0, 2),
+        (1, 4),
+        (2, 3),
+        (2, 0),
+        (3, 4),
+        (3, 0),
+        (4, 1),
+    ]);
 
     let edges = get_back_edges(&cfg);
     assert_eq!(edges.len(), 3);
@@ -320,11 +302,7 @@ fn basic_solver_visit_nodes() {
     //    \ /
     //     4
     let mut cfg = TestCfg::new(5);
-    cfg.add_edge(0, 2)
-        .add_edge(0, 1)
-        .add_edge(1, 4)
-        .add_edge(2, 3)
-        .add_edge(3, 4);
+    cfg.add_edges(&[(0, 2), (0, 1), (1, 4), (2, 3), (3, 4)]);
 
     let mut visited = Vec::new();
 
