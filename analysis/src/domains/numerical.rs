@@ -146,6 +146,24 @@ impl Add for SignDomain {
     }
 }
 
+impl Neg for SignDomain {
+    type Output = Self;
+    fn neg(self) -> Self::Output {
+        match self {
+            SignDomain::Negative => SignDomain::Positive,
+            SignDomain::Positive => SignDomain::Negative,
+            _ => self,
+        }
+    }
+}
+
+impl Sub for SignDomain {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self::Output {
+        self + -rhs
+    }
+}
+
 impl Mul for SignDomain {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
@@ -162,27 +180,6 @@ impl Div for SignDomain {
     }
 }
 
-impl Neg for SignDomain {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        match self {
-            SignDomain::Negative => SignDomain::Positive,
-            SignDomain::Positive => SignDomain::Negative,
-            _ => self,
-        }
-    }
-}
-
-impl Sub for SignDomain {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        self + -rhs
-    }
-}
-
-// TODO: add more arithmetic operations.
 
 pub const INF: i64 = i64::MAX;
 pub const NEG_INF: i64 = i64::MIN;
