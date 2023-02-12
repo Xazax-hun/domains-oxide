@@ -38,6 +38,9 @@ fn sign_domain_tests() {
     assert_eq!(-Positive, Negative);
     assert_eq!(Positive - Positive, Top);
     assert_eq!(Positive + Positive, Positive);
+    assert_eq!(Positive * Positive, Positive);
+    assert_eq!(Positive * Negative, Negative);
+    assert_eq!(Top * Zero, Zero);
 
     // Pretty printing
     assert_eq!(format!("{Bottom:?}"), "Bottom");

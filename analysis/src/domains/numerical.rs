@@ -103,18 +103,62 @@ impl Lattice for SignDomain {
     }
 }
 
+mod sign_tables {
+    use super::SignDomain::{self, *};
+    pub fn index_of(s: SignDomain) -> usize {
+        match s {
+            SignDomain::Top => 0,
+            SignDomain::Bottom => 1,
+            SignDomain::Negative => 2,
+            SignDomain::Zero => 3,
+            SignDomain::Positive => 4,
+        }
+    }
+
+    #[rustfmt::skip]
+    pub const ADDITION : [[SignDomain; 5]; 5] =
+    [
+        // LHS/RHS,      Top,    Bottom, Negative, Zero,     Positive
+        /* Top      */ [ Top,    Bottom, Top,      Top,      Top     ],
+        /* Bottom   */ [ Bottom, Bottom, Bottom,   Bottom,   Bottom  ],
+        /* Negative */ [ Top,    Bottom, Negative, Negative, Top     ],
+        /* Zero     */ [ Top,    Bottom, Negative, Zero,     Positive],
+        /* Positive */ [ Top,    Bottom, Top,      Positive, Positive]
+    ];
+
+    #[rustfmt::skip]
+    pub const MULTIPLICATION : [[SignDomain; 5]; 5] =
+    [
+        // LHS/RHS,      Top,    Bottom, Negative, Zero,     Positive
+        /* Top      */ [ Top,    Bottom, Top,      Zero,     Top     ],
+        /* Bottom   */ [ Bottom, Bottom, Bottom,   Bottom,   Bottom  ],
+        /* Negative */ [ Top,    Bottom, Positive, Zero,     Negative],
+        /* Zero     */ [ Zero,   Bottom, Zero,     Zero,     Zero    ],
+        /* Positive */ [ Top,    Bottom, Negative, Zero,     Positive]
+    ];
+}
+
 impl Add for SignDomain {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
-        use SignDomain::*;
-        // TODO: can we format this as a table?
-        match (self, rhs) {
-            (Top, _) | (_, Top) => Top,
-            (Bottom, _) | (_, Bottom) => Bottom,
-            (Zero, s) | (s, Zero) => s,
-            (s1, s2) if s1 == s2 => s1,
-            _ => Top,
-        }
+        use sign_tables::*;
+        ADDITION[index_of(self)][index_of(rhs)]
+    }
+}
+
+impl Mul for SignDomain {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self::Output {
+        use sign_tables::*;
+        MULTIPLICATION[index_of(self)][index_of(rhs)]
+    }
+}
+
+impl Div for SignDomain {
+    type Output = Self;
+    fn div(self, rhs: Self) -> Self::Output {
+        use sign_tables::*;
+        MULTIPLICATION[index_of(self)][index_of(rhs)]
     }
 }
 
