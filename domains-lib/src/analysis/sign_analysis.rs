@@ -23,30 +23,31 @@ impl SignAnalysis {
     }
 
     pub fn transfer(&op: &Operation, cfg: &Cfg, _: &(), pre_state: &Vec2Sign) -> Vec2Sign {
+        use SignDomain::*;
         let ctx = cfg.context();
         match ctx.op_to_ref(op) {
             NodeRef::Init(init) => {
                 let bot_left = Vec2::from(&init.bottom_left);
                 let width = init.size.x.value.to_num() as i64;
                 let x_sign = if bot_left.x > 0 {
-                    SignDomain::Positive
+                    Positive
                 } else if bot_left.x + width < 0 {
-                    SignDomain::Negative
+                    Negative
                 } else if bot_left.x == 0 && width == 0 {
-                    SignDomain::Zero
+                    Zero
                 } else {
-                    SignDomain::Top
+                    Top
                 };
 
                 let height = init.size.y.value.to_num() as i64;
                 let y_sign = if bot_left.y > 0 {
-                    SignDomain::Positive
+                    Positive
                 } else if bot_left.y + height < 0 {
-                    SignDomain::Negative
+                    Negative
                 } else if bot_left.y == 0 && height == 0 {
-                    SignDomain::Zero
+                    Zero
                 } else {
-                    SignDomain::Top
+                    Top
                 };
                 Vec2Domain {
                     x: x_sign,
@@ -86,10 +87,7 @@ impl SignAnalysis {
                     }
                 }
 
-                Vec2Domain {
-                    x: SignDomain::Top,
-                    y: SignDomain::Top,
-                }
+                Vec2Domain { x: Top, y: Top }
             }
             _ => panic!("Unexpected operation."),
         }
