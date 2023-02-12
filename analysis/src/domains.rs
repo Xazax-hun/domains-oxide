@@ -28,7 +28,7 @@ pub trait JoinSemiLattice: Eq + PartialOrd + Clone + Debug {
     /// The unit element of the join operation. Strictly speaking a join
     /// semi-lattice does not need to have a bottom element, but having one
     /// makes certain computations simpler. In case a domain lacks a bottom
-    /// element consider using the [Lift] transformer to introduce one.
+    /// element consider using the [Option] transformer to introduce one.
     /// Bottom values in the analysis result often stand for dead code.
     ///
     /// Required to be the smallest element according to the ordering.

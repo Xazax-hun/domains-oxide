@@ -82,67 +82,47 @@ impl<T: Eq + Clone + Debug> Lattice for Flat<T> {
     }
 }
 
-/// Add a bottom element to an existing join semi-lattice.
-/// It can be useful when the original lattice did not have a
-/// bottom element, or if we want to encode more information
-/// into the analysis. E.g., to encode the reason why a
-/// piece of code was inferred to be dead.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Lift<T: JoinSemiLattice> {
-    Element(T),
-    Bottom,
-}
+/// The None in Option acts as a bottom element, this
+/// transformation is often called lift.
+pub type Lift<T> = Option<T>;
 
-impl<T: JoinSemiLattice> PartialOrd for Lift<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        if self == other {
-            return Some(Ordering::Equal);
-        }
-        match (self, other) {
-            (&Lift::Bottom, _) => Some(Ordering::Less),
-            (_, &Lift::Bottom) => Some(Ordering::Greater),
-            (Lift::Element(s), Lift::Element(o)) => s.partial_cmp(o),
-        }
-    }
-}
-
-impl<T: JoinSemiLattice> JoinSemiLattice for Lift<T> {
+impl<T: JoinSemiLattice> JoinSemiLattice for Option<T> {
     type LatticeContext = T::LatticeContext;
 
     fn bottom(_ctx: &Self::LatticeContext) -> Self {
-        Lift::Bottom
+        None
     }
 
     fn join(&self, other: &Self) -> Self {
         match (self, other) {
-            (&Lift::Bottom, _) => other.clone(),
-            (_, &Lift::Bottom) => self.clone(),
-            (Lift::Element(s), Lift::Element(o)) => Lift::Element(s.join(o)),
+            (&None, _) => other.clone(),
+            (_, &None) => self.clone(),
+            (Some(s), Some(o)) => Some(s.join(o)),
         }
     }
 
     fn widen(&self, previous: &Self, iteration: usize) -> Self {
-        if let Lift::Element(inner) = self {
-            if let Lift::Element(prev) = previous {
-                Lift::Element(inner.widen(prev, iteration))
+        if let Some(inner) = self {
+            if let Some(prev) = previous {
+                Some(inner.widen(prev, iteration))
             } else {
                 self.clone()
             }
         } else {
-            Lift::Bottom
+            None
         }
     }
 }
 
-impl<T: Lattice> Lattice for Lift<T> {
+impl<T: Lattice> Lattice for Option<T> {
     fn top(ctx: &Self::LatticeContext) -> Self {
-        Lift::Element(T::top(ctx))
+        Some(T::top(ctx))
     }
 
     fn meet(&self, other: &Self) -> Self {
         match (self, other) {
-            (&Lift::Bottom, _) | (_, &Lift::Bottom) => Lift::Bottom,
-            (Lift::Element(s), Lift::Element(o)) => Lift::Element(s.meet(o)),
+            (&None, _) | (_, &None) => None,
+            (Some(s), Some(o)) => Some(s.meet(o)),
         }
     }
 }

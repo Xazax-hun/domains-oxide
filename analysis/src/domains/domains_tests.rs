@@ -361,8 +361,8 @@ fn natural_domain_test() {
 #[test]
 fn lifted_domain_test() {
     let bottom = Lift::<bool>::bottom(&());
-    let false_val = Lift::Element(false);
-    let true_val = Lift::Element(true);
+    let false_val = Some(false);
+    let true_val = Some(true);
 
     assert!(false_val > bottom);
     assert!(true_val > bottom);
@@ -374,8 +374,8 @@ fn lifted_domain_test() {
     assert_eq!(bottom.meet(&true_val), bottom);
     assert_eq!(false_val.join(&true_val), true_val);
     assert_eq!(false_val.meet(&true_val), false_val);
-    assert_eq!(format!("{bottom:?}"), "Bottom");
-    assert_eq!(format!("{true_val:?}"), "Element(true)");
+    assert_eq!(format!("{bottom:?}"), "None");
+    assert_eq!(format!("{true_val:?}"), "Some(true)");
 }
 
 #[test]
