@@ -269,7 +269,7 @@ impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> PartialOrd for Map<K, V> 
                     // The ordering if this element is in agreement with the ordering of others.
                     (Some(o1), Some(o2)) if o1 == o2 => continue,
                     // Contradiction found, maps are not comparable.
-                    (Some(_), Some(_)) => continue,
+                    (Some(_), Some(_)) => return None,
                     // Found the first non-equal element, set the candidate ordering.
                     (None, cmp_result) => candidate = cmp_result,
                 };
