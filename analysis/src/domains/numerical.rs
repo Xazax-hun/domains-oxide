@@ -130,6 +130,14 @@ impl Neg for SignDomain {
     }
 }
 
+impl Sub for SignDomain {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        self + -rhs
+    }
+}
+
 // TODO: add more arithmetic operations.
 
 pub const INF: i64 = i64::MAX;
@@ -248,7 +256,7 @@ impl From<SignDomain> for IntervalDomain {
     }
 }
 
-impl core::ops::Add<IntervalDomain> for IntervalDomain {
+impl Add<IntervalDomain> for IntervalDomain {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -270,7 +278,7 @@ impl core::ops::Add<IntervalDomain> for IntervalDomain {
     }
 }
 
-impl core::ops::Neg for IntervalDomain {
+impl Neg for IntervalDomain {
     type Output = Self;
 
     fn neg(self) -> Self {
@@ -278,6 +286,14 @@ impl core::ops::Neg for IntervalDomain {
             min: if self.max == INF { NEG_INF } else { -self.max },
             max: if self.min == NEG_INF { INF } else { -self.min },
         }
+    }
+}
+
+impl Sub for IntervalDomain {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        self + -rhs
     }
 }
 

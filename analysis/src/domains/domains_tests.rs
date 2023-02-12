@@ -3,51 +3,44 @@ use std::collections::{HashMap, HashSet};
 
 #[test]
 fn sign_domain_tests() {
-    let bottom = SignDomain::Bottom;
-    let positive = SignDomain::Positive;
-    let negative = SignDomain::Negative;
-    let zero = SignDomain::Zero;
-    let top = SignDomain::Top;
-
+    use SignDomain::*;
     // Comparisons, join
-    assert_eq!(positive, positive);
-    assert!(bottom <= negative);
-    assert!(zero <= top);
-    assert_eq!(zero.join(&zero), zero);
-    assert_eq!(negative.join(&positive), top);
-    assert_eq!(positive.join(&negative), top);
-    assert_eq!(top.join(&negative), top);
-    assert_eq!(negative.join(&top), top);
-    assert_eq!(bottom.join(&negative), negative);
-    assert_eq!(negative.join(&bottom), negative);
+    assert_eq!(Positive, Positive);
+    assert!(Bottom <= Negative);
+    assert!(Zero <= Top);
+    assert_eq!(Zero.join(&Zero), Zero);
+    assert_eq!(Negative.join(&Positive), Top);
+    assert_eq!(Positive.join(&Negative), Top);
+    assert_eq!(Top.join(&Negative), Top);
+    assert_eq!(Negative.join(&Top), Top);
+    assert_eq!(Bottom.join(&Negative), Negative);
+    assert_eq!(Negative.join(&Bottom), Negative);
 
     // Meet
-    assert_eq!(zero.meet(&zero), zero);
-    assert_eq!(bottom.meet(&zero), bottom);
-    assert_eq!(top.meet(&zero), zero);
-    assert_eq!(negative.meet(&zero), bottom);
+    assert_eq!(Zero.meet(&Zero), Zero);
+    assert_eq!(Bottom.meet(&Zero), Bottom);
+    assert_eq!(Top.meet(&Zero), Zero);
+    assert_eq!(Negative.meet(&Zero), Bottom);
 
     // Conversions
-    assert_eq!(SignDomain::from(5), SignDomain::Positive);
-    assert_eq!(SignDomain::from(0), SignDomain::Zero);
-    assert_eq!(SignDomain::from(-5), SignDomain::Negative);
-    assert_eq!(
-        SignDomain::from(IntervalDomain::bottom(&())),
-        SignDomain::Bottom
-    );
-    assert_eq!(SignDomain::from(IntervalDomain::top(&())), SignDomain::Top);
-    assert_eq!(SignDomain::from(IntervalDomain::from(0)), SignDomain::Zero);
-    assert_eq!(
-        SignDomain::from(IntervalDomain::from(5)),
-        SignDomain::Positive
-    );
-    assert_eq!(
-        SignDomain::from(IntervalDomain::from(-5)),
-        SignDomain::Negative
-    );
+    assert_eq!(SignDomain::from(5), Positive);
+    assert_eq!(SignDomain::from(0), Zero);
+    assert_eq!(SignDomain::from(-5), Negative);
+    assert_eq!(SignDomain::from(IntervalDomain::bottom(&())), Bottom);
+    assert_eq!(SignDomain::from(IntervalDomain::top(&())), Top);
+    assert_eq!(SignDomain::from(IntervalDomain::from(0)), Zero);
+    assert_eq!(SignDomain::from(IntervalDomain::from(5)), Positive);
+    assert_eq!(SignDomain::from(IntervalDomain::from(-5)), Negative);
+
+    // Operations
+    assert_eq!(Positive + Zero, Positive);
+    assert_eq!(Positive - Bottom, Bottom);
+    assert_eq!(-Positive, Negative);
+    assert_eq!(Positive - Positive, Top);
+    assert_eq!(Positive + Positive, Positive);
 
     // Pretty printing
-    assert_eq!(format!("{bottom:?}"), "Bottom");
+    assert_eq!(format!("{Bottom:?}"), "Bottom");
 }
 
 #[test]
@@ -55,27 +48,25 @@ fn vec2_domain_tests() {
     // Vec2Sign
     {
         type SignVec = Vec2Domain<SignDomain>;
+        use SignDomain::*;
         let bottom = SignVec::bottom(&());
         let pos_pos = SignVec {
-            x: SignDomain::Positive,
-            y: SignDomain::Positive,
+            x: Positive,
+            y: Positive,
         };
         let pos_neg = SignVec {
-            x: SignDomain::Positive,
-            y: SignDomain::Negative,
+            x: Positive,
+            y: Negative,
         };
         let pos_top = SignVec {
-            x: SignDomain::Positive,
-            y: SignDomain::Top,
+            x: Positive,
+            y: Top,
         };
         let pos_bot = SignVec {
-            x: SignDomain::Positive,
-            y: SignDomain::Bottom,
+            x: Positive,
+            y: Bottom,
         };
-        let top_top = SignVec {
-            x: SignDomain::Top,
-            y: SignDomain::Top,
-        };
+        let top_top = SignVec { x: Top, y: Top };
 
         assert_eq!(bottom, bottom);
         assert_eq!(pos_pos, pos_pos);
@@ -212,6 +203,8 @@ fn interval_domain_tests() {
     let add_expected2 = IntervalDomain { min: 11, max: 30 };
     assert_eq!(small_range_a + small_range_b, add_expected2);
     assert_eq!(small_range_b + small_range_a, add_expected2);
+    let sub_expected = IntervalDomain { min: -20, max: -1 };
+    assert_eq!(small_range_a - small_range_b, sub_expected);
 
     // Printing
     assert_eq!(format!("{singleton:?}"), "[5, 5]");
@@ -405,18 +398,13 @@ fn lifted_domain_test() {
 #[test]
 fn map_domain_test() {
     type MyDomain = Map<&'static str, SignDomain>;
+    use SignDomain::*;
     let ctx = MapCtx(HashSet::from(["Foo", "Bar", "Baz"]), ());
     let bottom = MyDomain::bottom(&ctx);
     let top = MyDomain::top(&ctx);
-    let a = Map(HashMap::from([("Foo", SignDomain::Zero)]));
-    let b = Map(HashMap::from([
-        ("Foo", SignDomain::Top),
-        ("Bar", SignDomain::Positive),
-    ]));
-    let c = Map(HashMap::from([
-        ("Foo", SignDomain::Top),
-        ("Bar", SignDomain::Negative),
-    ]));
+    let a = Map(HashMap::from([("Foo", Zero)]));
+    let b = Map(HashMap::from([("Foo", Top), ("Bar", Positive)]));
+    let c = Map(HashMap::from([("Foo", Top), ("Bar", Negative)]));
 
     assert!(a == a);
     assert!(bottom < top);
@@ -428,18 +416,12 @@ fn map_domain_test() {
     assert_eq!(a.join(&b), b);
     assert_eq!(
         b.join(&c),
-        Map(HashMap::from([
-            ("Foo", SignDomain::Top),
-            ("Bar", SignDomain::Top),
-        ]))
+        Map(HashMap::from([("Foo", Top), ("Bar", Top),]))
     );
-    assert_eq!(a.meet(&b), Map(HashMap::from([("Foo", SignDomain::Zero),])));
+    assert_eq!(a.meet(&b), Map(HashMap::from([("Foo", Zero),])));
     assert_eq!(
         b.meet(&c),
-        Map(HashMap::from([
-            ("Foo", SignDomain::Top),
-            ("Bar", SignDomain::Bottom)
-        ]))
+        Map(HashMap::from([("Foo", Top), ("Bar", Bottom)]))
     );
     assert_eq!(format!("{bottom:?}"), "Map()");
     assert_eq!(
