@@ -1,6 +1,7 @@
 use super::lexer::*;
 use utils::DiagnosticEmitter;
 
+#[derive(Debug)]
 struct LexResult {
     output: String,
     tokens: Vec<Token>,

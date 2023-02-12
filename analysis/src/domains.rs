@@ -181,6 +181,7 @@ impl<T: Eq + Hash> DerefMut for PowerSetDomain<T> {
     }
 }
 
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct PowerSetTop<T: Eq + Hash>(pub PowerSetDomain<T>);
 
 impl<T: Eq + Hash> PartialOrd for PowerSetDomain<T> {

@@ -10,6 +10,7 @@ use utils::Vec2;
 use crate::ast::*;
 use crate::cfg::Cfg;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Step {
     pub pos: Vec2,
     pub op: Operation,

@@ -126,7 +126,7 @@ where
     output
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 enum Color {
     White,
     Gray,
@@ -187,7 +187,7 @@ where
 /// A worklist to visit the nodes of a control flow graph in
 /// reverse post-order. The worklist can contain each node
 /// at most once at a given time.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct RPOWorklist<'cfg, Cfg: ControlFlowGraph> {
     queue: PriorityQueue<usize, usize>,
     rpo_order: Vec<usize>,

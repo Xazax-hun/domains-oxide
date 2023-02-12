@@ -4,7 +4,7 @@ use crate::ast::{self, *};
 
 // TODO: Should this have a phantom lifetime to express
 //       its dependency on the CFG?
-#[derive(Default)]
+#[derive(Clone, Debug, Default)]
 pub struct BasicBlock {
     operations: Vec<Operation>,
     succs: Vec<usize>,
@@ -33,11 +33,13 @@ impl CfgBlock for BasicBlock {
     }
 }
 
+#[derive(Clone, Debug)]
 struct CfgImpl<'ctx> {
     basic_blocks: Vec<BasicBlock>,
     context: &'ctx ASTContext,
 }
 
+#[derive(Clone, Debug)]
 pub struct Cfg<'ctx>(CfgImpl<'ctx>);
 
 impl<'ctx> ControlFlowGraph for CfgImpl<'ctx> {

@@ -4,6 +4,7 @@ use super::lexer::Lexer;
 use super::parser::Parser;
 use utils::DiagnosticEmitter;
 
+#[derive(Debug)]
 struct ParseResult {
     output: String,
     ctx: Option<ASTContext>,

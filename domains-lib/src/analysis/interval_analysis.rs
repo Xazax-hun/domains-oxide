@@ -12,6 +12,7 @@ use crate::eval::rotate;
 
 type Vec2Interval = Vec2Domain<IntervalDomain>;
 
+#[derive(Debug)]
 pub struct IntervalAnalysis;
 
 impl IntervalAnalysis {

@@ -5,6 +5,7 @@ use super::lexer::Lexer;
 use super::parser::Parser;
 use utils::DiagnosticEmitter;
 
+#[derive(Debug)]
 pub struct ParseResult {
     pub output: String,
     pub ctx: ASTContext,

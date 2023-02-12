@@ -10,6 +10,7 @@ use super::domains::JoinSemiLattice;
 /// Requirements:
 /// * All the back edges must target the loop head (node dominating every
 ///   node within the loop.)
+#[derive(Clone, Debug)]
 pub struct SolveMonotone {
     /// Set the approximate iteration limit per node. If the limit is reached
     /// (the analysis did not converge in the permitted number of steps),

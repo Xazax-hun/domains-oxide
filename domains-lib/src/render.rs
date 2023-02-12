@@ -147,7 +147,7 @@ fn render_random_path(cr: &Context, color: Rgb, walk: &Walk, ctxt: &ASTContext, 
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 struct Rgb(f64, f64, f64);
 #[allow(clippy::eq_op)]
 const COLORS: [Rgb; 21] = [
@@ -177,7 +177,7 @@ const COLORS: [Rgb; 21] = [
 const DOT_COLOR: Rgb = Rgb(0.0, 0.0, 0.0);
 const START_DOT_COLOR: Rgb = Rgb(0.0, 1.0, 0.0);
 
-#[derive(Default)]
+#[derive(Clone, Default, Debug)]
 struct ColorPicker {
     current: usize,
     rng: ThreadRng,

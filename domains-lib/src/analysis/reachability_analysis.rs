@@ -46,6 +46,7 @@ pub fn collect_operation_kind(
     result
 }
 
+#[derive(Debug)]
 pub struct PastOperations;
 
 impl PastOperations {
@@ -70,6 +71,7 @@ impl Analysis for PastOperations {
     }
 }
 
+#[derive(Debug)]
 pub struct FutureOperations;
 
 impl FutureOperations {

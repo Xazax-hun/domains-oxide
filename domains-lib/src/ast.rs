@@ -6,6 +6,7 @@ use crate::lexer::Token;
 
 /// Represents a pair of tokens where each
 /// token is a Number.
+#[derive(Clone, Debug)]
 pub struct NumPair {
     pub x: Token,
     pub y: Token,
@@ -20,27 +21,32 @@ impl From<&NumPair> for Vec2 {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Init {
     pub kw: Token,
     pub bottom_left: NumPair,
     pub size: NumPair,
 }
 
+#[derive(Clone, Debug)]
 pub struct Translation {
     pub kw: Token,
     pub vector: NumPair,
 }
 
+#[derive(Clone, Debug)]
 pub struct Rotation {
     pub kw: Token,
     pub origin: NumPair,
     pub deg: Token,
 }
 
+#[derive(Clone, Debug)]
 pub struct Sequence {
     pub nodes: Vec<Node>,
 }
 
+#[derive(Clone, Debug)]
 pub struct Branch {
     pub kw: Token,
     /// Must be a Sequence(u32)
@@ -49,6 +55,7 @@ pub struct Branch {
     pub rhs: Node,
 }
 
+#[derive(Clone, Debug)]
 pub struct Loop {
     pub kw: Token,
     /// Must be a Sequence(u32)
@@ -62,7 +69,7 @@ pub struct Loop {
 /// fields use `ASTContext::node_to_ref` to get back the reference.
 /// `ASTContext` cannot be mutated while any of the references are
 /// live.
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum Node {
     Operation(Operation),
     Sequence(u32),
@@ -72,13 +79,14 @@ pub enum Node {
 
 /// Elementary operation that does not involve any control
 /// flow, can be the element of a basic block.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Operation {
     Init(u32),
     Translation(u32),
     Rotation(u32),
 }
 
+#[derive(Clone, Debug)]
 pub enum NodeRef<'ctx> {
     Init(&'ctx Init),
     Translation(&'ctx Translation),
@@ -88,7 +96,7 @@ pub enum NodeRef<'ctx> {
     Loop(&'ctx Loop),
 }
 
-#[derive(Default)]
+#[derive(Clone, Debug, Default)]
 pub struct ASTContext {
     inits: Vec<Init>,
     translations: Vec<Translation>,
@@ -158,7 +166,7 @@ impl ASTContext {
     }
 }
 
-#[derive(Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Annotations {
     pub pre_annotations: HashMap<Node, Vec<String>>,
     pub post_annotations: HashMap<Node, Vec<String>>,

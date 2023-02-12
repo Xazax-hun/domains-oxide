@@ -13,6 +13,7 @@ use super::Analysis;
 
 type Vec2Sign = Vec2Domain<SignDomain>;
 
+#[derive(Debug)]
 pub struct SignAnalysis;
 
 impl SignAnalysis {

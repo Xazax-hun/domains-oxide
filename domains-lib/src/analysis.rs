@@ -17,6 +17,7 @@ use crate::{
     render::RenderableDomain,
 };
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnalysisResult {
     pub annotations: Annotations,
     pub covered: Vec<Polygon>,
