@@ -105,15 +105,11 @@ impl<T: JoinSemiLattice> JoinSemiLattice for Option<T> {
     }
 
     fn widen(&self, previous: &Self, iteration: usize) -> Self {
-        if let Some(inner) = self {
-            if let Some(prev) = previous {
-                Some(inner.widen(prev, iteration))
-            } else {
-                self.clone()
-            }
-        } else {
-            None
-        }
+        self.as_ref().map(|inner| {
+            previous
+                .as_ref()
+                .map_or_else(|| inner.clone(), |prev| inner.widen(prev, iteration))
+        })
     }
 }
 
@@ -215,7 +211,7 @@ impl<T: Lattice> Lattice for Flipped<T> {
 /// The map lattice is often used to encode information about multiple
 /// elements of the program state like variables. In those cases the key
 /// would be the unique resolutions of the variables (e.g., fully qualified name),
-/// and the value would be the tracked state for each variable (e.g., IntervalDomain).
+/// and the value would be the tracked state for each variable (e.g., [`IntervalDomain`]).
 ///
 /// Warning: M1 without K compares less than M2 with K => Bottom. if this is undesired,
 /// make sure all keys are populated.

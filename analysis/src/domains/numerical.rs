@@ -9,7 +9,7 @@ use crate::domains::*;
 ///    Bottom
 /// ```
 /// A small lattice that lends itself to a fast, efficient analysis.
-/// For more precision, consider using [IntervalDomain].
+/// For more precision, consider using [`IntervalDomain`].
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum SignDomain {
     Top,
@@ -143,7 +143,7 @@ impl Sub for SignDomain {
 pub const INF: i64 = i64::MAX;
 pub const NEG_INF: i64 = i64::MIN;
 
-/// IntervalDomain is often used to represent a possible range of values.
+/// [`IntervalDomain`] is often used to represent a possible range of values.
 /// The lattice is ordered by inclusion and has very long ascending and
 /// descending chains, thus it implements widening. It also implements
 /// some basic arithmetic operations.

@@ -14,12 +14,12 @@ pub trait CfgBlock {
 
     /// Returns the unique identifiers of successors.
     /// These identifiers can be used to index into
-    /// the result of [ControlFlowGraph::blocks].
+    /// the result of [`ControlFlowGraph::blocks`].
     fn successors(&self) -> &[usize];
 
     /// Returns the unique identifiers of predecessors.
     /// These identifiers can be used to index into
-    /// the result of [ControlFlowGraph::blocks].
+    /// the result of [`ControlFlowGraph::blocks`].
     fn predecessors(&self) -> &[usize];
 }
 
@@ -27,7 +27,7 @@ pub trait CfgBlock {
 /// of basic blocks containing sequentially executed code, and
 /// directed edges between these blocks.
 ///
-/// Use [RPOWorklist] to traverse the graph.
+/// Use [`RPOWorklist`] to traverse the graph.
 pub trait ControlFlowGraph {
     type Block: CfgBlock;
 
@@ -195,8 +195,8 @@ pub struct RPOWorklist<'cfg, Cfg: ControlFlowGraph> {
 }
 
 impl<'cfg, Cfg: ControlFlowGraph> RPOWorklist<'cfg, Cfg> {
-    /// Creates a new RPOWorklist by computing the reverse-post order.
-    /// It is more efficient to clear a RPOWorklist and reuse it for
+    /// Creates a new [`RPOWorklist`] by computing the reverse-post order.
+    /// It is more efficient to clear a [`RPOWorklist`] and reuse it for
     /// another traversal than creating it from scratch.
     pub fn new(cfg: &'cfg Cfg) -> Self {
         // TODO: look into deduplicating this and get_back_edges
@@ -264,6 +264,6 @@ impl<'cfg, Cfg: ControlFlowGraph> RPOWorklist<'cfg, Cfg> {
 
     /// Removes all the nodes from the worklist.
     pub fn clear(&mut self) {
-        self.queue.clear()
+        self.queue.clear();
     }
 }

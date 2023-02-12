@@ -28,7 +28,7 @@ impl SignAnalysis {
         match ctx.op_to_ref(op) {
             NodeRef::Init(init) => {
                 let bot_left = Vec2::from(&init.bottom_left);
-                let width = init.size.x.value.to_num() as i64;
+                let width = i64::from(init.size.x.value.to_num());
                 let x_sign = if bot_left.x > 0 {
                     Positive
                 } else if bot_left.x + width < 0 {
@@ -39,7 +39,7 @@ impl SignAnalysis {
                     Top
                 };
 
-                let height = init.size.y.value.to_num() as i64;
+                let height = i64::from(init.size.y.value.to_num());
                 let y_sign = if bot_left.y > 0 {
                     Positive
                 } else if bot_left.y + height < 0 {

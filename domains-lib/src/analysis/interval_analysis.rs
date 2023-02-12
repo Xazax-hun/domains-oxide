@@ -18,7 +18,7 @@ pub struct IntervalAnalysis;
 impl IntervalAnalysis {
     pub fn get_results(cfg: &Cfg) -> Vec<Vec2Interval> {
         let solver = SolveMonotone::default();
-        solver.transfer_operations(cfg, &(), &mut IntervalAnalysis::transfer)
+        solver.transfer_operations(cfg, &(), &mut Self::transfer)
     }
 
     pub fn transfer(
