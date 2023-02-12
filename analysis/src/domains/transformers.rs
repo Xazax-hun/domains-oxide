@@ -12,6 +12,9 @@ use paste::paste;
 // * Reduced product
 // * Finite lattices
 // * Immutable versions of the containers
+// * Loop widening can be implemented via a transformer that
+//   does join instead of widen in the first couple of iterations
+//   but does widen later on.
 
 // TODO:
 // Add more general building blocks for finite domains and
