@@ -208,6 +208,88 @@ impl<T: Lattice> Lattice for Flipped<T> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Array<T: JoinSemiLattice + Copy, const N: usize>(pub [T; N]);
+
+impl<T: JoinSemiLattice + Copy, const N: usize> Deref for Array<T, N> {
+    type Target = [T; N];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T: JoinSemiLattice + Copy, const N: usize> DerefMut for Array<T, N> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<T: JoinSemiLattice + Copy, const N: usize> PartialOrd for Array<T, N> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let mut candidate = None;
+        for (lhs, rhs) in self.iter().zip(other.iter()) {
+            if let Some(order) = lhs.partial_cmp(rhs) {
+                if order == Ordering::Equal {
+                    continue;
+                }
+                match candidate {
+                    Some(candidate_order) if order == candidate_order => {}
+                    Some(_) => return None,
+                    None => candidate = Some(order),
+                }
+            } else {
+                return None;
+            }
+        }
+        candidate.or(Some(Ordering::Equal))
+    }
+}
+
+impl<T: JoinSemiLattice + Copy, const N: usize> JoinSemiLattice for Array<T, N> {
+    type LatticeContext = T::LatticeContext;
+
+    fn bottom(ctx: &Self::LatticeContext) -> Self {
+        Self([T::bottom(ctx); N])
+    }
+
+    fn join(&self, other: &Self) -> Self {
+        let mut result = self.clone();
+        result
+            .0
+            .iter_mut()
+            .zip(other.iter())
+            .for_each(|(s, o)| *s = s.join(o));
+        result
+    }
+
+    fn widen(&self, previous: &Self, iteration: usize) -> Self {
+        let mut result = self.clone();
+        result
+            .0
+            .iter_mut()
+            .zip(previous.iter())
+            .for_each(|(s, p)| *s = s.widen(p, iteration));
+        result
+    }
+}
+
+impl<T: Lattice + Copy, const N: usize> Lattice for Array<T, N> {
+    fn meet(&self, other: &Self) -> Self {
+        let mut result = self.clone();
+        result
+            .0
+            .iter_mut()
+            .zip(other.iter())
+            .for_each(|(s, o)| *s = s.meet(o));
+        result
+    }
+
+    fn top(ctx: &Self::LatticeContext) -> Self {
+        Self([T::top(ctx); N])
+    }
+}
+
 /// The map lattice is often used to encode information about multiple
 /// elements of the program state like variables. In those cases the key
 /// would be the unique resolutions of the variables (e.g., fully qualified name),

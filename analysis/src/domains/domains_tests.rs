@@ -308,6 +308,40 @@ fn flipped_sign_domain_tests() {
 }
 
 #[test]
+fn array_domain_test() {
+    use SignDomain::*;
+    type MyDomain = Array<SignDomain, 3>;
+    let bottom = MyDomain::bottom(&());
+    let top = MyDomain::top(&());
+    let pos_zero_neg = Array([Positive, Zero, Negative]);
+    let pos_zero_bottom = Array([Positive, Zero, Bottom]);
+    let neg_zero_top = Array([Negative, Zero, Top]);
+
+    assert!(pos_zero_neg == pos_zero_neg);
+    assert!(pos_zero_neg < top);
+    assert!(bottom < pos_zero_neg);
+    assert!(pos_zero_bottom < pos_zero_neg);
+    assert!(!(pos_zero_neg < neg_zero_top));
+    assert!(!(neg_zero_top < pos_zero_neg));
+
+    assert_eq!(pos_zero_neg.join(&neg_zero_top), Array([Top, Zero, Top]));
+    assert_eq!(pos_zero_neg.join(&top), top);
+    assert_eq!(bottom.join(&neg_zero_top), neg_zero_top);
+    assert_eq!(
+        pos_zero_neg.meet(&neg_zero_top),
+        Array([Bottom, Zero, Negative])
+    );
+    assert_eq!(pos_zero_neg.meet(&top), pos_zero_neg);
+    assert_eq!(bottom.meet(&neg_zero_top), bottom);
+
+    // Pretty printing
+    assert_eq!(
+        format!("{pos_zero_neg:?}"),
+        "Array([Positive, Zero, Negative])"
+    );
+}
+
+#[test]
 fn product_domain_test() {
     type MyDomain = Prod3<SignDomain, (), BitSetDomain>;
     let bit_ctx = BitSetTop(2);
