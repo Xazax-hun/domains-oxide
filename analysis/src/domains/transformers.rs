@@ -209,9 +209,9 @@ impl<T: Lattice> Lattice for Flipped<T> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Array<T: JoinSemiLattice + Copy, const N: usize>(pub [T; N]);
+pub struct Array<T: JoinSemiLattice, const N: usize>(pub [T; N]);
 
-impl<T: JoinSemiLattice + Copy, const N: usize> Deref for Array<T, N> {
+impl<T: JoinSemiLattice, const N: usize> Deref for Array<T, N> {
     type Target = [T; N];
 
     fn deref(&self) -> &Self::Target {
@@ -219,13 +219,13 @@ impl<T: JoinSemiLattice + Copy, const N: usize> Deref for Array<T, N> {
     }
 }
 
-impl<T: JoinSemiLattice + Copy, const N: usize> DerefMut for Array<T, N> {
+impl<T: JoinSemiLattice, const N: usize> DerefMut for Array<T, N> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl<T: JoinSemiLattice + Copy, const N: usize> PartialOrd for Array<T, N> {
+impl<T: JoinSemiLattice, const N: usize> PartialOrd for Array<T, N> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         let mut candidate = None;
         for (lhs, rhs) in self.iter().zip(other.iter()) {
@@ -246,11 +246,11 @@ impl<T: JoinSemiLattice + Copy, const N: usize> PartialOrd for Array<T, N> {
     }
 }
 
-impl<T: JoinSemiLattice + Copy, const N: usize> JoinSemiLattice for Array<T, N> {
+impl<T: JoinSemiLattice, const N: usize> JoinSemiLattice for Array<T, N> {
     type LatticeContext = T::LatticeContext;
 
     fn bottom(ctx: &Self::LatticeContext) -> Self {
-        Self([T::bottom(ctx); N])
+        Self([(); N].map(|()| T::bottom(ctx)))
     }
 
     fn join(&self, other: &Self) -> Self {
@@ -274,7 +274,7 @@ impl<T: JoinSemiLattice + Copy, const N: usize> JoinSemiLattice for Array<T, N> 
     }
 }
 
-impl<T: Lattice + Copy, const N: usize> Lattice for Array<T, N> {
+impl<T: Lattice, const N: usize> Lattice for Array<T, N> {
     fn meet(&self, other: &Self) -> Self {
         let mut result = self.clone();
         result
@@ -286,7 +286,7 @@ impl<T: Lattice + Copy, const N: usize> Lattice for Array<T, N> {
     }
 
     fn top(ctx: &Self::LatticeContext) -> Self {
-        Self([T::top(ctx); N])
+        Self([(); N].map(|()| T::top(ctx)))
     }
 }
 
