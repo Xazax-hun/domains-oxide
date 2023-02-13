@@ -208,6 +208,17 @@ fn interval_domain_tests() {
     assert_eq!(small_range_b + small_range_a, add_expected2);
     let sub_expected = IntervalDomain { min: -20, max: -1 };
     assert_eq!(small_range_a - small_range_b, sub_expected);
+    let mul_expected1 = IntervalDomain { min: 0, max: 200 };
+    assert_eq!(small_range_a * small_range_b, mul_expected1);
+    assert_eq!(small_range_a * top, top);
+    let neg_range = IntervalDomain { min: -10, max: -2 };
+    let mul_expected2 = IntervalDomain {
+        min: -200,
+        max: -22,
+    };
+    assert_eq!(small_range_b * neg_range, mul_expected2);
+    let mul_expected3 = IntervalDomain { min: 4, max: 100 };
+    assert_eq!(neg_range * neg_range, mul_expected3);
 
     // Printing
     assert_eq!(format!("{singleton:?}"), "[5, 5]");

@@ -180,7 +180,6 @@ impl Div for SignDomain {
     }
 }
 
-
 pub const INF: i64 = i64::MAX;
 pub const NEG_INF: i64 = i64::MIN;
 
@@ -194,9 +193,39 @@ pub struct IntervalDomain {
     pub max: i64,
 }
 
+impl IntervalDomain {
+    /// Returns [n, inf].
+    pub fn greater(n: i64) -> Self {
+        Self { min: n, max: INF }
+    }
+
+    /// Returns [-inf, n].
+    pub fn smaller(n: i64) -> Self {
+        Self {
+            min: NEG_INF,
+            max: n,
+        }
+    }
+}
+
 impl From<i64> for IntervalDomain {
     fn from(val: i64) -> Self {
         Self { min: val, max: val }
+    }
+}
+
+impl From<SignDomain> for IntervalDomain {
+    fn from(value: SignDomain) -> Self {
+        match value {
+            SignDomain::Top => IntervalDomain::top(&()),
+            SignDomain::Bottom => IntervalDomain::bottom(&()),
+            SignDomain::Zero => IntervalDomain::from(0),
+            SignDomain::Positive => IntervalDomain { min: 1, max: INF },
+            SignDomain::Negative => IntervalDomain {
+                min: NEG_INF,
+                max: -1,
+            },
+        }
     }
 }
 
@@ -282,24 +311,8 @@ impl Lattice for IntervalDomain {
     }
 }
 
-impl From<SignDomain> for IntervalDomain {
-    fn from(value: SignDomain) -> Self {
-        match value {
-            SignDomain::Top => IntervalDomain::top(&()),
-            SignDomain::Bottom => IntervalDomain::bottom(&()),
-            SignDomain::Zero => IntervalDomain::from(0),
-            SignDomain::Positive => IntervalDomain { min: 1, max: INF },
-            SignDomain::Negative => IntervalDomain {
-                min: NEG_INF,
-                max: -1,
-            },
-        }
-    }
-}
-
 impl Add<IntervalDomain> for IntervalDomain {
     type Output = Self;
-
     fn add(self, rhs: Self) -> Self {
         // Cannot do arithmetic on bottom.
         assert!(self.min != INF && rhs.min != INF);
@@ -308,12 +321,12 @@ impl Add<IntervalDomain> for IntervalDomain {
             min: if self.min == NEG_INF || rhs.min == NEG_INF {
                 NEG_INF
             } else {
-                self.min + rhs.min
+                self.min.saturating_add(rhs.min)
             },
             max: if self.max == INF || rhs.max == INF {
                 INF
             } else {
-                self.max + rhs.max
+                self.max.saturating_add(rhs.max)
             },
         }
     }
@@ -321,7 +334,6 @@ impl Add<IntervalDomain> for IntervalDomain {
 
 impl Neg for IntervalDomain {
     type Output = Self;
-
     fn neg(self) -> Self {
         Self {
             min: if self.max == INF { NEG_INF } else { -self.max },
@@ -332,13 +344,31 @@ impl Neg for IntervalDomain {
 
 impl Sub for IntervalDomain {
     type Output = Self;
-
     fn sub(self, rhs: Self) -> Self::Output {
         self + -rhs
     }
 }
 
-// TODO: add other arithmetic operations.
+impl Mul for IntervalDomain {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self::Output {
+        // Cannot do arithmetic on bottom.
+        assert!(self.min != INF && rhs.min != INF);
+        assert!(self.max != NEG_INF && rhs.max != NEG_INF);
+        let candidates = [
+            self.min.saturating_mul(rhs.min),
+            self.min.saturating_mul(rhs.max),
+            self.max.saturating_mul(rhs.min),
+            self.max.saturating_mul(rhs.max),
+        ];
+        IntervalDomain {
+            min: *candidates.iter().min().unwrap(),
+            max: *candidates.iter().max().unwrap(),
+        }
+    }
+}
+
+// TODO: Optimistic division for intervals.
 
 // TODO: add congruence domain.
 // TODO: add relational domains like octagons and polyhedra.
