@@ -68,6 +68,12 @@ pub struct Vec2 {
     pub y: i64,
 }
 
+impl Vec2 {
+    pub fn len(&self) -> f64 {
+        f64::sqrt((self.x * self.x + self.y * self.y) as f64)
+    }
+}
+
 impl Display for Vec2 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{{ x: {}, y: {} }}", self.x, self.y)

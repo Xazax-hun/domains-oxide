@@ -110,14 +110,17 @@ fn render_random_path(cr: &Context, color: Rgb, walk: &Walk, ctxt: &ASTContext, 
             let y = walk[i].pos.y as f64;
             cr.new_path();
             if let NodeRef::Rotation(rot) = ctxt.op_to_ref(walk[i].op) {
-                let orig_x: f64 = rot.origin.x.value.to_num().into();
-                let orig_y: f64 = rot.origin.y.value.to_num().into();
-                let x_diff: f64 = orig_x - (walk[i].pos.x as f64);
-                let y_diff: f64 = orig_y - (walk[i].pos.y as f64);
-                let dist = f64::sqrt(x_diff * x_diff + y_diff * y_diff);
+                let origin = Vec2::from(&rot.origin);
+                let diff = origin - walk[i].pos;
                 let deg_prev = f64::atan2(-prev_y, walk[i - 1].pos.x as f64);
                 let deg_cur = f64::atan2(-y, walk[i].pos.x as f64);
-                cr.arc(orig_x, -orig_y, dist, deg_cur, deg_prev);
+                cr.arc(
+                    origin.x as f64,
+                    -origin.y as f64,
+                    diff.len(),
+                    deg_cur,
+                    deg_prev,
+                );
             } else {
                 cr.move_to(walk[i - 1].pos.x as f64, -prev_y);
                 cr.line_to(walk[i].pos.x as f64, -y);
