@@ -18,6 +18,38 @@ pub struct Step {
 
 pub type Walk = Vec<Step>;
 
+/// Create a list of random walks in the Cfg.
+///
+/// # Arguments
+///
+/// * `loopiness` - Bias towards taking a back edge in the CFG during the walk.
+/// 1 means that back edges have the same chance of being picked as regular edges.
+/// n means back edges are n times more likely than regular edges.
+pub fn create_random_walks(cfg: &Cfg, ctx: &ASTContext, loopiness: u32, num: usize) -> Vec<Walk> {
+    if !matches!(
+        cfg.blocks().first().unwrap().operations().first().unwrap(),
+        Operation::Init(_)
+    ) {
+        return Vec::new(); // TODO: add error message.
+    }
+
+    let mut rng = rand::thread_rng();
+    let back_edges = analysis::cfg::get_back_edges(cfg);
+    let mut result = Vec::new();
+    result.reserve(num);
+
+    for _ in 1..=num {
+        result.push(create_random_walk_impl(
+            &mut rng,
+            cfg,
+            &back_edges,
+            ctx,
+            loopiness,
+        ));
+    }
+    result
+}
+
 /// A random walk in the CFG.
 ///
 /// # Arguments
@@ -26,32 +58,38 @@ pub type Walk = Vec<Step>;
 /// 1 means that back edges have the same chance of being picked as regular edges.
 /// n means back edges are n times more likely than regular edges.
 pub fn create_random_walk(cfg: &Cfg, ctx: &ASTContext, loopiness: u32) -> Walk {
-    let mut w = Vec::new();
     if !matches!(
         cfg.blocks().first().unwrap().operations().first().unwrap(),
         Operation::Init(_)
     ) {
-        return w; // TODO: add error message.
+        return Vec::new(); // TODO: add error message.
     }
 
     let mut rng = rand::thread_rng();
+    let back_edges = analysis::cfg::get_back_edges(cfg);
 
-    // TODO: we should hoist this, so we do not recalculate for all the walks.
-    let mut back_edges = analysis::cfg::get_back_edges(cfg);
+    create_random_walk_impl(&mut rng, cfg, &back_edges, ctx, loopiness)
+}
 
+fn create_random_walk_impl(
+    rng: &mut ThreadRng,
+    cfg: &Cfg,
+    back_edges: &HashSet<(usize, usize)>,
+    ctx: &ASTContext,
+    loopiness: u32,
+) -> Walk {
+    let mut w: Vec<Step> = Vec::new();
     let mut current = 0;
     loop {
         for &op in cfg.blocks()[current].operations() {
             let step = match ctx.op_to_ref(op) {
                 NodeRef::Init(init) => {
-                    let from_x = init.bottom_left.x.value.to_num();
-                    let from_y = init.bottom_left.y.value.to_num();
-                    let to_x = from_x + init.size.x.value.to_num();
-                    let to_y = from_y + init.size.y.value.to_num();
+                    let from = Vec2::from(&init.bottom_left);
+                    let to = from + Vec2::from(&init.size);
                     Step {
                         pos: Vec2 {
-                            x: rng.gen_range(from_x..=to_x).into(),
-                            y: rng.gen_range(from_y..=to_y).into(),
+                            x: rng.gen_range(from.x..=to.x),
+                            y: rng.gen_range(from.y..=to.y),
                         },
                         op,
                     }
@@ -59,19 +97,12 @@ pub fn create_random_walk(cfg: &Cfg, ctx: &ASTContext, loopiness: u32) -> Walk {
                 NodeRef::Translation(trans) => {
                     let prev = w.last().unwrap().pos;
                     Step {
-                        pos: prev
-                            + Vec2 {
-                                x: trans.vector.x.value.to_num().into(),
-                                y: trans.vector.y.value.to_num().into(),
-                            },
+                        pos: prev + Vec2::from(&trans.vector),
                         op,
                     }
                 }
                 NodeRef::Rotation(rot) => {
-                    let origin = Vec2 {
-                        x: rot.origin.x.value.to_num().into(),
-                        y: rot.origin.y.value.to_num().into(),
-                    };
+                    let origin = Vec2::from(&rot.origin);
                     let to_rotate = w.last().unwrap().pos;
                     Step {
                         pos: rotate(to_rotate, origin, rot.deg.value.to_num()),
@@ -85,7 +116,7 @@ pub fn create_random_walk(cfg: &Cfg, ctx: &ASTContext, loopiness: u32) -> Walk {
         if cfg.blocks()[current].successors().is_empty() {
             break;
         }
-        current = get_next_block(&mut rng, cfg, current, &mut back_edges, loopiness);
+        current = get_next_block(rng, cfg, current, back_edges, loopiness);
     }
 
     w
@@ -141,7 +172,7 @@ fn get_next_block(
     rng: &mut ThreadRng,
     cfg: &Cfg,
     current: usize,
-    back_edges: &mut HashSet<(usize, usize)>,
+    back_edges: &HashSet<(usize, usize)>,
     loopiness: u32,
 ) -> usize {
     let succs = cfg.blocks()[current].successors();

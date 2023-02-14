@@ -2,7 +2,7 @@ use clap::{Parser as CommandLineParser, ValueEnum};
 use domains_lib::analysis::{get_analysis_results, Analyses, AnalysisResult};
 use domains_lib::ast;
 use domains_lib::cfg::{self, Cfg};
-use domains_lib::eval::{annotate_with_walks, create_random_walk};
+use domains_lib::eval::{annotate_with_walks, create_random_walks};
 use domains_lib::lexer::Lexer;
 use domains_lib::parser::Parser;
 use domains_lib::render::render_random_walk;
@@ -116,16 +116,13 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
         }
     }
 
-    let mut walks = Vec::new();
-    walks.reserve(opts.executions as usize);
-    for i in 1..=opts.executions {
-        walks.push(create_random_walk(&cfg, &ctxt, opts.loopiness));
-
+    let walks = create_random_walks(&cfg, &ctxt, opts.loopiness, opts.executions as usize);
+    for (i, w) in walks.iter().enumerate() {
         if !opts.svg {
             if opts.executions > 1 {
-                diag.out_ln(&format!("{i}. execution:"));
+                diag.out_ln(&format!("{}. execution:", i + 1));
             }
-            for step in walks.last().unwrap() {
+            for step in w {
                 diag.out_ln(&format!("{}", step.pos));
             }
         }

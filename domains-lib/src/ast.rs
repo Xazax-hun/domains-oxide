@@ -16,7 +16,7 @@ impl From<&NumPair> for Vec2 {
     fn from(value: &NumPair) -> Self {
         Self {
             x: value.x.value.to_num().into(),
-            y: value.x.value.to_num().into(),
+            y: value.y.value.to_num().into(),
         }
     }
 }
