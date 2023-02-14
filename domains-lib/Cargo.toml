@@ -16,4 +16,5 @@ utils = { path = "../utils"}
 analysis = { path = "../analysis"}
 lazy_static = "1.4.0"
 rand = "0.8.5"
+itertools = "0.10.5"
 cairo-rs = { version = "0.17.0", features = ["svg"] }

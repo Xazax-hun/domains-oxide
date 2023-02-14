@@ -7,6 +7,7 @@ use analysis::domains::{IntervalDomain, JoinSemiLattice, SignDomain, Vec2Domain}
 use cairo::{Context, SvgSurface};
 use rand::{prelude::ThreadRng, Rng};
 use utils::{Polygon, Vec2};
+use itertools::Itertools;
 
 const RADIUS: f64 = 3.0;
 const WIDTH: f64 = 500.0;
@@ -104,16 +105,16 @@ fn render_random_path(cr: &Context, color: Rgb, walk: &Walk, ctxt: &ASTContext, 
     if !dots_only {
         let Rgb(red, green, blue) = color;
         cr.set_source_rgb(red, green, blue);
-        for i in 1..walk.len() {
-            // Had to hoist these due to lame type inference.
-            let prev_y = walk[i - 1].pos.y as f64;
-            let y = walk[i].pos.y as f64;
+        for (prev, cur) in walk.iter().tuple_windows() {
+            let prev_y = prev.pos.y as f64;
+            let prev_x = prev.pos.x as f64;
+            let (x, y) = (cur.pos.x as f64, cur.pos.y as f64);
             cr.new_path();
-            if let NodeRef::Rotation(rot) = ctxt.op_to_ref(walk[i].op) {
+            if let NodeRef::Rotation(rot) = ctxt.op_to_ref(cur.op) {
                 let origin = Vec2::from(&rot.origin);
-                let diff = origin - walk[i].pos;
-                let deg_prev = f64::atan2(-prev_y, walk[i - 1].pos.x as f64);
-                let deg_cur = f64::atan2(-y, walk[i].pos.x as f64);
+                let diff = origin - cur.pos;
+                let deg_prev = f64::atan2(-prev_y, prev_x);
+                let deg_cur = f64::atan2(-y, x);
                 cr.arc(
                     origin.x as f64,
                     -origin.y as f64,
@@ -122,8 +123,8 @@ fn render_random_path(cr: &Context, color: Rgb, walk: &Walk, ctxt: &ASTContext, 
                     deg_prev,
                 );
             } else {
-                cr.move_to(walk[i - 1].pos.x as f64, -prev_y);
-                cr.line_to(walk[i].pos.x as f64, -y);
+                cr.move_to(prev_x, -prev_y);
+                cr.line_to(x, -y);
             }
             cr.stroke().unwrap();
         }
