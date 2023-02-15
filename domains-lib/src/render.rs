@@ -5,9 +5,9 @@ use crate::{
 
 use analysis::domains::{IntervalDomain, JoinSemiLattice, SignDomain, Vec2Domain};
 use cairo::{Context, SvgSurface};
+use itertools::Itertools;
 use rand::{prelude::ThreadRng, Rng};
 use utils::{Polygon, Vec2};
-use itertools::Itertools;
 
 const RADIUS: f64 = 3.0;
 const WIDTH: f64 = 500.0;

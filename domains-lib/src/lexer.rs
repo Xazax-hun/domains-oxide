@@ -254,14 +254,10 @@ impl<'src> Lexer<'src> {
         }
 
         let text = &self.source[self.start..self.current];
-        if let Some(value) = KEYWORDS.get(text) {
-            Some(Token {
-                value: *value,
-                line_num: self.line_num,
-            })
-        } else {
-            None
-        }
+        KEYWORDS.get(text).map(|value| Token {
+            value: *value,
+            line_num: self.line_num,
+        })
     }
 
     fn is_at_end(&self) -> bool {

@@ -77,15 +77,15 @@ impl<'src> Parser<'src> {
         };
         self.consume(RightBrace, "")?;
 
-        if let (NodeRef::Sequence(lhs_seq), NodeRef::Sequence(rhs_seq)) =
+        let (NodeRef::Sequence(lhs_seq), NodeRef::Sequence(rhs_seq)) =
             (self.ctx.node_to_ref(lhs), self.ctx.node_to_ref(rhs))
-        {
-            if lhs_seq.nodes.is_empty() && rhs_seq.nodes.is_empty() {
-                self.error(kw, "at most one alternative can be empty.");
-                return None;
-            }
-        } else {
-            panic!("Children of the branches should be sequences.")
+        else {
+            panic!("Children of the branches should be sequences.");
+        };
+
+        if lhs_seq.nodes.is_empty() && rhs_seq.nodes.is_empty() {
+            self.error(kw, "at most one alternative can be empty.");
+            return None;
         }
 
         Some(self.ctx.make_branch(Branch { kw, lhs, rhs }))

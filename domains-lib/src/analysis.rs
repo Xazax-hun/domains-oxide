@@ -56,10 +56,8 @@ lazy_static! {
 }
 
 pub fn get_analysis_results(analysis: Analyses, cfg: &Cfg) -> AnalysisResult {
-    if let Some(analysis) = ANALYSES.get(&analysis) {
-        return analysis.analyze(cfg);
-    }
-    panic!("Unimplemented analysis!")
+    let analysis = ANALYSES.get(&analysis).expect("Unimplemented analysis!");
+    analysis.analyze(cfg)
 }
 
 pub fn annotations_from_forward_analysis_results<D, F>(
