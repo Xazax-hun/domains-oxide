@@ -320,5 +320,8 @@ pub use numerical::*;
 mod transformers;
 pub use transformers::*;
 
+mod finite;
+pub use finite::*;
+
 #[cfg(test)]
 mod domains_tests;

@@ -565,3 +565,103 @@ fn union_domain_test() {
     assert_eq!(format!("{a:?}"), "U1(Negative)");
     assert_eq!(format!("{e:?}"), "U2([4, 13])");
 }
+
+#[test]
+fn finite_domain_test() {
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    #[rustfmt::skip]
+    enum Elems { A, B, C, D, E, F, G }
+    use Elems::*;
+
+    assert!(matches!(
+        FiniteDomainCtx::new(&[A], &[]),
+        Err(FiniteDomainError::LatticeTooSmall)
+    ));
+    assert!(matches!(
+        FiniteDomainCtx::new(&[A, A], &[]),
+        Err(FiniteDomainError::HasDuplicateElements)
+    ));
+
+    // Not a lattice, no greatest lower bound of B and C.
+    //     A
+    //    / \
+    //   B   C
+    assert!(matches!(
+        FiniteDomainCtx::new(&[A, B, C], &[(1, 0), (2, 0)]),
+        Err(FiniteDomainError::NoGreatestLowerBound(1, 2))
+    ));
+
+    // Not a lattice, no least upper bound B and C.
+    //   B   C
+    //    \ /
+    //     A
+    assert!(matches!(
+        FiniteDomainCtx::new(&[A, B, C], &[(0, 1), (0, 2)]),
+        Err(FiniteDomainError::NoLeastUpperBound(1, 2))
+    ));
+
+    //     A
+    //    / \
+    //   B   C
+    //    \ /
+    //     D
+    assert!(matches!(
+        FiniteDomainCtx::new(&[B, A, C, D], &[(0, 1), (2, 1), (3, 0), (3, 2)]),
+        Err(FiniteDomainError::TopNotFirst)
+    ));
+    assert!(matches!(
+        FiniteDomainCtx::new(&[A, B, D, C], &[(1, 0), (3, 0), (2, 1), (2, 3)]),
+        Err(FiniteDomainError::BottomNotLast)
+    ));
+    assert!(FiniteDomainCtx::new(&[A, B, C, D], &[(1, 0), (2, 0), (3, 1), (3, 2)]).is_ok());
+
+    //       A
+    //     /   \
+    //    / \   \
+    //   B   C   E
+    //    \ /    |
+    //     D     F
+    //      \   /
+    //        G
+    let ctx = FiniteDomainCtx::new(
+        &[A, B, C, D, E, F, G],
+        &[(1, 0), (2, 0), (4, 0), (3, 1), (3, 2), (5, 4), (6, 3), (6, 5)],
+    )
+    .unwrap();
+
+    // Encodings
+    let a = ctx.encode(&A).unwrap();
+    let b = ctx.encode(&B).unwrap();
+    let c = ctx.encode(&C).unwrap();
+    let d = ctx.encode(&D).unwrap();
+    let e = ctx.encode(&E).unwrap();
+    let f = ctx.encode(&F).unwrap();
+    let g = ctx.encode(&G).unwrap();
+
+    assert_eq!(ctx.decode(&a), &A);
+    assert_eq!(ctx.decode(&b), &B);
+    assert_eq!(ctx.decode(&c), &C);
+    assert_eq!(ctx.decode(&d), &D);
+    assert_eq!(ctx.decode(&e), &E);
+    assert_eq!(ctx.decode(&f), &F);
+    assert_eq!(ctx.decode(&g), &G);
+
+    assert_eq!(a, FiniteDomain::top(&ctx));
+    assert_eq!(g, FiniteDomain::bottom(&ctx));
+
+    // Lattice operations
+    assert!(b < a);
+    assert!(!(b < c));
+    assert!(!(c < b));
+    assert!(g < b);
+
+    assert_eq!(b.join(&c, &ctx), a);
+    assert_eq!(b.meet(&c, &ctx), d);
+    assert_eq!(b.join(&e, &ctx), a);
+    assert_eq!(b.meet(&e, &ctx), g);
+
+    assert_eq!(b.join(&a, &ctx), a);
+    assert_eq!(b.join(&g, &ctx), b);
+    assert_eq!(b.meet(&a, &ctx), b);
+    assert_eq!(b.meet(&g, &ctx), g);
+}

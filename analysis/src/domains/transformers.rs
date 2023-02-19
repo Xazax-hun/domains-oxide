@@ -10,7 +10,6 @@ use paste::paste;
 // TODO:
 // Add operations to build lattices
 // * Reduced product
-// * Finite lattices
 // * Immutable versions of the containers
 // * Loop widening can be implemented via a transformer that
 //   does join instead of widen in the first couple of iterations
