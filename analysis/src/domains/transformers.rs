@@ -60,7 +60,7 @@ impl<T: Eq + Clone + Debug> JoinSemiLattice for Flat<T> {
         Flat::Bottom
     }
 
-    fn join(&self, other: &Self) -> Self {
+    fn join(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
         match (self, other) {
             (_, &Flat::Bottom) => self.clone(),
             (&Flat::Bottom, _) => other.clone(),
@@ -75,7 +75,7 @@ impl<T: Eq + Clone + Debug> Lattice for Flat<T> {
         Flat::Top
     }
 
-    fn meet(&self, other: &Self) -> Self {
+    fn meet(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
         match (self, other) {
             (_, &Flat::Top) => self.clone(),
             (&Flat::Top, _) => other.clone(),
@@ -96,19 +96,19 @@ impl<T: JoinSemiLattice> JoinSemiLattice for Option<T> {
         None
     }
 
-    fn join(&self, other: &Self) -> Self {
+    fn join(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
         match (self, other) {
             (&None, _) => other.clone(),
             (_, &None) => self.clone(),
-            (Some(s), Some(o)) => Some(s.join(o)),
+            (Some(s), Some(o)) => Some(s.join(o, ctx)),
         }
     }
 
-    fn widen(&self, previous: &Self, iteration: usize) -> Self {
+    fn widen(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
         self.as_ref().map(|inner| {
             previous
                 .as_ref()
-                .map_or_else(|| inner.clone(), |prev| inner.widen(prev, iteration))
+                .map_or_else(|| inner.clone(), |prev| inner.widen(prev, ctx, iteration))
         })
     }
 }
@@ -118,10 +118,10 @@ impl<T: Lattice> Lattice for Option<T> {
         Some(T::top(ctx))
     }
 
-    fn meet(&self, other: &Self) -> Self {
+    fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
         match (self, other) {
             (&None, _) | (_, &None) => None,
-            (Some(s), Some(o)) => Some(s.meet(o)),
+            (Some(s), Some(o)) => Some(s.meet(o, ctx)),
         }
     }
 }
@@ -150,17 +150,17 @@ impl<T: JoinSemiLattice> JoinSemiLattice for Vec2Domain<T> {
         }
     }
 
-    fn join(&self, other: &Self) -> Self {
+    fn join(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
         Self {
-            x: self.x.join(&other.x),
-            y: self.y.join(&other.y),
+            x: self.x.join(&other.x, ctx),
+            y: self.y.join(&other.y, ctx),
         }
     }
 
-    fn widen(&self, other: &Self, iteration: usize) -> Self {
+    fn widen(&self, other: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
         Self {
-            x: self.x.widen(&other.x, iteration),
-            y: self.y.widen(&other.y, iteration),
+            x: self.x.widen(&other.x, ctx, iteration),
+            y: self.y.widen(&other.y, ctx, iteration),
         }
     }
 }
@@ -173,10 +173,10 @@ impl<T: Lattice> Lattice for Vec2Domain<T> {
         }
     }
 
-    fn meet(&self, other: &Self) -> Self {
+    fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
         Self {
-            x: self.x.meet(&other.x),
-            y: self.y.meet(&other.y),
+            x: self.x.meet(&other.x, ctx),
+            y: self.y.meet(&other.y, ctx),
         }
     }
 }
@@ -193,8 +193,8 @@ impl<T: Lattice> JoinSemiLattice for Flipped<T> {
         Self(T::top(ctx))
     }
 
-    fn join(&self, other: &Self) -> Self {
-        Self(self.0.meet(&other.0))
+    fn join(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
+        Self(self.0.meet(&other.0, ctx))
     }
 }
 
@@ -203,8 +203,8 @@ impl<T: Lattice> Lattice for Flipped<T> {
         Self(T::bottom(ctx))
     }
 
-    fn meet(&self, other: &Self) -> Self {
-        Self(self.0.join(&other.0))
+    fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
+        Self(self.0.join(&other.0, ctx))
     }
 }
 
@@ -253,35 +253,35 @@ impl<T: JoinSemiLattice, const N: usize> JoinSemiLattice for Array<T, N> {
         Self([(); N].map(|()| T::bottom(ctx)))
     }
 
-    fn join(&self, other: &Self) -> Self {
+    fn join(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
         let mut result = self.clone();
         result
             .0
             .iter_mut()
             .zip(other.iter())
-            .for_each(|(s, o)| *s = s.join(o));
+            .for_each(|(s, o)| *s = s.join(o, ctx));
         result
     }
 
-    fn widen(&self, previous: &Self, iteration: usize) -> Self {
+    fn widen(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
         let mut result = self.clone();
         result
             .0
             .iter_mut()
             .zip(previous.iter())
-            .for_each(|(s, p)| *s = s.widen(p, iteration));
+            .for_each(|(s, p)| *s = s.widen(p, ctx, iteration));
         result
     }
 }
 
 impl<T: Lattice, const N: usize> Lattice for Array<T, N> {
-    fn meet(&self, other: &Self) -> Self {
+    fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
         let mut result = self.clone();
         result
             .0
             .iter_mut()
             .zip(other.iter())
-            .for_each(|(s, o)| *s = s.meet(o));
+            .for_each(|(s, o)| *s = s.meet(o, ctx));
         result
     }
 
@@ -383,11 +383,11 @@ impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> JoinSemiLattice for Map<K
         Self(HashMap::new())
     }
 
-    fn join(&self, other: &Self) -> Self {
+    fn join(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
         let mut result = HashMap::new();
         for (k, v) in &self.0 {
             if let Some(other_v) = other.get(k) {
-                result.insert(k.clone(), v.join(other_v));
+                result.insert(k.clone(), v.join(other_v, &ctx.1));
             } else {
                 result.insert(k.clone(), v.clone());
             }
@@ -401,11 +401,11 @@ impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> JoinSemiLattice for Map<K
         Self(result)
     }
 
-    fn widen(&self, previous: &Self, iteration: usize) -> Self {
+    fn widen(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
         let mut result = HashMap::new();
         for (k, v) in &self.0 {
             if let Some(prev_v) = previous.get(k) {
-                result.insert(k.clone(), v.widen(prev_v, iteration));
+                result.insert(k.clone(), v.widen(prev_v, &ctx.1, iteration));
             }
             // Leave out new elements since the previous iteration to avoid
             // unbounded growth. Note that this is not correct. We probably want
@@ -426,11 +426,11 @@ impl<K: Eq + Clone + Hash + Debug, V: Lattice> Lattice for Map<K, V> {
         Self(result)
     }
 
-    fn meet(&self, other: &Self) -> Self {
+    fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
         let mut result = HashMap::new();
         for (k, v) in &self.0 {
             if let Some(other_v) = other.get(k) {
-                result.insert(k.clone(), v.meet(other_v));
+                result.insert(k.clone(), v.meet(other_v, &ctx.1));
             }
         }
         Self(result)
@@ -474,17 +474,19 @@ macro_rules! tuple_lattice {
                     $prod($($name::bottom([<$name:lower 1>]),)+)
                 }
 
-                fn join(&self, other: &Self) -> Self {
+                fn join(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
                     let $prod($([<$name:lower 1>],)+) = self;
                     let $prod($([<$name:lower 2>],)+) = other;
-                    $prod($([<$name:lower 1>].join([<$name:lower 2>]),)*)
+                    let ($([<$name:lower 3>],)+) = ctx;
+                    $prod($([<$name:lower 1>].join([<$name:lower 2>], [<$name:lower 3>]),)*)
                 }
 
-                fn widen(&self, previous: &Self, iteration: usize) -> Self {
+                fn widen(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
                     let $prod($([<$name:lower 1>],)+) = self;
                     let $prod($([<$name:lower 2>],)+) = previous;
+                    let ($([<$name:lower 3>],)+) = ctx;
                     $prod(
-                    $([<$name:lower 1>].widen([<$name:lower 2>], iteration),)*
+                    $([<$name:lower 1>].widen([<$name:lower 2>], [<$name:lower 3>], iteration),)*
                     )
                 }
             }
@@ -496,10 +498,11 @@ macro_rules! tuple_lattice {
                     $prod($($name::top([<$name:lower 1>]),)+)
                 }
 
-                fn meet(&self, other: &Self) -> Self {
+                fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
                     let $prod($([<$name:lower 1>],)+) = self;
                     let $prod($([<$name:lower 2>],)+) = other;
-                    $prod($([<$name:lower 1>].meet([<$name:lower 2>]),)*)
+                    let ($([<$name:lower 3>],)+) = ctx;
+                    $prod($([<$name:lower 1>].meet([<$name:lower 2>], [<$name:lower 3>]),)*)
                 }
             }
         }
@@ -531,25 +534,27 @@ macro_rules! stack_lattice {
             impl<$([<T $name>]: JoinSemiLattice),+> JoinSemiLattice
                 for $stack<$([<T $name>],)+>
             {
-                type LatticeContext = [<T $top>]::LatticeContext;
+                type LatticeContext = ($([<T $name>]::LatticeContext,)+);
 
                 fn bottom(_ctx: &Self::LatticeContext) -> Self {
                     $stack::Bottom
                 }
 
-                fn join(&self, other: &Self) -> Self {
+                fn join(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
+                    let ($([<c $name:lower 3>],)+) = ctx;
                     match (self, other) {
                         $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) =>
-                            $stack::[<S $name>]([<s $name 1>].join([<s $name 2>]))),+,
+                            $stack::[<S $name>]([<s $name 1>].join([<s $name 2>], [<c $name:lower 3>]))),+,
                         _ if self < other => other.clone(),
                         _ => self.clone()
                     }
                 }
 
-                fn widen(&self, previous: &Self, iteration: usize) -> Self {
+                fn widen(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+                    let ($([<c $name:lower 3>],)+) = ctx;
                     match (self, previous) {
                         $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) =>
-                            $stack::[<S $name>]([<s $name 1>].widen([<s $name 2>], iteration))),+,
+                            $stack::[<S $name>]([<s $name 1>].widen([<s $name 2>], [<c $name:lower 3>], iteration))),+,
                         _ => self.clone(),
                     }
                 }
@@ -559,13 +564,15 @@ macro_rules! stack_lattice {
                 for $stack<$([<T $name>],)+>
             {
                 fn top(ctx: &Self::LatticeContext) -> Self {
-                    $stack::[<S $top>]([<T $top>]::top(ctx))
+                    let ($([<_c $name:lower 3>],)+) = ctx;
+                    $stack::[<S $top>]([<T $top>]::top([<_c $top 3>]))
                 }
 
-                fn meet(&self, other: &Self) -> Self {
+                fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
+                    let ($([<c $name:lower 3>],)+) = ctx;
                     match (self, other) {
                         $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) =>
-                            $stack::[<S $name>]([<s $name 1>].meet([<s $name 2>]))),+,
+                            $stack::[<S $name>]([<s $name 1>].meet([<s $name 2>], [<c $name:lower 3>]))),+,
                         _ if self > other => other.clone(),
                         _ => self.clone()
                     }
@@ -617,26 +624,28 @@ macro_rules! distjoint_union_lattice {
             impl<$([<T $name>]: JoinSemiLattice),+> JoinSemiLattice
                 for $union<$([<T $name>],)+>
             {
-                type LatticeContext = ();
+                type LatticeContext = ($([<T $name>]::LatticeContext,)+);
 
                 fn bottom(_ctx: &Self::LatticeContext) -> Self {
                     $union::Bottom
                 }
 
-                fn join(&self, other: &Self) -> Self {
+                fn join(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
+                    let ($([<c $name:lower 3>],)+) = ctx;
                     match (self, other) {
                         ($union::Bottom, _) => other.clone(),
                         (_, $union::Bottom) => self.clone(),
                         $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) =>
-                            $union::[<U $name>]([<u $name 1>].join([<u $name 2>]))),+,
+                            $union::[<U $name>]([<u $name 1>].join([<u $name 2>], [<c $name:lower 3>]))),+,
                         _ => $union::Top
                     }
                 }
 
-                fn widen(&self, previous: &Self, iteration: usize) -> Self {
+                fn widen(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+                    let ($([<c $name:lower 3>],)+) = ctx;
                     match (self, previous) {
                         $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) =>
-                            $union::[<U $name>]([<u $name 1>].widen([<u $name 2>], iteration))),+,
+                            $union::[<U $name>]([<u $name 1>].widen([<u $name 2>], [<c $name:lower 3>], iteration))),+,
                         _ => self.clone(),
                     }
                 }
@@ -649,12 +658,13 @@ macro_rules! distjoint_union_lattice {
                     $union::Top
                 }
 
-                fn meet(&self, other: &Self) -> Self {
+                fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
+                    let ($([<c $name:lower 3>],)+) = ctx;
                     match (self, other) {
                         ($union::Top, _) => other.clone(),
                         (_, $union::Top) => self.clone(),
                         $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) =>
-                            $union::[<U $name>]([<u $name 1>].meet([<u $name 2>]))),+,
+                            $union::[<U $name>]([<u $name 1>].meet([<u $name 2>], [<c $name:lower 3>]))),+,
                         _ => $union::Bottom,
                     }
                 }

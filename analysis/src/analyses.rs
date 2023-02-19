@@ -21,7 +21,7 @@ pub fn calculate_dominators<Cfg: ControlFlowGraph>(
         BitSetDomain,
     >| {
         let mut result = Flipped(BitSetDomain::from(&ctx, &[id]));
-        result = result.meet(preds_merged);
+        result = result.meet(preds_merged, &ctx);
         result
     });
     states

@@ -72,12 +72,13 @@ impl SolveMonotone {
 
             let mut pre_state = D::bottom(lat_ctx);
             for pred in cfg.blocks()[current].predecessors() {
-                pre_state = pre_state.join(&post_states[*pred]);
+                pre_state = pre_state.join(&post_states[*pred], lat_ctx);
             }
             let mut post_state = transfer(current, cfg, lat_ctx, &pre_state);
 
             if loop_heads.contains(&current) {
-                post_state = post_state.widen(&post_states[current], processed_nodes / node_num);
+                post_state =
+                    post_state.widen(&post_states[current], lat_ctx, processed_nodes / node_num);
             }
 
             processed_nodes += 1;

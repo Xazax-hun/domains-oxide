@@ -41,13 +41,13 @@ pub trait JoinSemiLattice: Eq + PartialOrd + Clone + Debug {
     /// the branching needs to over approximate all predecessors.
     ///
     /// Requirements:
-    /// * Reflexive: a.join(a) == a
-    /// * Commutative: a.join(b) == b.join(a)
-    /// * Bottom is unit: bottom.join(b) == b
-    /// * Upper bound: a.join(b) >= a and a.join(b) >= b
-    /// * Top is the largest: top.join(b) == top
-    /// * Ordering is respected: a <= b => a.join(b) == b
-    fn join(&self, other: &Self) -> Self;
+    /// * Reflexive: a.join(a, ctx) == a
+    /// * Commutative: a.join(b, ctx) == b.join(a, ctx)
+    /// * Bottom is unit: bottom.join(b, ctx) == b
+    /// * Upper bound: a.join(b, ctx) >= a and a.join(b, ctx) >= b
+    /// * Top is the largest: top.join(b, ctx) == top
+    /// * Ordering is respected: a <= b => a.join(b, ctx) == b
+    fn join(&self, other: &Self, ctx: &Self::LatticeContext) -> Self;
 
     /// In case a lattice has infinite (or very long) ascending chains,
     /// the widening operation can ensure convergence. Other lattices
@@ -62,9 +62,9 @@ pub trait JoinSemiLattice: Eq + PartialOrd + Clone + Debug {
     /// more aggressively.
     ///
     /// Requirements:
-    /// * Reflexive: a.widen(a, x, i) == a
-    /// * b.widen(a, x, i) == b if a <= b
-    fn widen(&self, _previous: &Self, _iteration: usize) -> Self {
+    /// * Reflexive: a.widen(a, x, ctx, i) == a
+    /// * b.widen(a, x, ctx, i) == b if a <= b
+    fn widen(&self, _previous: &Self, _ctx: &Self::LatticeContext, _iteration: usize) -> Self {
         self.clone()
     }
 }
@@ -84,14 +84,13 @@ pub trait Lattice: JoinSemiLattice {
     /// program states. Often used to implement the evaluation of conditions
     /// or assertions.
     ///
-    /// * Reflexive: a.meet(a) == a
-    /// * Commutative: a.meet(b) == b.meet(a)
-    /// * Top is unit: top.meet(b) == b
-    /// * Lower bound: a.meet(b) <= a and a.meet(b) <= b
-    /// * Bottom is the smallest: bottom.meet(b) == bottom
-    /// * Ordering is respected: a <= b => a.meet(b) == a
-    // TODO: add algebraic identities.
-    fn meet(&self, other: &Self) -> Self;
+    /// * Reflexive: a.meet(a, ctx) == a
+    /// * Commutative: a.meet(b, ctx) == b.meet(a, ctx)
+    /// * Top is unit: top.meet(b, ctx) == b
+    /// * Lower bound: a.meet(b, ctx) <= a and a.meet(b, ctx) <= b
+    /// * Bottom is the smallest: bottom.meet(b, ctx) == bottom
+    /// * Ordering is respected: a <= b => a.meet(b, ctx) == a
+    fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self;
 
     // TODO: consider a narrow operation as the opposite of widen for lattices
     //       that have infinite descending chains.
@@ -111,13 +110,13 @@ impl JoinSemiLattice for () {
 
     fn bottom(_: &Self::LatticeContext) -> Self {}
 
-    fn join(&self, _: &Self) -> Self {}
+    fn join(&self, _: &Self, _: &Self::LatticeContext) -> Self {}
 }
 
 impl Lattice for () {
     fn top(_: &Self::LatticeContext) -> Self {}
 
-    fn meet(&self, _: &Self) -> Self {}
+    fn meet(&self, _: &Self, _: &Self::LatticeContext) -> Self {}
 }
 
 /// Bool is a lattice, where false is bottom and true is top,
@@ -129,7 +128,7 @@ impl JoinSemiLattice for bool {
         false
     }
 
-    fn join(&self, other: &Self) -> Self {
+    fn join(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
         *self || *other
     }
 }
@@ -139,7 +138,7 @@ impl Lattice for bool {
         true
     }
 
-    fn meet(&self, other: &Self) -> Self {
+    fn meet(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
         *self && *other
     }
 }
@@ -153,7 +152,7 @@ impl JoinSemiLattice for u64 {
         u64::MIN
     }
 
-    fn join(&self, other: &Self) -> Self {
+    fn join(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
         *self.min(other)
     }
 }
@@ -213,7 +212,7 @@ impl<T: Eq + Hash + Debug + Clone> JoinSemiLattice for PowerSetDomain<T> {
         Self(HashSet::new())
     }
 
-    fn join(&self, other: &Self) -> Self {
+    fn join(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
         Self(self.union(other).cloned().collect::<HashSet<T>>())
     }
 }
@@ -226,7 +225,7 @@ impl<T: Eq + Hash + Debug + Clone> Lattice for PowerSetDomain<T> {
         ctx.0.clone()
     }
 
-    fn meet(&self, other: &Self) -> Self {
+    fn meet(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
         Self(self.intersection(other).cloned().collect::<HashSet<T>>())
     }
 }
@@ -294,7 +293,7 @@ impl JoinSemiLattice for BitSetDomain {
         Self(FixedBitSet::with_capacity(ctx.0))
     }
 
-    fn join(&self, other: &Self) -> Self {
+    fn join(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
         let mut result = self.clone();
         result.union_with(other);
         result
@@ -308,7 +307,7 @@ impl Lattice for BitSetDomain {
         Self(result)
     }
 
-    fn meet(&self, other: &Self) -> Self {
+    fn meet(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
         let mut result = self.clone();
         result.intersect_with(other);
         result

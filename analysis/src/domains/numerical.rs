@@ -72,7 +72,7 @@ impl JoinSemiLattice for SignDomain {
         SignDomain::Bottom
     }
 
-    fn join(&self, other: &Self) -> Self {
+    fn join(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
         if self == other || *other == SignDomain::Bottom {
             return *self;
         }
@@ -90,7 +90,7 @@ impl Lattice for SignDomain {
         SignDomain::Top
     }
 
-    fn meet(&self, other: &Self) -> Self {
+    fn meet(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
         if self == other || *other == SignDomain::Top {
             return *self;
         }
@@ -266,15 +266,15 @@ impl JoinSemiLattice for IntervalDomain {
         }
     }
 
-    fn join(&self, other: &Self) -> Self {
+    fn join(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
         Self {
             min: self.min.min(other.min),
             max: self.max.max(other.max),
         }
     }
 
-    fn widen(&self, prev: &Self, _: usize) -> Self {
-        if *prev == Self::bottom(&()) {
+    fn widen(&self, prev: &Self, ctx: &Self::LatticeContext, _: usize) -> Self {
+        if *prev == Self::bottom(ctx) {
             return *self;
         }
         Self {
@@ -296,7 +296,7 @@ impl Lattice for IntervalDomain {
         }
     }
 
-    fn meet(&self, other: &Self) -> Self {
+    fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
         let result = IntervalDomain {
             min: self.min.max(other.min),
             max: self.max.min(other.max),
@@ -304,7 +304,7 @@ impl Lattice for IntervalDomain {
 
         // We only want one canonical representation for bottom.
         if result.min > result.max {
-            Self::bottom(&())
+            Self::bottom(ctx)
         } else {
             result
         }
