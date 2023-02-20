@@ -52,9 +52,6 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteDomainCtx<T, N> {
             }
         }
 
-        // TODO: should we have an overload taking pairs of elements instead of pairs of
-        //       indices for the edges?
-
         let mut result = Self {
             elements: elements.clone(),
             smaller_matrix: [(); N].map(|()| FixedBitSet::with_capacity(N)),
