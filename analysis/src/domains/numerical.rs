@@ -165,7 +165,7 @@ impl Div for SignDomain {
         match MULTIPLICATION[index_of(self)][index_of(rhs)] {
             Positive => NonNeg,
             Negative => NonPos,
-            res @ _ => res,
+            res => res,
         }
     }
 }
