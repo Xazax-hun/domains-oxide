@@ -1,4 +1,5 @@
 use crate::domains::*;
+use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 
 #[test]
@@ -33,14 +34,47 @@ fn sign_domain_tests() {
     assert_eq!(SignDomain::from(IntervalDomain::from(-5)), Negative);
 
     // Operations
-    assert_eq!(Positive + Zero, Positive);
-    assert_eq!(Positive - Bottom, Bottom);
-    assert_eq!(-Positive, Negative);
+    for (x, y) in (-2..2).cartesian_product(-2..2) {
+        // Multiplicative operations are precise
+        assert_eq!(
+            SignDomain::from(x) * SignDomain::from(y),
+            SignDomain::from(x * y)
+        );
+        assert_eq!(-SignDomain::from(x), SignDomain::from(-x));
+
+        // Integer division is not precise, result could be zero.
+        if y != 0 {
+            assert!(SignDomain::from(x) / SignDomain::from(y) >= SignDomain::from(x / y));
+        }
+
+        // Additive operations are over-approximated.
+        assert!(SignDomain::from(x) + SignDomain::from(y) >= SignDomain::from(x + y));
+        assert!(SignDomain::from(x) - SignDomain::from(y) >= SignDomain::from(x - y));
+
+        assert_eq!(
+            SignDomain::from(x) + SignDomain::Zero,
+            SignDomain::from(x + 0)
+        );
+        assert_eq!(
+            SignDomain::from(x) - SignDomain::Zero,
+            SignDomain::from(x - 0)
+        );
+
+        assert_eq!(SignDomain::from(x) + SignDomain::Bottom, SignDomain::Bottom);
+        assert_eq!(SignDomain::from(x) + SignDomain::Top, SignDomain::Top);
+    }
     assert_eq!(Positive - Positive, Top);
-    assert_eq!(Positive + Positive, Positive);
-    assert_eq!(Positive * Positive, Positive);
-    assert_eq!(Positive * Negative, Negative);
-    assert_eq!(Top * Zero, Zero);
+
+    let to_check = [Top, Negative, Zero, Positive, NonNeg, NonPos];
+    for (&x, &y) in to_check.iter().cartesian_product(&to_check) {
+        let (x_interval, y_interval) = (IntervalDomain::from(x), IntervalDomain::from(y));
+
+        assert_eq!(x.partial_cmp(&y), x_interval.partial_cmp(&y_interval));
+
+        assert_eq!(x * y, SignDomain::from(x_interval * y_interval));
+        assert_eq!(x + y, SignDomain::from(x_interval + y_interval));
+        assert_eq!(x - y, SignDomain::from(x_interval - y_interval));
+    }
 
     // Pretty printing
     assert_eq!(format!("{Bottom:?}"), "Bottom");

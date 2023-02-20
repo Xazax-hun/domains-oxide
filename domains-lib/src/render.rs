@@ -219,32 +219,23 @@ impl RenderableDomain for IntervalDomain {
 impl RenderableDomain for SignDomain {
     fn render(&self) -> Vec<Polygon> {
         match *self {
-            SignDomain::Top => vec![vec![
-                Vec2 {
-                    x: analysis::domains::NEG_INF,
-                    y: 0,
-                },
-                Vec2 {
-                    x: analysis::domains::INF,
-                    y: 0,
-                },
-            ]],
-            SignDomain::Bottom => vec![],
-            SignDomain::Negative => vec![vec![
-                Vec2 {
-                    x: analysis::domains::NEG_INF,
-                    y: 0,
-                },
-                Vec2 { x: 0, y: 0 },
-            ]],
-            SignDomain::Positive => vec![vec![
-                Vec2 { x: 0, y: 0 },
-                Vec2 {
-                    x: analysis::domains::INF,
-                    y: 0,
-                },
-            ]],
-            SignDomain::Zero => vec![vec![Vec2 { x: 0, y: 0 }, Vec2 { x: 0, y: 0 }]],
+            SignDomain::NonZero => vec![
+                vec![
+                    Vec2 {
+                        x: analysis::domains::NEG_INF,
+                        y: 0,
+                    },
+                    Vec2 { x: 1, y: 0 },
+                ],
+                vec![
+                    Vec2 { x: 1, y: 0 },
+                    Vec2 {
+                        x: analysis::domains::INF,
+                        y: 0,
+                    },
+                ],
+            ],
+            _ => IntervalDomain::from(*self).render(),
         }
     }
 }

@@ -1,14 +1,19 @@
 use crate::domains::*;
 
-/// Lattice to represent the signs of integral values:
-/// ```txt
-///     Top
-///   /  |  \
-///   N  Z  P
-///   \  |  /
-///    Bottom
-/// ```
 /// A small lattice that lends itself to a fast, efficient analysis.
+/// It represents the signs of integral values:
+/// ```txt
+///       Top
+///      / | \
+///     /  |  \
+///  ~Pos  ~Z  ~Neg
+///    | \ /\ / |
+///    |  X  X  |
+///    | / \/ \ |
+///   Neg  Z   Pos
+///     \  |  /
+///      Bottom
+/// ```
 /// For more precision, consider using [`IntervalDomain`].
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum SignDomain {
@@ -17,6 +22,9 @@ pub enum SignDomain {
     Negative,
     Zero,
     Positive,
+    NonNeg,
+    NonZero,
+    NonPos,
 }
 
 impl From<i32> for SignDomain {
@@ -40,28 +48,132 @@ impl From<IntervalDomain> for SignDomain {
         if value.max < 0 {
             return SignDomain::Negative;
         }
+        if value.max <= 0 {
+            return SignDomain::NonPos;
+        }
         if value.min > 0 {
             return SignDomain::Positive;
+        }
+        if value.min >= 0 {
+            return SignDomain::NonNeg;
         }
         SignDomain::Top
     }
 }
 
+mod sign_tables {
+    use super::SignDomain::{self, *};
+    pub fn index_of(s: SignDomain) -> usize {
+        match s {
+            SignDomain::Top => 0,
+            SignDomain::Bottom => 1,
+            SignDomain::Negative => 2,
+            SignDomain::Zero => 3,
+            SignDomain::Positive => 4,
+            SignDomain::NonNeg => 5,
+            SignDomain::NonZero => 6,
+            SignDomain::NonPos => 7,
+        }
+    }
+
+    #[rustfmt::skip]
+    pub const ADDITION : [[SignDomain; 8]; 8] =
+    [
+    // LHS/RHS,      Top,    Bottom, Negative, Zero,     Positive  ~Negative  ~Zero    ~Positive
+    /* Top      */ [ Top,    Bottom, Top,      Top,      Top ,     Top,       Top,     Top     ],
+    /* Bottom   */ [ Bottom, Bottom, Bottom,   Bottom,   Bottom,   Bottom,    Bottom,  Bottom  ],
+    /* Negative */ [ Top,    Bottom, Negative, Negative, Top,      Top,       Top,     Negative],
+    /* Zero     */ [ Top,    Bottom, Negative, Zero,     Positive, NonNeg,    NonZero, NonPos  ],
+    /* Positive */ [ Top,    Bottom, Top,      Positive, Positive, Positive,  Top,     Top     ],
+    /* ~Negative*/ [ Top,    Bottom, Top,      NonNeg,   Positive, NonNeg,    Top,     Top     ],
+    /* ~Zero    */ [ Top,    Bottom, Top,      NonZero,  Top,      Top,       Top,     Top     ],
+    /* ~Positive*/ [ Top,    Bottom, Negative, NonPos,   Top,      Top,       Top,     NonPos  ]
+    ];
+
+    #[rustfmt::skip]
+    pub const MULTIPLICATION : [[SignDomain; 8]; 8] =
+    [
+    // LHS/RHS,      Top,    Bottom, Negative, Zero,   Positive  ~Negative  ~Zero    ~Positive
+    /* Top      */ [ Top,    Bottom, Top,      Zero,   Top,      Top,       Top,     Top   ],
+    /* Bottom   */ [ Bottom, Bottom, Bottom,   Bottom, Bottom,   Bottom,    Bottom,  Bottom],
+    /* Negative */ [ Top,    Bottom, Positive, Zero,   Negative, NonPos,    NonZero, NonNeg],
+    /* Zero     */ [ Zero,   Bottom, Zero,     Zero,   Zero,     Zero,      Zero,    Zero  ],
+    /* Positive */ [ Top,    Bottom, Negative, Zero,   Positive, NonNeg,    NonZero, NonPos],
+    /* ~Negative*/ [ Top,    Bottom, NonPos,   Zero,   NonNeg,   NonNeg,    Top,     NonPos],
+    /* ~Zero    */ [ Top,    Bottom, NonZero,  Zero,   NonZero,  Top,       NonZero, Top   ],
+    /* ~Positive*/ [ Top,    Bottom, NonNeg,   Zero,   NonPos,   NonPos,    Top,     NonNeg],
+    ];
+
+    use core::cmp::Ordering::{self, *};
+
+    #[rustfmt::skip]
+    pub const COMPARISON : [[Option<Ordering>; 8]; 8] =
+    [
+    // LHS/RHS,      Top,         Bottom,        Negative,      Zero,          Positive       ~Negative      ~Zero          ~Positive
+    /* Top      */ [ Some(Equal), Some(Greater), Some(Greater), Some(Greater), Some(Greater), Some(Greater), Some(Greater), Some(Greater)],
+    /* Bottom   */ [ Some(Less),  Some(Equal),   Some(Less),    Some(Less),    Some(Less),    Some(Less),    Some(Less),    Some(Less)   ],
+    /* Negative */ [ Some(Less),  Some(Greater), Some(Equal),   None,          None,          None,          Some(Less),    Some(Less)   ],
+    /* Zero     */ [ Some(Less),  Some(Greater), None,          Some(Equal),   None,          Some(Less),    None,          Some(Less)   ],
+    /* Positive */ [ Some(Less),  Some(Greater), None,          None,          Some(Equal),   Some(Less),    Some(Less),    None         ],
+    /* ~Negative*/ [ Some(Less),  Some(Greater), None,          Some(Greater), Some(Greater), Some(Equal),   None,          None         ],
+    /* ~Zero    */ [ Some(Less),  Some(Greater), Some(Greater), None,          Some(Greater), None,          Some(Equal),   None         ],
+    /* ~Positive*/ [ Some(Less),  Some(Greater), Some(Greater), Some(Greater), None,          None,          None,          Some(Equal)  ],
+    ];
+}
+
+impl Add for SignDomain {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        use sign_tables::*;
+        ADDITION[index_of(self)][index_of(rhs)]
+    }
+}
+
+impl Neg for SignDomain {
+    type Output = Self;
+    fn neg(self) -> Self::Output {
+        match self {
+            SignDomain::Negative => SignDomain::Positive,
+            SignDomain::Positive => SignDomain::Negative,
+            SignDomain::NonPos => SignDomain::NonNeg,
+            SignDomain::NonNeg => SignDomain::NonPos,
+            _ => self,
+        }
+    }
+}
+
+impl Sub for SignDomain {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self::Output {
+        self + -rhs
+    }
+}
+
+impl Mul for SignDomain {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self::Output {
+        use sign_tables::*;
+        MULTIPLICATION[index_of(self)][index_of(rhs)]
+    }
+}
+
+impl Div for SignDomain {
+    type Output = Self;
+    fn div(self, rhs: Self) -> Self::Output {
+        use sign_tables::*;
+        use SignDomain::*;
+        match MULTIPLICATION[index_of(self)][index_of(rhs)] {
+            Positive => NonNeg,
+            Negative => NonPos,
+            res @ _ => res,
+        }
+    }
+}
+
 impl PartialOrd for SignDomain {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        if self == other {
-            return Some(Ordering::Equal);
-        }
-        match other {
-            SignDomain::Bottom => return Some(Ordering::Greater),
-            SignDomain::Top => return Some(Ordering::Less),
-            _ => {}
-        }
-        match self {
-            SignDomain::Bottom => Some(Ordering::Less),
-            SignDomain::Top => Some(Ordering::Greater),
-            _ => None,
-        }
+        use sign_tables::*;
+        COMPARISON[index_of(*self)][index_of(*other)]
     }
 }
 
@@ -103,83 +215,6 @@ impl Lattice for SignDomain {
     }
 }
 
-mod sign_tables {
-    use super::SignDomain::{self, *};
-    pub fn index_of(s: SignDomain) -> usize {
-        match s {
-            SignDomain::Top => 0,
-            SignDomain::Bottom => 1,
-            SignDomain::Negative => 2,
-            SignDomain::Zero => 3,
-            SignDomain::Positive => 4,
-        }
-    }
-
-    #[rustfmt::skip]
-    pub const ADDITION : [[SignDomain; 5]; 5] =
-    [
-        // LHS/RHS,      Top,    Bottom, Negative, Zero,     Positive
-        /* Top      */ [ Top,    Bottom, Top,      Top,      Top     ],
-        /* Bottom   */ [ Bottom, Bottom, Bottom,   Bottom,   Bottom  ],
-        /* Negative */ [ Top,    Bottom, Negative, Negative, Top     ],
-        /* Zero     */ [ Top,    Bottom, Negative, Zero,     Positive],
-        /* Positive */ [ Top,    Bottom, Top,      Positive, Positive]
-    ];
-
-    #[rustfmt::skip]
-    pub const MULTIPLICATION : [[SignDomain; 5]; 5] =
-    [
-        // LHS/RHS,      Top,    Bottom, Negative, Zero,     Positive
-        /* Top      */ [ Top,    Bottom, Top,      Zero,     Top     ],
-        /* Bottom   */ [ Bottom, Bottom, Bottom,   Bottom,   Bottom  ],
-        /* Negative */ [ Top,    Bottom, Positive, Zero,     Negative],
-        /* Zero     */ [ Zero,   Bottom, Zero,     Zero,     Zero    ],
-        /* Positive */ [ Top,    Bottom, Negative, Zero,     Positive]
-    ];
-}
-
-impl Add for SignDomain {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self::Output {
-        use sign_tables::*;
-        ADDITION[index_of(self)][index_of(rhs)]
-    }
-}
-
-impl Neg for SignDomain {
-    type Output = Self;
-    fn neg(self) -> Self::Output {
-        match self {
-            SignDomain::Negative => SignDomain::Positive,
-            SignDomain::Positive => SignDomain::Negative,
-            _ => self,
-        }
-    }
-}
-
-impl Sub for SignDomain {
-    type Output = Self;
-    fn sub(self, rhs: Self) -> Self::Output {
-        self + -rhs
-    }
-}
-
-impl Mul for SignDomain {
-    type Output = Self;
-    fn mul(self, rhs: Self) -> Self::Output {
-        use sign_tables::*;
-        MULTIPLICATION[index_of(self)][index_of(rhs)]
-    }
-}
-
-impl Div for SignDomain {
-    type Output = Self;
-    fn div(self, rhs: Self) -> Self::Output {
-        use sign_tables::*;
-        MULTIPLICATION[index_of(self)][index_of(rhs)]
-    }
-}
-
 pub const INF: i64 = i64::MAX;
 pub const NEG_INF: i64 = i64::MIN;
 
@@ -217,13 +252,18 @@ impl From<i64> for IntervalDomain {
 impl From<SignDomain> for IntervalDomain {
     fn from(value: SignDomain) -> Self {
         match value {
-            SignDomain::Top => IntervalDomain::top(&()),
+            SignDomain::Top | SignDomain::NonZero => IntervalDomain::top(&()),
             SignDomain::Bottom => IntervalDomain::bottom(&()),
             SignDomain::Zero => IntervalDomain::from(0),
             SignDomain::Positive => IntervalDomain { min: 1, max: INF },
             SignDomain::Negative => IntervalDomain {
                 min: NEG_INF,
                 max: -1,
+            },
+            SignDomain::NonNeg => IntervalDomain { min: 0, max: INF },
+            SignDomain::NonPos => IntervalDomain {
+                min: NEG_INF,
+                max: 0,
             },
         }
     }
