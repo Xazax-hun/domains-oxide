@@ -160,9 +160,9 @@ impl Mul for SignDomain {
 impl Div for SignDomain {
     type Output = Self;
     fn div(self, rhs: Self) -> Self::Output {
-        use sign_tables::*;
         use SignDomain::*;
-        match MULTIPLICATION[index_of(self)][index_of(rhs)] {
+        #[allow(clippy::suspicious_arithmetic_impl)]
+        match self * rhs {
             Positive => NonNeg,
             Negative => NonPos,
             res => res,

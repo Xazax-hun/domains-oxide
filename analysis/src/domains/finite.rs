@@ -25,39 +25,16 @@ pub enum FiniteDomainError {
     BottomNotLast,
     LatticeTooSmall,
     HasDuplicateElements,
+    NonExistentEdge,
 }
 
 impl<T: Clone + Debug + Eq, const N: usize> FiniteDomainCtx<T, N> {
-    /// Creating a lattice based on the Hesse diagram:
-    ///
-    /// ```txt
-    ///      A
-    ///     / \
-    ///    B   C
-    ///     \ /
-    ///      D
-    /// ```
-    ///
-    /// Would be encoded as:
-    /// ```
-    /// use analysis::domains::FiniteDomainCtx;
-    /// #[derive(Debug, Clone, PartialEq, Eq)]
-    /// enum E { A, B, C, D }
-    /// use E::*;
-    /// let ctx = FiniteDomainCtx::new(
-    ///   &[A, B, C, D],
-    ///   &[(1, 0), (2, 0), (3, 1), (3, 2)]).unwrap();
-    /// ```
-    ///
-    /// Top must be the first, Bottom must be the last element.
-    ///
-    /// Returns None when the input diagram is not a Lattice.
-    ///
-    /// # Parameters
-    ///
-    /// * `elements`: List of lattice elements
-    /// * `less`: pairs of indices into elements, the first element is smaller than the second.
-    pub fn new(elements: &[T; N], less: &[(usize, usize)]) -> Result<Self, FiniteDomainError> {
+
+    /// Similar to [`FiniteDomainCtx::new`], but edges are defined by indices into the first parameter.
+    pub fn new_idx(elements: &[T; N], less: &[(usize, usize)]) -> Result<Self, FiniteDomainError> {
+        // TODO: in most cases the lattice is known at compile time,
+        //       look into making the generation of the context a compile-time
+        //       operation.
         #[cfg(debug_assertions)]
         {
             if elements.len() < 2 {
@@ -66,6 +43,12 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteDomainCtx<T, N> {
 
             if (1..elements.len()).any(|i| elements[i..].contains(&elements[i - 1])) {
                 return Err(FiniteDomainError::HasDuplicateElements);
+            }
+
+            for &(x, y) in less {
+                if x >= elements.len() || y >= elements.len() {
+                    return Err(FiniteDomainError::NonExistentEdge);
+                }
             }
         }
 
@@ -99,6 +82,58 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteDomainCtx<T, N> {
         }
 
         Ok(result)
+    }
+
+    /// Creating a lattice based on the Hasse diagram:
+    ///
+    /// ```txt
+    ///      A
+    ///     / \
+    ///    B   C
+    ///     \ /
+    ///      D
+    /// ```
+    ///
+    /// Would be encoded as:
+    /// ```
+    /// use analysis::domains::FiniteDomainCtx;
+    /// #[derive(Debug, Clone, PartialEq, Eq)]
+    /// enum E { A, B, C, D }
+    /// use E::*;
+    /// let ctx = FiniteDomainCtx::new(
+    ///   &[A, B, C, D],
+    ///   &[(B, A), (C, A), (D, B), (D, C)]).unwrap();
+    /// ```
+    ///
+    /// Top must be the first, Bottom must be the last element.
+    ///
+    /// Returns None when the input diagram is not a Lattice.
+    /// 
+    /// Use [`FiniteDomainCtx::new_idx`] if the lattice elements are expensive
+    /// to copy, or the number of edges is large.
+    ///
+    /// # Parameters
+    ///
+    /// * `elements`: List of lattice elements
+    /// * `less`: pairs of elements, the first element is smaller than the second.
+    pub fn new(elements: &[T; N], less: &[(T, T)]) -> Result<Self, FiniteDomainError> {
+        let mut less_indices = Vec::new();
+        less_indices.reserve(less.len());
+
+        for (x, y) in less {
+            let Some(from) = elements.iter().position(|i| i == x)
+            else {
+                return Err(FiniteDomainError::NonExistentEdge);
+            };
+            let Some(to) = elements.iter().position(|i| i == y)
+            else {
+                return Err(FiniteDomainError::NonExistentEdge);
+            };
+
+            less_indices.push((from, to));
+        }
+
+        Self::new_idx(elements, &less_indices)
     }
 
     pub fn decode(&self, element: &FiniteDomain<T, N>) -> &T {

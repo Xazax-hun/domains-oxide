@@ -615,13 +615,21 @@ fn finite_domain_test() {
         FiniteDomainCtx::new(&[A, A], &[]),
         Err(FiniteDomainError::HasDuplicateElements)
     ));
+    assert!(matches!(
+        FiniteDomainCtx::new_idx(&[A, B], &[(1, 5)]),
+        Err(FiniteDomainError::NonExistentEdge)
+    ));
+    assert!(matches!(
+        FiniteDomainCtx::new(&[A, B], &[(A, C)]),
+        Err(FiniteDomainError::NonExistentEdge)
+    ));
 
     // Not a lattice, no greatest lower bound of B and C.
     //     A
     //    / \
     //   B   C
     assert!(matches!(
-        FiniteDomainCtx::new(&[A, B, C], &[(1, 0), (2, 0)]),
+        FiniteDomainCtx::new(&[A, B, C], &[(B, A), (C, A)]),
         Err(FiniteDomainError::NoGreatestLowerBound(1, 2))
     ));
 
@@ -630,7 +638,7 @@ fn finite_domain_test() {
     //    \ /
     //     A
     assert!(matches!(
-        FiniteDomainCtx::new(&[A, B, C], &[(0, 1), (0, 2)]),
+        FiniteDomainCtx::new(&[A, B, C], &[(A, B), (A, C)]),
         Err(FiniteDomainError::NoLeastUpperBound(1, 2))
     ));
 
@@ -640,14 +648,14 @@ fn finite_domain_test() {
     //    \ /
     //     D
     assert!(matches!(
-        FiniteDomainCtx::new(&[B, A, C, D], &[(0, 1), (2, 1), (3, 0), (3, 2)]),
+        FiniteDomainCtx::new(&[B, A, C, D], &[(B, A), (C, A), (D, B), (D, C)]),
         Err(FiniteDomainError::TopNotFirst)
     ));
     assert!(matches!(
-        FiniteDomainCtx::new(&[A, B, D, C], &[(1, 0), (3, 0), (2, 1), (2, 3)]),
+        FiniteDomainCtx::new(&[A, B, D, C], &[(B, A), (C, A), (D, B), (D, C)]),
         Err(FiniteDomainError::BottomNotLast)
     ));
-    assert!(FiniteDomainCtx::new(&[A, B, C, D], &[(1, 0), (2, 0), (3, 1), (3, 2)]).is_ok());
+    assert!(FiniteDomainCtx::new(&[A, B, C, D], &[(B, A), (C, A), (D, B), (D, C)]).is_ok());
 
     //     A
     //    / \
@@ -660,22 +668,22 @@ fn finite_domain_test() {
         FiniteDomainCtx::new(
             &[A, B, C, D, E, F],
             &[
-                (1, 0),
-                (2, 0),
-                (3, 1),
-                (4, 1),
-                (3, 2),
-                (4, 2),
-                (5, 4),
-                (5, 3)
+                (B, A),
+                (C, A),
+                (D, B),
+                (E, B),
+                (D, C),
+                (E, C),
+                (F, E),
+                (F, D)
             ]
         ),
         Err(FiniteDomainError::NoGreatestLowerBound(1, 2))
     ));
 
     //       A
-    //     /   \
-    //    / \   \
+    //     / | \
+    //    /  |  \
     //   B   C   E
     //    \ /    |
     //     D     F
@@ -684,14 +692,14 @@ fn finite_domain_test() {
     let ctx = FiniteDomainCtx::new(
         &[A, B, C, D, E, F, G],
         &[
-            (1, 0),
-            (2, 0),
-            (4, 0),
-            (3, 1),
-            (3, 2),
-            (5, 4),
-            (6, 3),
-            (6, 5),
+            (B, A),
+            (C, A),
+            (E, A),
+            (D, B),
+            (D, C),
+            (F, E),
+            (G, D),
+            (G, F),
         ],
     )
     .unwrap();
