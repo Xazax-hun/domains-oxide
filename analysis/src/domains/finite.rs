@@ -29,7 +29,6 @@ pub enum FiniteDomainError {
 }
 
 impl<T: Clone + Debug + Eq, const N: usize> FiniteDomainCtx<T, N> {
-
     /// Similar to [`FiniteDomainCtx::new`], but edges are defined by indices into the first parameter.
     pub fn new_idx(elements: &[T; N], less: &[(usize, usize)]) -> Result<Self, FiniteDomainError> {
         // TODO: in most cases the lattice is known at compile time,
@@ -105,7 +104,7 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteDomainCtx<T, N> {
     /// Top must be the first, Bottom must be the last element.
     ///
     /// Returns None when the input diagram is not a Lattice.
-    /// 
+    ///
     /// Use [`FiniteDomainCtx::new_idx`] if the lattice elements are expensive
     /// to copy, or the number of edges is large.
     ///

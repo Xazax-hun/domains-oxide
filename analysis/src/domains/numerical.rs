@@ -77,6 +77,35 @@ mod sign_tables {
     }
 
     #[rustfmt::skip]
+    pub const JOIN : [[SignDomain; 8]; 8] =
+    [
+    // LHS/RHS,      Top, Bottom,   Negative, Zero,   Positive  ~Negative  ~Zero    ~Positive
+    /* Top      */ [ Top, Top,      Top,      Top,    Top,      Top,       Top,     Top   ],
+    /* Bottom   */ [ Top, Bottom,   Negative, Zero,   Positive, NonNeg,    NonZero, NonPos],
+    /* Negative */ [ Top, Negative, Negative, NonPos, NonZero,  Top,       NonZero, NonPos],
+    /* Zero     */ [ Top, Zero,     NonPos,   Zero,   NonNeg,   NonNeg,    Top,     NonPos],
+    /* Positive */ [ Top, Positive, NonZero,  NonNeg, Positive, NonNeg,    NonZero, Top   ],
+    /* ~Negative*/ [ Top, NonNeg,   Top,      NonNeg, NonNeg,   NonNeg,    Top,     Top   ],
+    /* ~Zero    */ [ Top, NonZero,  NonZero,  Top,    NonZero,  Top,       NonZero, Top   ],
+    /* ~Positive*/ [ Top, NonPos,   NonPos,   NonPos, Top,      Top,       Top,     NonPos],
+    ];
+
+    #[rustfmt::skip]
+    pub const MEET : [[SignDomain; 8]; 8] =
+    [
+    // LHS/RHS,      Top,      Bottom, Negative, Zero,   Positive  ~Negative ~Zero     ~Positive
+    /* Top      */ [ Top,      Bottom, Negative, Zero,   Positive, NonNeg,   NonZero,  NonPos  ],
+    /* Bottom   */ [ Bottom,   Bottom, Bottom,   Bottom, Bottom,   Bottom,   Bottom,   Bottom  ],
+    /* Negative */ [ Negative, Bottom, Negative, Bottom, Bottom,   Bottom,   Negative, Negative],
+    /* Zero     */ [ Zero,     Bottom, Bottom,   Zero,   Bottom,   Zero,     Bottom,   Zero    ],
+    /* Positive */ [ Positive, Bottom, Bottom,   Bottom, Positive, Positive, Positive, Bottom  ],
+    /* ~Negative*/ [ NonNeg,   Bottom, Bottom,   Zero,   Positive, NonNeg,   Positive, Zero    ],
+    /* ~Zero    */ [ NonZero,  Bottom, Negative, Bottom, Positive, Positive, NonZero,  Negative],
+    /* ~Positive*/ [ NonPos,   Bottom, Negative, Zero,   Bottom,   Zero,     Negative, NonPos  ],
+    ];
+
+
+    #[rustfmt::skip]
     pub const ADDITION : [[SignDomain; 8]; 8] =
     [
     // LHS/RHS,      Top,    Bottom, Negative, Zero,     Positive  ~Negative  ~Zero    ~Positive
@@ -185,15 +214,8 @@ impl JoinSemiLattice for SignDomain {
     }
 
     fn join(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
-        if self == other || *other == SignDomain::Bottom {
-            return *self;
-        }
-
-        if *self == SignDomain::Bottom {
-            return *other;
-        }
-
-        SignDomain::Top
+        use sign_tables::*;
+        JOIN[index_of(*self)][index_of(*other)]
     }
 }
 
@@ -203,15 +225,8 @@ impl Lattice for SignDomain {
     }
 
     fn meet(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
-        if self == other || *other == SignDomain::Top {
-            return *self;
-        }
-
-        if *self == SignDomain::Top {
-            return *other;
-        }
-
-        SignDomain::Bottom
+        use sign_tables::*;
+        MEET[index_of(*self)][index_of(*other)]
     }
 }
 

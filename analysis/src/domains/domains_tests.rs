@@ -5,13 +5,14 @@ use std::collections::{HashMap, HashSet};
 #[test]
 fn sign_domain_tests() {
     use SignDomain::*;
+
     // Comparisons, join
     assert_eq!(Positive, Positive);
     assert!(Bottom <= Negative);
     assert!(Zero <= Top);
     assert_eq!(Zero.join(&Zero, &()), Zero);
-    assert_eq!(Negative.join(&Positive, &()), Top);
-    assert_eq!(Positive.join(&Negative, &()), Top);
+    assert_eq!(Negative.join(&Positive, &()), NonZero);
+    assert_eq!(Positive.join(&Negative, &()), NonZero);
     assert_eq!(Top.join(&Negative, &()), Top);
     assert_eq!(Negative.join(&Top, &()), Top);
     assert_eq!(Bottom.join(&Negative, &()), Negative);
@@ -22,6 +23,26 @@ fn sign_domain_tests() {
     assert_eq!(Bottom.meet(&Zero, &()), Bottom);
     assert_eq!(Top.meet(&Zero, &()), Zero);
     assert_eq!(Negative.meet(&Zero, &()), Bottom);
+
+    // Properties
+    let all = [Bottom, Top, Negative, Zero, Positive, NonNeg, NonZero, NonPos];
+    for (&x, &y) in all.iter().cartesian_product(&all) {
+        assert!(x.join(&y, &()) >= x);
+        assert!(x.join(&y, &()) >= y);
+        assert!(x.meet(&y, &()) <= x);
+        assert!(x.meet(&y, &()) <= y);
+
+        assert!(x.meet(&y, &()) <= x.join(&y, &()));
+
+        assert_eq!(x.join(&y, &()), y.join(&x, &()));
+        println!("{x:?} {y:?}");
+        assert_eq!(x.meet(&y, &()), y.meet(&x, &()));
+
+        if x > y {
+            assert_eq!(x.join(&y, &()), x);
+            assert_eq!(x.meet(&y, &()), y);
+        }
+    }
 
     // Conversions
     assert_eq!(SignDomain::from(5), Positive);
@@ -95,9 +116,9 @@ fn vec2_domain_tests() {
             x: Positive,
             y: Negative,
         };
-        let pos_top = SignVec {
+        let pos_non_zero = SignVec {
             x: Positive,
-            y: Top,
+            y: NonZero,
         };
         let pos_bot = SignVec {
             x: Positive,
@@ -109,15 +130,15 @@ fn vec2_domain_tests() {
         assert_eq!(pos_pos, pos_pos);
         assert!(bottom <= pos_pos);
         assert!(pos_pos <= pos_pos);
-        assert!(pos_pos <= pos_top);
+        assert!(pos_pos <= pos_non_zero);
         assert!(!(pos_pos <= pos_neg));
         assert!(!(pos_pos >= pos_neg));
-        assert_eq!(pos_pos.join(&pos_neg, &()), pos_top);
+        assert_eq!(pos_pos.join(&pos_neg, &()), pos_non_zero);
         assert_eq!(top_top, SignVec::top(&()));
         assert_eq!(pos_pos.meet(&pos_neg, &()), pos_bot);
 
         // Pretty printing
-        assert_eq!(format!("{pos_top:?}"), "{ x: Positive, y: Top }");
+        assert_eq!(format!("{pos_non_zero:?}"), "{ x: Positive, y: NonZero }");
     }
 
     // Vec2Interval
@@ -335,7 +356,7 @@ fn flipped_sign_domain_tests() {
     assert_eq!(zero.meet(&zero, &()), zero);
     assert_eq!(top.meet(&zero, &()), top);
     assert_eq!(bottom.meet(&zero, &()), zero);
-    assert_eq!(negative.meet(&zero, &()), top);
+    assert_eq!(negative.meet(&zero, &()), Flipped(SignDomain::NonPos));
 
     // Pretty printing
     assert_eq!(format!("{bottom:?}"), "Flipped(Bottom)");
@@ -360,7 +381,7 @@ fn array_domain_test() {
 
     assert_eq!(
         pos_zero_neg.join(&neg_zero_top, &()),
-        Array([Top, Zero, Top])
+        Array([NonZero, Zero, Top])
     );
     assert_eq!(pos_zero_neg.join(&top, &()), top);
     assert_eq!(bottom.join(&neg_zero_top, &()), neg_zero_top);
@@ -501,7 +522,7 @@ fn map_domain_test() {
     assert_eq!(a.join(&b, &ctx), b);
     assert_eq!(
         b.join(&c, &ctx),
-        Map(HashMap::from([("Foo", Top), ("Bar", Top),]))
+        Map(HashMap::from([("Foo", Top), ("Bar", NonZero),]))
     );
     assert_eq!(a.meet(&b, &ctx), Map(HashMap::from([("Foo", Zero),])));
     assert_eq!(
@@ -539,7 +560,7 @@ fn stack_domain_test() {
     assert_eq!(a.join(&bottom, &ctx), a);
     assert_eq!(a.meet(&top, &ctx), a);
     assert_eq!(a.meet(&bottom, &ctx), bottom);
-    assert_eq!(a.join(&b, &ctx), MyDomain::S1(SignDomain::Top));
+    assert_eq!(a.join(&b, &ctx), MyDomain::S1(SignDomain::NonZero));
     assert_eq!(a.join(&c, &ctx), c);
     assert_eq!(a.meet(&c, &ctx), a);
     assert_eq!(
@@ -582,7 +603,7 @@ fn union_domain_test() {
     assert_eq!(a.join(&bottom, &ctx), a);
     assert_eq!(a.meet(&top, &ctx), a);
     assert_eq!(a.meet(&bottom, &ctx), bottom);
-    assert_eq!(a.join(&b, &ctx), MyDomain::U1(SignDomain::Top));
+    assert_eq!(a.join(&b, &ctx), MyDomain::U1(SignDomain::NonZero));
     assert_eq!(a.join(&c, &ctx), top);
     assert_eq!(a.meet(&c, &ctx), bottom);
     assert_eq!(
