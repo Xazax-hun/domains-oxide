@@ -2,6 +2,25 @@ use crate::domains::*;
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 
+fn finite_domain_properties<T: Lattice>(all: &[T], ctx: &T::LatticeContext) {
+    for (x, y) in all.iter().cartesian_product(all) {
+        assert!(x.join(y, ctx) >= *x);
+        assert!(x.join(y, ctx) >= *y);
+        assert!(x.meet(y, ctx) <= *x);
+        assert!(x.meet(y, ctx) <= *y);
+
+        assert!(x.meet(y, ctx) <= x.join(y, ctx));
+
+        assert_eq!(x.join(y, ctx), y.join(x, ctx));
+        assert_eq!(x.meet(y, ctx), y.meet(x, ctx));
+
+        if x > y {
+            assert_eq!(x.join(y, ctx), *x);
+            assert_eq!(x.meet(y, ctx), *y);
+        }
+    }
+}
+
 #[test]
 fn sign_domain_tests() {
     use SignDomain::*;
@@ -25,24 +44,10 @@ fn sign_domain_tests() {
     assert_eq!(Negative.meet(&Zero, &()), Bottom);
 
     // Properties
-    let all = [Bottom, Top, Negative, Zero, Positive, NonNeg, NonZero, NonPos];
-    for (&x, &y) in all.iter().cartesian_product(&all) {
-        assert!(x.join(&y, &()) >= x);
-        assert!(x.join(&y, &()) >= y);
-        assert!(x.meet(&y, &()) <= x);
-        assert!(x.meet(&y, &()) <= y);
-
-        assert!(x.meet(&y, &()) <= x.join(&y, &()));
-
-        assert_eq!(x.join(&y, &()), y.join(&x, &()));
-        println!("{x:?} {y:?}");
-        assert_eq!(x.meet(&y, &()), y.meet(&x, &()));
-
-        if x > y {
-            assert_eq!(x.join(&y, &()), x);
-            assert_eq!(x.meet(&y, &()), y);
-        }
-    }
+    let all = [
+        Bottom, Top, Negative, Zero, Positive, NonNeg, NonZero, NonPos,
+    ];
+    finite_domain_properties(&all, &());
 
     // Conversions
     assert_eq!(SignDomain::from(5), Positive);
@@ -760,4 +765,7 @@ fn finite_domain_test() {
     assert_eq!(b.join(&g, &ctx), b);
     assert_eq!(b.meet(&a, &ctx), b);
     assert_eq!(b.meet(&g, &ctx), g);
+
+    let all = [a, b, c, d, e, f, g];
+    finite_domain_properties(&all, &ctx);
 }

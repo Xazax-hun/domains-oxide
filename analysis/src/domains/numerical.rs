@@ -104,7 +104,6 @@ mod sign_tables {
     /* ~Positive*/ [ NonPos,   Bottom, Negative, Zero,   Bottom,   Zero,     Negative, NonPos  ],
     ];
 
-
     #[rustfmt::skip]
     pub const ADDITION : [[SignDomain; 8]; 8] =
     [
