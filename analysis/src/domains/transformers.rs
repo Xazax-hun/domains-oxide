@@ -127,7 +127,7 @@ impl<T: Lattice> Lattice for Option<T> {
 
 /// A simple homogenous pair. It can be useful to represent the analysis
 /// state for small vectors.
-#[derive(PartialEq, Eq, PartialOrd, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct Vec2Domain<T: JoinSemiLattice> {
     pub x: T,
     pub y: T,
@@ -136,6 +136,19 @@ pub struct Vec2Domain<T: JoinSemiLattice> {
 impl<T: JoinSemiLattice> Debug for Vec2Domain<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{{ x: {:?}, y: {:?} }}", self.x, self.y)
+    }
+}
+
+impl<T: JoinSemiLattice> PartialOrd for Vec2Domain<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let x_cmp = self.x.partial_cmp(&other.x);
+        let y_cmp = self.y.partial_cmp(&other.y);
+        match (x_cmp, y_cmp) {
+            (Some(Ordering::Equal), _) => y_cmp,
+            (_, Some(Ordering::Equal)) => x_cmp,
+            (_, _) if x_cmp == y_cmp => x_cmp,
+            _ => None,
+        }
     }
 }
 
@@ -182,8 +195,28 @@ impl<T: Lattice> Lattice for Vec2Domain<T> {
 
 /// Flip a lattice by swapping the join and meet operations,
 /// and the top and bottom elements.
-#[derive(PartialEq, Eq, PartialOrd, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Flipped<T: Lattice>(pub T);
+
+impl<T: Lattice> Deref for Flipped<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T: Lattice> DerefMut for Flipped<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<T: Lattice> PartialOrd for Flipped<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.0.partial_cmp(&other.0).map(Ordering::reverse)
+    }
+}
 
 impl<T: Lattice> JoinSemiLattice for Flipped<T> {
     type LatticeContext = T::LatticeContext;

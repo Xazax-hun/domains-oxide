@@ -3,6 +3,21 @@ use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 
 fn finite_domain_properties<T: Lattice>(all: &[T], ctx: &T::LatticeContext) {
+    assert!(T::top(ctx) > T::bottom(ctx));
+    for x in all {
+        assert!(*x <= T::top(ctx));
+        assert!(*x >= T::bottom(ctx));
+
+        assert!(*x == *x);
+        assert!(*x <= *x);
+        assert!(*x >= *x);
+        assert!(!(*x < *x));
+        assert!(!(*x > *x));
+
+        assert_eq!(x.join(x, ctx), *x);
+        assert_eq!(x.meet(x, ctx), *x);
+    }
+
     for (x, y) in all.iter().cartesian_product(all) {
         assert!(x.join(y, ctx) >= *x);
         assert!(x.join(y, ctx) >= *y);
@@ -25,20 +40,9 @@ fn finite_domain_properties<T: Lattice>(all: &[T], ctx: &T::LatticeContext) {
 fn sign_domain_tests() {
     use SignDomain::*;
 
-    // Comparisons, join
-    assert_eq!(Positive, Positive);
-    assert!(Bottom <= Negative);
-    assert!(Zero <= Top);
-    assert_eq!(Zero.join(&Zero, &()), Zero);
+    // Join, meet
     assert_eq!(Negative.join(&Positive, &()), NonZero);
-    assert_eq!(Positive.join(&Negative, &()), NonZero);
-    assert_eq!(Top.join(&Negative, &()), Top);
-    assert_eq!(Negative.join(&Top, &()), Top);
     assert_eq!(Bottom.join(&Negative, &()), Negative);
-    assert_eq!(Negative.join(&Bottom, &()), Negative);
-
-    // Meet
-    assert_eq!(Zero.meet(&Zero, &()), Zero);
     assert_eq!(Bottom.meet(&Zero, &()), Bottom);
     assert_eq!(Top.meet(&Zero, &()), Zero);
     assert_eq!(Negative.meet(&Zero, &()), Bottom);
@@ -141,6 +145,15 @@ fn vec2_domain_tests() {
         assert_eq!(pos_pos.join(&pos_neg, &()), pos_non_zero);
         assert_eq!(top_top, SignVec::top(&()));
         assert_eq!(pos_pos.meet(&pos_neg, &()), pos_bot);
+
+        let all_signs = [
+            Bottom, Top, Negative, Zero, Positive, NonNeg, NonZero, NonPos,
+        ];
+        let mut all = Vec::new();
+        for (x, y) in all_signs.iter().cartesian_product(all_signs) {
+            all.push(SignVec { x: *x, y });
+        }
+        finite_domain_properties(&all, &());
 
         // Pretty printing
         assert_eq!(format!("{pos_non_zero:?}"), "{ x: Positive, y: NonZero }");
@@ -289,16 +302,12 @@ fn interval_domain_tests() {
 
 #[test]
 fn set_domain_tests() {
-    type IntSetDomain = PowerSetDomain<i32>;
     let ctx = PowerSetTop(PowerSetDomain::<i32>(HashSet::from([1, 2, 3, 4, 5])));
-    let bottom = IntSetDomain::bottom(&ctx);
     let small_set = PowerSetDomain::<i32>(HashSet::from([1, 2, 3]));
     let small_set2 = PowerSetDomain::<i32>(HashSet::from([2, 3, 4]));
     let union = PowerSetDomain::<i32>(HashSet::from([1, 2, 3, 4]));
     let intersection = PowerSetDomain::<i32>(HashSet::from([2, 3]));
 
-    assert!(bottom < small_set);
-    assert!(bottom < small_set2);
     assert!(!(small_set2 < small_set));
     assert!(!(small_set2 > small_set));
     assert!(small_set < union);
@@ -307,6 +316,17 @@ fn set_domain_tests() {
     assert_eq!(small_set2.join(&small_set, &ctx), union);
     assert_eq!(small_set.meet(&small_set2, &ctx), intersection);
     assert_eq!(small_set2.meet(&small_set, &ctx), intersection);
+
+    {
+        let ctx = PowerSetTop(PowerSetDomain::<i32>(HashSet::from([1, 2])));
+        let all = [
+            PowerSetDomain::<i32>(HashSet::from([])),
+            PowerSetDomain::<i32>(HashSet::from([1])),
+            PowerSetDomain::<i32>(HashSet::from([2])),
+            PowerSetDomain::<i32>(HashSet::from([1, 2])),
+        ];
+        finite_domain_properties(&all, &ctx);
+    }
 }
 
 #[test]
@@ -318,8 +338,6 @@ fn bitset_domain_tests() {
     let union = BitSetDomain::from(&ctx, &[1, 2, 3, 4]);
     let intersection = BitSetDomain::from(&ctx, &[2, 3]);
 
-    assert!(bottom < small_set);
-    assert!(bottom < small_set2);
     assert!(!(small_set2 < small_set));
     assert!(!(small_set2 > small_set));
     assert!(small_set < union);
@@ -335,51 +353,64 @@ fn bitset_domain_tests() {
         format!("{:?}", BitSetDomain::top(&ctx)),
         "{0, 1, 2, 3, 4}".to_owned()
     );
+
+    {
+        let ctx = BitSetTop(2);
+        let all = [
+            BitSetDomain::from(&ctx, &[]),
+            BitSetDomain::from(&ctx, &[0]),
+            BitSetDomain::from(&ctx, &[1]),
+            BitSetDomain::from(&ctx, &[0, 1]),
+        ];
+        finite_domain_properties(&all, &ctx);
+    }
 }
 
 #[test]
 fn flipped_sign_domain_tests() {
-    let bottom = Flipped(SignDomain::Bottom);
-    let positive = Flipped(SignDomain::Positive);
-    let negative = Flipped(SignDomain::Negative);
-    let zero = Flipped(SignDomain::Zero);
-    let top = Flipped(SignDomain::Top);
+    use SignDomain::*;
+    let bottom = Flipped(Top);
+    let positive = Flipped(Positive);
+    let negative = Flipped(Negative);
+    let zero = Flipped(Zero);
+    let top = Flipped(Bottom);
 
     // Comparisons, join
-    assert_eq!(positive, positive);
-    assert!(bottom <= negative);
-    assert!(zero <= top);
     assert_eq!(zero.join(&zero, &()), zero);
-    assert_eq!(negative.join(&positive, &()), bottom);
-    assert_eq!(positive.join(&negative, &()), bottom);
-    assert_eq!(bottom.join(&negative, &()), bottom);
-    assert_eq!(negative.join(&bottom, &()), bottom);
-    assert_eq!(top.join(&negative, &()), negative);
-    assert_eq!(negative.join(&top, &()), negative);
+    assert_eq!(negative.join(&positive, &()), top);
+    assert_eq!(bottom.join(&negative, &()), negative);
+    assert_eq!(negative.join(&top, &()), top);
 
     // Meet
-    assert_eq!(zero.meet(&zero, &()), zero);
-    assert_eq!(top.meet(&zero, &()), top);
-    assert_eq!(bottom.meet(&zero, &()), zero);
-    assert_eq!(negative.meet(&zero, &()), Flipped(SignDomain::NonPos));
+    assert_eq!(bottom.meet(&zero, &()), bottom);
+    assert_eq!(top.meet(&zero, &()), zero);
+    assert_eq!(negative.meet(&zero, &()), Flipped(NonPos));
 
     // Pretty printing
-    assert_eq!(format!("{bottom:?}"), "Flipped(Bottom)");
+    assert_eq!(format!("{bottom:?}"), "Flipped(Top)");
+
+    let all = [
+        Flipped(Bottom),
+        Flipped(Top),
+        Flipped(Negative),
+        Flipped(Zero),
+        Flipped(Positive),
+        Flipped(NonNeg),
+        Flipped(NonZero),
+        Flipped(NonPos),
+    ];
+    finite_domain_properties(&all, &());
 }
 
 #[test]
 fn array_domain_test() {
     use SignDomain::*;
-    type MyDomain = Array<SignDomain, 3>;
-    let bottom = MyDomain::bottom(&());
-    let top = MyDomain::top(&());
+    let bottom = Array::<SignDomain, 3>::bottom(&());
+    let top = Array::<SignDomain, 3>::top(&());
     let pos_zero_neg = Array([Positive, Zero, Negative]);
     let pos_zero_bottom = Array([Positive, Zero, Bottom]);
     let neg_zero_top = Array([Negative, Zero, Top]);
 
-    assert!(pos_zero_neg == pos_zero_neg);
-    assert!(pos_zero_neg < top);
-    assert!(bottom < pos_zero_neg);
     assert!(pos_zero_bottom < pos_zero_neg);
     assert!(!(pos_zero_neg < neg_zero_top));
     assert!(!(neg_zero_top < pos_zero_neg));
@@ -402,39 +433,59 @@ fn array_domain_test() {
         format!("{pos_zero_neg:?}"),
         "Array([Positive, Zero, Negative])"
     );
+
+    // Properties
+    {
+        let all_signs = [
+            Bottom, Top, Negative, Zero, Positive, NonNeg, NonZero, NonPos,
+        ];
+        let mut all = Vec::new();
+        for (x, y) in all_signs.iter().cartesian_product(all_signs) {
+            all.push(Array([*x, y]));
+        }
+        finite_domain_properties(&all, &());
+    }
 }
 
 #[test]
 fn product_domain_test() {
+    use SignDomain::*;
     type MyDomain = Prod3<SignDomain, (), BitSetDomain>;
     let bit_ctx = BitSetTop(2);
     let ctx = ((), (), bit_ctx);
-    let bottom = MyDomain::bottom(&ctx);
     let top = MyDomain::top(&ctx);
-    let a = Prod3(SignDomain::Zero, (), BitSetDomain::from(&bit_ctx, &[1]));
-    let b = Prod3(SignDomain::Top, (), BitSetDomain::bottom(&bit_ctx));
-    let c = Prod3(SignDomain::Zero, (), BitSetDomain::from(&bit_ctx, &[0, 1]));
+    let a = Prod3(Zero, (), BitSetDomain::from(&bit_ctx, &[1]));
+    let b = Prod3(Top, (), BitSetDomain::bottom(&bit_ctx));
+    let c = Prod3(Zero, (), BitSetDomain::from(&bit_ctx, &[0, 1]));
 
-    assert!(top > bottom);
-    assert!(top > a);
-    assert!(bottom < a);
     assert!(!(b > a));
     assert!(!(b < a));
     assert!(c > a);
-    assert!(a == a);
     assert_eq!(
         a.join(&b, &ctx),
-        Prod3(SignDomain::Top, (), BitSetDomain::from(&bit_ctx, &[1]))
+        Prod3(Top, (), BitSetDomain::from(&bit_ctx, &[1]))
     );
     assert_eq!(
         a.meet(&c, &ctx),
-        Prod3(SignDomain::Zero, (), BitSetDomain::from(&bit_ctx, &[1]))
+        Prod3(Zero, (), BitSetDomain::from(&bit_ctx, &[1]))
     );
     assert_eq!(
         b.meet(&c, &ctx),
-        Prod3(SignDomain::Zero, (), BitSetDomain::bottom(&bit_ctx))
+        Prod3(Zero, (), BitSetDomain::bottom(&bit_ctx))
     );
     assert_eq!(format!("{top:?}"), "Prod3(Top, (), {0, 1})");
+
+    // Properties
+    {
+        let all_signs = [
+            Bottom, Top, Negative, Zero, Positive, NonNeg, NonZero, NonPos,
+        ];
+        let mut all = Vec::new();
+        for (x, y) in all_signs.iter().cartesian_product(all_signs) {
+            all.push(Prod2(*x, y));
+        }
+        finite_domain_properties(&all, &((), ()));
+    }
 }
 
 #[test]
@@ -444,10 +495,6 @@ fn flat_domain_test() {
     let a = Flat::Element(5);
     let b = Flat::Element(3);
 
-    assert!(top > bottom);
-    assert!(top > a);
-    assert!(bottom < a);
-    assert!(a == a);
     assert!(a != b);
     assert!(!(a < b));
     assert!(!(a > b));
@@ -458,6 +505,24 @@ fn flat_domain_test() {
     assert_eq!(format!("{top:?}"), "Top");
     assert_eq!(format!("{a:?}"), "Element(5)");
     assert_eq!(format!("{bottom:?}"), "Bottom");
+
+    // Properties
+    {
+        use SignDomain::*;
+        let all = [
+            Flat::Bottom,
+            Flat::Top,
+            Flat::Element(Top),
+            Flat::Element(Bottom),
+            Flat::Element(Negative),
+            Flat::Element(Zero),
+            Flat::Element(Positive),
+            Flat::Element(NonNeg),
+            Flat::Element(NonZero),
+            Flat::Element(NonPos),
+        ];
+        finite_domain_properties(&all, &());
+    }
 }
 
 #[test]
@@ -465,15 +530,11 @@ fn bool_domain_test() {
     let bottom = bool::bottom(&());
     let top = bool::top(&());
 
-    assert!(top > bottom);
-    assert!(top == top);
-    assert!(bottom == bottom);
     assert_eq!(top.join(&bottom, &()), top);
     assert_eq!(top.meet(&bottom, &()), bottom);
-    assert_eq!(top.join(&top, &()), top);
-    assert_eq!(top.meet(&top, &()), top);
-    assert_eq!(bottom.join(&bottom, &()), bottom);
-    assert_eq!(bottom.meet(&bottom, &()), bottom);
+
+    let all = [true, false];
+    finite_domain_properties(&all, &());
 }
 
 #[test]
@@ -492,18 +553,16 @@ fn lifted_domain_test() {
     let false_val = Some(false);
     let true_val = Some(true);
 
-    assert!(false_val > bottom);
-    assert!(true_val > bottom);
     assert!(true_val > false_val);
-    assert_eq!(bottom, bottom);
-    assert_eq!(true_val, true_val);
-    assert_eq!(bottom.join(&bottom, &()), bottom);
     assert_eq!(bottom.join(&true_val, &()), true_val);
     assert_eq!(bottom.meet(&true_val, &()), bottom);
     assert_eq!(false_val.join(&true_val, &()), true_val);
     assert_eq!(false_val.meet(&true_val, &()), false_val);
     assert_eq!(format!("{bottom:?}"), "None");
     assert_eq!(format!("{true_val:?}"), "Some(true)");
+
+    let all = [None, Some(true), Some(false)];
+    finite_domain_properties(&all, &());
 }
 
 #[test]
@@ -553,10 +612,6 @@ fn stack_domain_test() {
     let d = MyDomain::S2(IntervalDomain { min: 8, max: 12 });
     let e = MyDomain::S2(IntervalDomain { min: 4, max: 13 });
 
-    assert!(top > bottom);
-    assert!(top > a);
-    assert!(a > bottom);
-    assert!(a == a);
     assert!(!(a < b));
     assert!(!(a > b));
     assert!(a < e);
@@ -581,6 +636,25 @@ fn stack_domain_test() {
     assert_eq!(format!("{top:?}"), "S2([-inf, inf])");
     assert_eq!(format!("{a:?}"), "S1(Negative)");
     assert_eq!(format!("{e:?}"), "S2([4, 13])");
+
+    // Properties
+    {
+        use SignDomain::*;
+        let all = [
+            Stack2::Bottom,
+            Stack2::S1(Bottom),
+            Stack2::S1(Top),
+            Stack2::S1(Negative),
+            Stack2::S1(Zero),
+            Stack2::S1(Positive),
+            Stack2::S1(NonNeg),
+            Stack2::S1(NonZero),
+            Stack2::S1(NonPos),
+            Stack2::S2(true),
+            Stack2::S2(false),
+        ];
+        finite_domain_properties(&all, &((), ()));
+    }
 }
 
 #[test]
@@ -595,10 +669,6 @@ fn union_domain_test() {
     let d = MyDomain::U2(IntervalDomain { min: 8, max: 12 });
     let e = MyDomain::U2(IntervalDomain { min: 4, max: 13 });
 
-    assert!(top > bottom);
-    assert!(top > a);
-    assert!(a > bottom);
-    assert!(a == a);
     assert!(!(a < b));
     assert!(!(a > b));
     assert!(d < e);
@@ -624,6 +694,25 @@ fn union_domain_test() {
     assert_eq!(format!("{top:?}"), "Top");
     assert_eq!(format!("{a:?}"), "U1(Negative)");
     assert_eq!(format!("{e:?}"), "U2([4, 13])");
+
+    // Properties
+    {
+        use SignDomain::*;
+        let all = [
+            Union2::Bottom,
+            Union2::U1(Bottom),
+            Union2::U1(Top),
+            Union2::U1(Negative),
+            Union2::U1(Zero),
+            Union2::U1(Positive),
+            Union2::U1(NonNeg),
+            Union2::U1(NonZero),
+            Union2::U1(NonPos),
+            Union2::U2(true),
+            Union2::U2(false),
+        ];
+        finite_domain_properties(&all, &((), ()));
+    }
 }
 
 #[test]
