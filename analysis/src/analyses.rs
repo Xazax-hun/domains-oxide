@@ -2,8 +2,8 @@ use super::cfg::{reverse, BlockMutableCfg, ControlFlowGraph};
 use super::domains::*;
 use super::solvers::SolveMonotone;
 
-pub fn calculate_dominators<Cfg: ControlFlowGraph>(
-    cfg: &Cfg,
+pub fn calculate_dominators(
+    cfg: &impl ControlFlowGraph,
     node_limit: usize,
 ) -> Vec<Flipped<BitSetDomain>> {
     let node_num = cfg.blocks().len();
@@ -14,16 +14,16 @@ pub fn calculate_dominators<Cfg: ControlFlowGraph>(
         states.push(Flipped::<BitSetDomain>::bottom(&ctx));
     }
     let solver = SolveMonotone { node_limit };
-    solver.transfer_blocks_in_place(cfg, &ctx, &mut states, &mut |id: usize,
-                                                                  _cfg: &Cfg,
-                                                                  _lat_ctx,
-                                                                  preds_merged: &Flipped<
-        BitSetDomain,
-    >| {
-        let mut result = Flipped(BitSetDomain::from(&ctx, &[id]));
-        result = result.meet(preds_merged, &ctx);
-        result
-    });
+    solver.transfer_blocks_in_place(
+        cfg,
+        &ctx,
+        &mut states,
+        &mut |id, _cfg, _lat_ctx, preds_merged| {
+            let mut result = Flipped(BitSetDomain::from(&ctx, &[id]));
+            result = result.meet(preds_merged, &ctx);
+            result
+        },
+    );
     states
 }
 

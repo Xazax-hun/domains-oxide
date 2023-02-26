@@ -204,7 +204,7 @@ mod test_utils {
         cfg_tests::{parse_string, ParseResult},
     };
 
-    pub fn check_expected_results<A: Analysis>(analysis: A, source: &str, expected: &str) {
+    pub fn check_expected_results(analysis: impl Analysis, source: &str, expected: &str) {
         let ParseResult { output, ctx } = parse_string(source).unwrap();
         let cfg = Cfg::new(&ctx);
         let anns = analysis.analyze(&cfg).annotations;

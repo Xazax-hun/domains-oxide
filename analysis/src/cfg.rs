@@ -136,10 +136,7 @@ enum Color {
 /// In structured programming all back edges need to point to a loop header
 /// node that dominates all the nodes inside the loop. This function will
 /// get the back edges from a structured program.
-pub fn get_back_edges<Cfg>(cfg: &Cfg) -> HashSet<(usize, usize)>
-where
-    Cfg: ControlFlowGraph,
-{
+pub fn get_back_edges(cfg: &impl ControlFlowGraph) -> HashSet<(usize, usize)> {
     let mut color = vec![Color::White; cfg.blocks().len()];
     let mut processing = Vec::new();
     let mut back_edges = HashSet::new();
