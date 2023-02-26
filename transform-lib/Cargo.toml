@@ -1,17 +1,20 @@
 [package]
-name = "domains-driver"
-description = "Executable for a toy language to help experiment with static analysis"
+name = "transform-lib"
+description = "Library for a toy language to help experiment with static analysis"
 repository = "https://github.com/Xazax-hun/domains-oxide"
 readme = "../README.md"
 license = "Apache-2.0"
 keywords = ["compiler", "interpreter", "static analysis", "program analysis", "language"]
-categories = ["compilers", "command-line-utilities", "development-tools"]
+categories = ["compilers", "development-tools"]
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "4.0.18", features = ["derive"] }
 utils = { path = "../utils"}
-domains-lib = { path = "../domains-lib"}
+analysis = { path = "../analysis"}
+lazy_static = "1.4.0"
+rand = "0.8.5"
+itertools = "0.10.5"
+cairo-rs = { version = "0.17.0", features = ["svg"] }

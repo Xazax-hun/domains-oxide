@@ -1,11 +1,11 @@
 use clap::{Parser as CommandLineParser, ValueEnum};
-use domains_lib::analysis::{get_analysis_results, Analyses, AnalysisResult};
-use domains_lib::ast;
-use domains_lib::cfg::{self, Cfg};
-use domains_lib::eval::{annotate_with_walks, create_random_walks};
-use domains_lib::lexer::Lexer;
-use domains_lib::parser::Parser;
-use domains_lib::render::render_random_walk;
+use transform_lib::analysis::{get_analysis_results, Analyses, AnalysisResult};
+use transform_lib::ast;
+use transform_lib::cfg::{self, Cfg};
+use transform_lib::eval::{annotate_with_walks, create_random_walks};
+use transform_lib::lexer::Lexer;
+use transform_lib::parser::Parser;
+use transform_lib::render::render_random_walk;
 use utils::DiagnosticEmitter;
 
 const DEFAULT_EXECUTIONS: &str = "1";

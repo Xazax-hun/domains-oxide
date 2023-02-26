@@ -1,11 +1,11 @@
 [workspace]
 
 members = [
-  "domains-driver",
-  "domains-lib",
+  "transform-driver",
+  "transform-lib",
   "analysis",
   "utils",
 ]
 exclude = [
-  "parser-fuzz"
+  "transform-parser-fuzz"
 ]
