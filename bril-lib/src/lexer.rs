@@ -214,7 +214,7 @@ impl<'src> Lexer<'src> {
         }
     }
 
-    fn lex<'ctx>(&mut self) -> Option<Token> {
+    fn lex(&mut self) -> Option<Token> {
         loop {
             if self.is_at_end() {
                 return None;
@@ -290,7 +290,7 @@ impl<'src> Lexer<'src> {
                         });
                     }
                     self.diagnostic_emitter
-                        .error(self.line_num, &format!("Unexpected token: '@'."));
+                        .error(self.line_num, "Unexpected token: '@'.");
                     self.has_error = true;
                     return None;
                 }
@@ -303,11 +303,11 @@ impl<'src> Lexer<'src> {
                         return Some(KEYWORDS.get(ident).map_or_else(
                             || Token {
                                 value: Identifier(self.get_identifier(ident)),
-                                line_num: line_num,
+                                line_num,
                             },
                             |value| Token {
                                 value: *value,
-                                line_num: line_num,
+                                line_num,
                             },
                         ));
                     }
