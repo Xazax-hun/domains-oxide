@@ -327,6 +327,7 @@ impl JoinSemiLattice for IntervalDomain {
         }
     }
 
+    /// Extrapolate unstable bounds to infinity.
     fn widen(&self, prev: &Self, ctx: &Self::LatticeContext, _: usize) -> Self {
         if *prev == Self::bottom(ctx) {
             return *self;
@@ -335,9 +336,9 @@ impl JoinSemiLattice for IntervalDomain {
             min: if prev.min > self.min {
                 NEG_INF
             } else {
-                self.min
+                prev.min
             },
-            max: if prev.max < self.max { INF } else { self.max },
+            max: if prev.max < self.max { INF } else { prev.max },
         }
     }
 }
@@ -361,6 +362,21 @@ impl Lattice for IntervalDomain {
             Self::bottom(ctx)
         } else {
             result
+        }
+    }
+
+    /// Improve infinite bounds.
+    fn narrow(&self, prev: &Self, ctx: &Self::LatticeContext, _: usize) -> Self {
+        if *prev == Self::bottom(ctx) {
+            return *self;
+        }
+        Self {
+            min: if prev.min == NEG_INF {
+                self.min
+            } else {
+                prev.min
+            },
+            max: if prev.max == INF { self.max } else { prev.max },
         }
     }
 }

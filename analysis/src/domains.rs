@@ -92,8 +92,11 @@ pub trait Lattice: JoinSemiLattice {
     /// * Ordering is respected: a <= b => a.meet(b, ctx) == a
     fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self;
 
-    // TODO: consider a narrow operation as the opposite of widen for lattices
-    //       that have infinite descending chains.
+    /// The dual operation of widen, useful when the domain has long (or infinite) descending
+    /// chains.
+    fn narrow(&self, _previous: &Self, _ctx: &Self::LatticeContext, _iteration: usize) -> Self {
+        self.clone()
+    }
 }
 
 // TODO: add helper to compute meet/join of a set of lattice elements.

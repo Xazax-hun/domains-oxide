@@ -123,6 +123,14 @@ impl<T: Lattice> Lattice for Option<T> {
             (Some(s), Some(o)) => Some(s.meet(o, ctx)),
         }
     }
+
+    fn narrow(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+        self.as_ref().map(|inner| {
+            previous
+                .as_ref()
+                .map_or_else(|| inner.clone(), |prev| inner.narrow(prev, ctx, iteration))
+        })
+    }
 }
 
 /// A simple homogenous pair. It can be useful to represent the analysis
@@ -191,6 +199,13 @@ impl<T: Lattice> Lattice for Vec2Domain<T> {
             y: self.y.meet(&other.y, ctx),
         }
     }
+
+    fn narrow(&self, other: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+        Self {
+            x: self.x.narrow(&other.x, ctx, iteration),
+            y: self.y.narrow(&other.y, ctx, iteration),
+        }
+    }
 }
 
 /// Flip a lattice by swapping the join and meet operations,
@@ -228,6 +243,10 @@ impl<T: Lattice> JoinSemiLattice for Flipped<T> {
     fn join(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
         Self(self.0.meet(&other.0, ctx))
     }
+
+    fn widen(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+        Self(self.0.narrow(previous, ctx, iteration))
+    }
 }
 
 impl<T: Lattice> Lattice for Flipped<T> {
@@ -237,6 +256,10 @@ impl<T: Lattice> Lattice for Flipped<T> {
 
     fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
         Self(self.0.join(&other.0, ctx))
+    }
+
+    fn narrow(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+        Self(self.0.widen(previous, ctx, iteration))
     }
 }
 
@@ -307,6 +330,10 @@ impl<T: JoinSemiLattice, const N: usize> JoinSemiLattice for Array<T, N> {
 }
 
 impl<T: Lattice, const N: usize> Lattice for Array<T, N> {
+    fn top(ctx: &Self::LatticeContext) -> Self {
+        Self([(); N].map(|()| T::top(ctx)))
+    }
+
     fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
         let mut result = self.clone();
         result
@@ -317,8 +344,14 @@ impl<T: Lattice, const N: usize> Lattice for Array<T, N> {
         result
     }
 
-    fn top(ctx: &Self::LatticeContext) -> Self {
-        Self([(); N].map(|()| T::top(ctx)))
+    fn narrow(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+        let mut result = self.clone();
+        result
+            .0
+            .iter_mut()
+            .zip(previous.iter())
+            .for_each(|(s, p)| *s = s.narrow(p, ctx, iteration));
+        result
     }
 }
 
@@ -440,10 +473,7 @@ impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> JoinSemiLattice for Map<K
                 result.insert(k.clone(), v.widen(prev_v, &ctx.1, iteration));
             }
             // Leave out new elements since the previous iteration to avoid
-            // unbounded growth. Note that this is not correct. We probably want
-            // to insert top for those elements instead, but the current framework
-            // provides a widen even when a lattice has no top element. This might
-            // change in the future.
+            // unbounded growth. Do we want to insert top instead?
         }
         Self(result)
     }
@@ -464,6 +494,17 @@ impl<K: Eq + Clone + Hash + Debug, V: Lattice> Lattice for Map<K, V> {
             if let Some(other_v) = other.get(k) {
                 result.insert(k.clone(), v.meet(other_v, &ctx.1));
             }
+        }
+        Self(result)
+    }
+
+    fn narrow(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+        let mut result = HashMap::new();
+        for (k, v) in &self.0 {
+            if let Some(prev_v) = previous.get(k) {
+                result.insert(k.clone(), v.narrow(prev_v, &ctx.1, iteration));
+            }
+            // What to do with elements that are only in one of the maps?
         }
         Self(result)
     }
@@ -536,6 +577,15 @@ macro_rules! tuple_lattice {
                     let ($([<$name:lower 3>],)+) = ctx;
                     $prod($([<$name:lower 1>].meet([<$name:lower 2>], [<$name:lower 3>]),)*)
                 }
+
+                fn narrow(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+                    let $prod($([<$name:lower 1>],)+) = self;
+                    let $prod($([<$name:lower 2>],)+) = previous;
+                    let ($([<$name:lower 3>],)+) = ctx;
+                    $prod(
+                    $([<$name:lower 1>].narrow([<$name:lower 2>], [<$name:lower 3>], iteration),)*
+                    )
+                }
             }
         }
     };
@@ -607,6 +657,15 @@ macro_rules! stack_lattice {
                             $stack::[<S $name>]([<s $name 1>].meet([<s $name 2>], [<c $name:lower 3>]))),+,
                         _ if self > other => other.clone(),
                         _ => self.clone()
+                    }
+                }
+
+                fn narrow(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+                    let ($([<c $name:lower 3>],)+) = ctx;
+                    match (self, previous) {
+                        $(($stack::[<S $name>]([<s $name 1>]), $stack::[<S $name>]([<s $name 2>])) =>
+                            $stack::[<S $name>]([<s $name 1>].narrow([<s $name 2>], [<c $name:lower 3>], iteration))),+,
+                        _ => self.clone(),
                     }
                 }
             }
@@ -698,6 +757,15 @@ macro_rules! distjoint_union_lattice {
                         $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) =>
                             $union::[<U $name>]([<u $name 1>].meet([<u $name 2>], [<c $name:lower 3>]))),+,
                         _ => $union::Bottom,
+                    }
+                }
+
+                fn narrow(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+                    let ($([<c $name:lower 3>],)+) = ctx;
+                    match (self, previous) {
+                        $(($union::[<U $name>]([<u $name 1>]), $union::[<U $name>]([<u $name 2>])) =>
+                            $union::[<U $name>]([<u $name 1>].narrow([<u $name 2>], [<c $name:lower 3>], iteration))),+,
+                        _ => self.clone(),
                     }
                 }
             }
