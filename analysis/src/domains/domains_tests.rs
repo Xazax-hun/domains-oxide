@@ -57,8 +57,11 @@ fn sign_domain_tests() {
     assert_eq!(SignDomain::from(5), Positive);
     assert_eq!(SignDomain::from(0), Zero);
     assert_eq!(SignDomain::from(-5), Negative);
-    assert_eq!(SignDomain::from(IntervalDomain::bottom(&())), Bottom);
-    assert_eq!(SignDomain::from(IntervalDomain::top(&())), Top);
+    for d in all {
+        if d != NonZero {
+            assert_eq!(SignDomain::from(IntervalDomain::from(d)), d);
+        }
+    }
     assert_eq!(SignDomain::from(IntervalDomain::from(0)), Zero);
     assert_eq!(SignDomain::from(IntervalDomain::from(5)), Positive);
     assert_eq!(SignDomain::from(IntervalDomain::from(-5)), Negative);
