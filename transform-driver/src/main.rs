@@ -1,8 +1,8 @@
 use utils::DiagnosticEmitter;
 
 use clap::Parser;
-use transform_driver::Opt;
 use std::process::ExitCode;
+use transform_driver::Opt;
 
 fn main() -> ExitCode {
     let opts = Opt::parse();

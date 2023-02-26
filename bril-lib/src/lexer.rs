@@ -3,23 +3,45 @@ use utils::DiagnosticEmitter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenValue {
-    // Single-character tokens
+    Identifier(usize),
+    Integer(i32),
+
+    // Arithmetic
+    Add,
+    Mul,
+    Sub,
+    Div,
+
+    // Logic
+    Equal,
+    LessThan,
+    GreaterThan,
+    LessThanOrEq,
+    GreaterThanOrEq,
+    Not,
+    And,
+    Or,
+
+    // Control flow
+    Jump,
+    Branch,
+    Call,
+    Return,
+
+    // Separators
+    Define,
     LeftParen,
     RightParen,
     LeftBrace,
     RightBrace,
-    Comma,
+    Colon,
     Semicolon,
 
-    // Literals
-    Number(i32),
-
-    // Keywords
-    Init,
-    Translation,
-    Rotation,
-    Iter,
-    Or,
+    // Misc
+    Const,
+    Print,
+    Nop,
+    Identity,
 
     EndOfFile,
 }
@@ -32,36 +54,51 @@ fn from_char(c: char) -> Option<TokenValue> {
         ')' => Some(RightParen),
         '{' => Some(LeftBrace),
         '}' => Some(RightBrace),
-        ',' => Some(Comma),
+        ':' => Some(Colon),
         ';' => Some(Semicolon),
+        '=' => Some(Define),
         _ => None,
-    }
-}
-
-impl TokenValue {
-    pub fn to_num(self) -> i32 {
-        match self {
-            Number(n) => n,
-            _ => panic!(),
-        }
     }
 }
 
 impl core::fmt::Display for TokenValue {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match *self {
+            Identifier(i) => write!(f, "ident_{}", i),
+            Integer(i) => write!(f, "{}", i),
+
+            Add => write!(f, "add"),
+            Mul => write!(f, "mul"),
+            Sub => write!(f, "sub"),
+            Div => write!(f, "div"),
+
+            Equal => write!(f, "eq"),
+            LessThan => write!(f, "lt"),
+            GreaterThan => write!(f, "gt"),
+            LessThanOrEq => write!(f, "le"),
+            GreaterThanOrEq => write!(f, "ge"),
+            Not => write!(f, "not"),
+            And => write!(f, "and"),
+            Or => write!(f, "or"),
+
+            Jump => write!(f, "jmp"),
+            Branch => write!(f, "br"),
+            Call => write!(f, "call"),
+            Return => write!(f, "ret"),
+
+            Define => write!(f, "="),
             LeftParen => write!(f, "("),
             RightParen => write!(f, ")"),
             LeftBrace => write!(f, "{{"),
             RightBrace => write!(f, "}}"),
-            Comma => write!(f, ","),
+            Colon => write!(f, ":"),
             Semicolon => write!(f, ";"),
-            Number(n) => write!(f, "{n}"),
-            Init => write!(f, "init"),
-            Translation => write!(f, "translation"),
-            Rotation => write!(f, "rotation"),
-            Iter => write!(f, "iter"),
-            Or => write!(f, "or"),
+
+            Const => write!(f, "const"),
+            Print => write!(f, "print"),
+            Nop => write!(f, "nop"),
+            Identity => write!(f, "id"),
+
             EndOfFile => write!(f, "END_OF_FILE"),
         }
     }
@@ -70,11 +107,29 @@ impl core::fmt::Display for TokenValue {
 lazy_static! {
     static ref KEYWORDS: HashMap<String, TokenValue> = {
         let mut m = HashMap::new();
-        m.insert(format!("{Init}"), Init);
+        m.insert(format!("{Add}"), Add);
+        m.insert(format!("{Mul}"), Mul);
+        m.insert(format!("{Div}"), Div);
+        m.insert(format!("{Sub}"), Sub);
+
+        m.insert(format!("{Equal}"), Equal);
+        m.insert(format!("{LessThan}"), LessThan);
+        m.insert(format!("{GreaterThan}"), GreaterThan);
+        m.insert(format!("{LessThanOrEq}"), LessThanOrEq);
+        m.insert(format!("{GreaterThanOrEq}"), GreaterThanOrEq);
+        m.insert(format!("{Not}"), Not);
+        m.insert(format!("{And}"), And);
         m.insert(format!("{Or}"), Or);
-        m.insert(format!("{Translation}"), Translation);
-        m.insert(format!("{Rotation}"), Rotation);
-        m.insert(format!("{Iter}"), Iter);
+
+        m.insert(format!("{Jump}"), Jump);
+        m.insert(format!("{Branch}"), Branch);
+        m.insert(format!("{Call}"), Call);
+        m.insert(format!("{Return}"), Return);
+
+        m.insert(format!("{Const}"), Const);
+        m.insert(format!("{Print}"), Print);
+        m.insert(format!("{Nop}"), Nop);
+        m.insert(format!("{Identity}"), Identity);
         m
     };
 }
@@ -83,9 +138,6 @@ lazy_static! {
 pub struct Token {
     pub value: TokenValue,
 
-    // TODO: add better location info: could be an index into a
-    //       table that has the line number, column number and a
-    //       file path.
     pub line_num: u32,
 }
 
@@ -102,6 +154,13 @@ pub struct Lexer<'src> {
     line_num: u32,
     has_error: bool, // TODO: can we get rid of this?
     diagnostic_emitter: &'src mut DiagnosticEmitter,
+    identifier_table: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LexResult {
+    pub tokens: Vec<Token>,
+    pub identifier_table: Vec<String>,
 }
 
 impl<'src> Lexer<'src> {
@@ -113,14 +172,12 @@ impl<'src> Lexer<'src> {
             line_num: 1,
             has_error: false,
             diagnostic_emitter,
+            identifier_table: Vec::default(),
         }
     }
 
-    /// Returns a list of tokens where the last token is
-    /// an `EndOfFile` token. When the returned vector is empty,
-    /// the lexing failed and en error was emitted to `diag`.
-    pub fn lex_all(mut self) -> Vec<Token> {
-        let mut result = Vec::new();
+    pub fn lex_all(mut self) -> LexResult {
+        let mut tokens = Vec::new();
 
         // TODO: better support for unicode:
         //   * Point out where the non-ascii character is
@@ -129,25 +186,35 @@ impl<'src> Lexer<'src> {
         if !self.source.is_ascii() {
             self.diagnostic_emitter
                 .error(self.line_num, "Only ASCII input is supported.");
-            return result;
+            return LexResult {
+                tokens,
+                identifier_table: self.identifier_table,
+            };
         }
 
         while !self.is_at_end() {
             if let Some(tok) = self.lex() {
-                result.push(tok);
+                tokens.push(tok);
             } else if self.has_error {
-                return Vec::new();
+                return LexResult {
+                    tokens,
+                    identifier_table: self.identifier_table,
+                };
             }
         }
 
-        result.push(Token {
+        tokens.push(Token {
             value: EndOfFile,
             line_num: self.line_num,
         });
-        result
+
+        LexResult {
+            tokens,
+            identifier_table: self.identifier_table,
+        }
     }
 
-    fn lex(&mut self) -> Option<Token> {
+    fn lex<'ctx>(&mut self) -> Option<Token> {
         loop {
             if self.is_at_end() {
                 return None;
@@ -156,7 +223,7 @@ impl<'src> Lexer<'src> {
             self.start = self.current;
             match self.advance() {
                 // Unambiguous single character tokens.
-                c @ ('(' | ')' | '{' | '}' | ',' | ';') => {
+                c @ ('=' | '(' | ')' | '{' | '}' | ':' | ';') => {
                     return Some(Token {
                         value: from_char(c).unwrap(),
                         line_num: self.line_num,
@@ -214,12 +281,35 @@ impl<'src> Lexer<'src> {
                     self.has_error = true;
                     return None;
                 }
+                '@' => {
+                    self.advance();
+                    if let Some(ident) = self.lex_identifier() {
+                        return Some(Token {
+                            value: Identifier(self.get_identifier(ident)),
+                            line_num: self.line_num,
+                        });
+                    }
+                    self.diagnostic_emitter
+                        .error(self.line_num, &format!("Unexpected token: '@'."));
+                    self.has_error = true;
+                    return None;
+                }
                 c => {
                     if c.is_ascii_digit() {
                         return self.lex_number();
                     }
-                    if let kw @ Some(_) = self.lex_keyword() {
-                        return kw;
+                    if let Some(ident) = self.lex_identifier() {
+                        let line_num = self.line_num;
+                        return Some(KEYWORDS.get(ident).map_or_else(
+                            || Token {
+                                value: Identifier(self.get_identifier(ident)),
+                                line_num: line_num,
+                            },
+                            |value| Token {
+                                value: *value,
+                                line_num: line_num,
+                            },
+                        ));
                     }
                     self.diagnostic_emitter.error(
                         self.line_num,
@@ -243,21 +333,31 @@ impl<'src> Lexer<'src> {
         let value: i32 = self.source[self.start..self.current].parse().ok()?;
 
         Some(Token {
-            value: Number(value),
+            value: Integer(value),
             line_num: self.line_num,
         })
     }
 
-    fn lex_keyword(&mut self) -> Option<Token> {
+    fn lex_identifier(&mut self) -> Option<&'src str> {
+        if !self.peek().is_ascii_alphabetic() {
+            return None;
+        }
         while self.peek().is_ascii_alphabetic() {
             self.advance();
         }
 
-        let text = &self.source[self.start..self.current];
-        KEYWORDS.get(text).map(|value| Token {
-            value: *value,
-            line_num: self.line_num,
-        })
+        Some(&self.source[self.start..self.current])
+    }
+
+    fn get_identifier(&mut self, ident: &str) -> usize {
+        match self.identifier_table.iter().position(|str| str == ident) {
+            Some(pos) => pos,
+            _ => {
+                // TODO: more efficient lookup.
+                self.identifier_table.push(ident.to_owned());
+                self.identifier_table.len() - 1
+            }
+        }
     }
 
     fn is_at_end(&self) -> bool {

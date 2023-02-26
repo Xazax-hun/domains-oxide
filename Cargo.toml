@@ -1,9 +1,10 @@
 [workspace]
 
 members = [
+  "analysis",
+  "bril-lib",
   "transform-driver",
   "transform-lib",
-  "analysis",
   "utils",
 ]
 exclude = [
