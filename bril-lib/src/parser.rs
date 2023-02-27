@@ -19,6 +19,8 @@ pub struct Parser<'src> {
 use IdentifierType::*;
 use TokenValue::*;
 
+type JumpTable = HashMap<Identifier, usize>;
+
 impl<'src> Parser<'src> {
     pub fn new(lexed: LexResult, diag: &'src mut DiagnosticEmitter) -> Self {
         let LexResult {
@@ -79,26 +81,29 @@ impl<'src> Parser<'src> {
         );
 
         let mut symbols = HashMap::new();
+        let mut jumps = HashMap::new();
         for v @ Variable { id, ty: _ } in &formals {
             symbols.insert(*id, v.clone());
         }
         let mut cfg = Cfg::new(func, func_ty, formals);
         self.current_block = cfg.new_block();
         self.consume(LeftBrace, "");
-        self.parse_function_body(&mut cfg, &mut symbols)?;
+        self.parse_function_body(&mut cfg, &mut symbols, &mut jumps)?;
 
         Some(cfg)
     }
 
     fn parse_formals(&mut self) -> Option<Vec<Variable>> {
         let mut result = Vec::new();
-        while !self.check(RightParen) {
-            let (_, id, _) = self.consume_identifier(&[Local])?;
-            self.consume(Colon, "");
-            let ty = self.parse_type()?;
-            result.push(Variable { id, ty });
-            if self.try_consume(Comma).is_none() {
-                break;
+        if !self.check(RightParen) {
+            loop {
+                let (_, id, _) = self.consume_identifier(&[Local])?;
+                self.consume(Colon, "");
+                let ty = self.parse_type()?;
+                result.push(Variable { id, ty });
+                if self.try_consume(Comma).is_none() {
+                    break;
+                }
             }
         }
         self.consume(RightParen, "");
@@ -117,12 +122,23 @@ impl<'src> Parser<'src> {
         None
     }
 
-    fn parse_function_body(&mut self, cfg: &mut Cfg, symbols: &mut SymbolTable) -> Option<()> {
-        // TODO: support control flow.
+    fn parse_function_body(
+        &mut self,
+        cfg: &mut Cfg,
+        symbols: &mut SymbolTable,
+        jumps: &mut JumpTable,
+    ) -> Option<()> {
         let mut ops = Vec::new();
         while !self.check(RightBrace) {
-            let op = self.parse_instruction(cfg, symbols)?;
-            ops.push(op);
+            let prev = self.current_block;
+            let op = self.parse_instruction(cfg, symbols, jumps)?;
+            if prev == self.current_block {
+                ops.push(op);
+            } else {
+                cfg.extend_block(prev, ops.iter());
+                ops.clear();
+                ops.push(op);
+            }
         }
         cfg.extend_block(self.current_block, ops.iter());
 
@@ -132,8 +148,9 @@ impl<'src> Parser<'src> {
 
     fn parse_instruction(
         &mut self,
-        _cfg: &mut Cfg,
+        cfg: &mut Cfg,
         symbols: &mut SymbolTable,
+        jumps: &mut JumpTable,
     ) -> Option<Operation> {
         if let Some(tok) = self.try_consume(Print) {
             let (_, id, _) = self.consume_identifier(&[Local])?;
@@ -147,10 +164,13 @@ impl<'src> Parser<'src> {
         }
 
         if let Some(tok) = self.try_consume(Return) {
+            if self.try_consume(Semicolon).is_some() {
+                return Some(Operation::Ret(tok.line_num, None));
+            }
             let (_, id, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "");
             if let Some(var) = symbols.get(&id) {
-                return Some(Operation::Ret(tok.line_num, var.clone()));
+                return Some(Operation::Ret(tok.line_num, Some(var.clone())));
             } else {
                 self.undefined_variable(tok, id);
                 return None;
@@ -158,22 +178,22 @@ impl<'src> Parser<'src> {
         }
 
         if let Some(tok) = self.try_consume(Jump) {
-            let (_, _id, _) = self.consume_identifier(&[Label])?;
+            let (_, id, _) = self.consume_identifier(&[Label])?;
             self.consume(Semicolon, "");
-            return Some(Operation::Jump(tok.line_num, Target(0)));
+            return Some(Operation::Jump(tok.line_num, id));
         }
 
         if let Some(token) = self.try_consume(Branch) {
             let (_, cond, _) = self.consume_identifier(&[Local])?;
-            let (_, _then, _) = self.consume_identifier(&[Label])?;
-            let (_, _els, _) = self.consume_identifier(&[Label])?;
+            let (_, then, _) = self.consume_identifier(&[Label])?;
+            let (_, els, _) = self.consume_identifier(&[Label])?;
             self.consume(Semicolon, "");
             if let Some(var) = symbols.get(&cond) {
                 return Some(Operation::Br(ir::Branch {
                     location: token.line_num,
                     cond: var.clone(),
-                    then: Target(0),
-                    els: Target(0),
+                    then,
+                    els,
                 }));
             } else {
                 self.undefined_variable(token, cond);
@@ -190,10 +210,14 @@ impl<'src> Parser<'src> {
             return self.parse_call(None, symbols);
         }
 
-        let (tok, res_id, id_ty) = self.consume_identifier(&[Local, Label])?;
+        let (_, res_id, id_ty) = self.consume_identifier(&[Local, Label])?;
         if id_ty == Label {
-            // TODO: handle basic blocks.
-            return Some(Operation::Nop(tok.line_num));
+            self.consume(Colon, "");
+            // Each block has to have at least one instruction,
+            // so we can continue to parsing the next one.
+            self.current_block = cfg.new_block();
+            jumps.insert(res_id, self.current_block);
+            return self.parse_instruction(cfg, symbols, jumps);
         }
         self.consume(Colon, "");
         let result_ty = self.parse_type()?;

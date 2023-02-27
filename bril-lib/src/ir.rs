@@ -67,24 +67,21 @@ pub struct Call {
 }
 
 #[derive(Clone, Debug)]
-pub struct Target(pub usize);
-
-#[derive(Clone, Debug)]
 pub struct Branch {
     pub location: Location,
     pub cond: Variable,
-    pub then: Target,
-    pub els: Target,
+    pub then: Identifier,
+    pub els: Identifier,
 }
 
 #[derive(Clone, Debug)]
 pub enum Operation {
     BinOp(BinaryOp),
     UnOp(UnaryOp),
-    Jump(Location, Target),
+    Jump(Location, Identifier),
     Br(Branch),
     Call(Call),
-    Ret(Location, Variable),
+    Ret(Location, Option<Variable>),
     Print(Location, Variable),
     Nop(Location),
     Const(Token, Variable),
@@ -223,6 +220,7 @@ pub struct Unit {
 
 pub fn print_operation(op: &Operation, unit: &Unit) -> String {
     let get_name = |var: &Variable| unit.identifier_table.get_name(var.id);
+    let get_label_name = |&l: &Identifier| unit.identifier_table.get_name(l);
     match op {
         Operation::BinOp(BinaryOp {
             token,
@@ -248,8 +246,15 @@ pub fn print_operation(op: &Operation, unit: &Unit) -> String {
             token.value,
             get_name(operand)
         ),
-        Operation::Br(Branch { cond, .. }) => format!("br {};", get_name(cond)),
-        Operation::Jump(_, _) => "jmp;".to_owned(),
+        Operation::Br(Branch {
+            cond, then, els, ..
+        }) => format!(
+            "br {} {} {};",
+            get_name(cond),
+            get_label_name(then),
+            get_label_name(els)
+        ),
+        Operation::Jump(_, id) => format!("jmp {};", get_label_name(id)),
         Operation::Const(tok, var) => {
             format!("{}: {} = const {};", get_name(var), var.ty, tok.value)
         }
@@ -277,7 +282,8 @@ pub fn print_operation(op: &Operation, unit: &Unit) -> String {
         ),
         Operation::Print(_, v) => format!("print {};", get_name(v)),
         Operation::Nop(_) => "nop;".to_owned(),
-        Operation::Ret(_, v) => format!("ret {};", get_name(v)),
+        Operation::Ret(_, Some(v)) => format!("ret {};", get_name(v)),
+        Operation::Ret(_, None) => "ret;".to_owned(),
     }
 }
 
