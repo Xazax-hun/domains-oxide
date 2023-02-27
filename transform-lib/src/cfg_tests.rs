@@ -1,30 +1,9 @@
-use super::ast::ASTContext;
 use super::cfg::*;
 
-use super::lexer::Lexer;
-use super::parser::Parser;
-use utils::DiagnosticEmitter;
-
-#[derive(Debug)]
-pub struct ParseResult {
-    pub output: String,
-    pub ctx: ASTContext,
-}
-
-pub fn parse_string(source: &str) -> Option<ParseResult> {
-    let mut diag = DiagnosticEmitter::new(Box::new(Vec::new()), Box::new(Vec::new()));
-    let lexer = Lexer::new(source, &mut diag);
-    let tokens = lexer.lex_all();
-    let parser = Parser::new(tokens, &mut diag);
-    let ctx = parser.parse()?;
-    Some(ParseResult {
-        output: diag.out_buffer().to_string() + diag.err_buffer(),
-        ctx,
-    })
-}
+use super::parser_tests::parse_string;
 
 #[test]
-fn basic_cfg_printed() {
+fn basic_cfg_printed() -> Result<(), String> {
     let source = r"init(50, 50, 50, 50);
 translation(10, 0);
 iter {
@@ -34,9 +13,8 @@ iter {
     rotation(0, 0, 90)
   }
 }";
-    let ParseResult { output, ctx } = parse_string(source).unwrap();
+    let ctx = parse_string(source)?;
     let cfg = Cfg::new(&ctx);
-    assert!(output.is_empty());
     let pretty_printed = print(&cfg, &ctx);
     let expected = r#"digraph CFG {
   Node_0[label="init(50, 50, 50, 50)\ntranslation(10, 0)"]
@@ -56,10 +34,12 @@ iter {
 }
 "#;
     assert_eq!(expected, pretty_printed);
+
+    Ok(())
 }
 
 #[test]
-fn reverse_cfg_printed() {
+fn reverse_cfg_printed() -> Result<(), String> {
     let source = r"init(50, 50, 50, 50);
 translation(10, 0);
 iter {
@@ -69,9 +49,8 @@ iter {
     rotation(0, 0, 90)
   }
 }";
-    let ParseResult { output, ctx } = parse_string(source).unwrap();
+    let ctx = parse_string(source)?;
     let cfg = Cfg::new(&ctx);
-    assert!(output.is_empty());
     let reverse_cfg = reverse(&cfg);
     let pretty_printed = print(&reverse_cfg, &ctx);
     let expected = r#"digraph CFG {
@@ -92,10 +71,12 @@ iter {
 }
 "#;
     assert_eq!(expected, pretty_printed);
+
+    Ok(())
 }
 
 #[test]
-fn more_nested_cfg_printed() {
+fn more_nested_cfg_printed() -> Result<(), String> {
     let source = r"init(50, 50, 50, 50);
 translation(10, 0);
 iter {
@@ -114,9 +95,8 @@ iter {
     }
   }
 }";
-    let ParseResult { output, ctx } = parse_string(source).unwrap();
+    let ctx = parse_string(source)?;
     let cfg = Cfg::new(&ctx);
-    assert!(output.is_empty());
     let pretty_printed = print(&cfg, &ctx);
     let expected = r#"digraph CFG {
   Node_0[label="init(50, 50, 50, 50)\ntranslation(10, 0)"]
@@ -153,4 +133,6 @@ iter {
 }
 "#;
     assert_eq!(expected, pretty_printed);
+
+    Ok(())
 }

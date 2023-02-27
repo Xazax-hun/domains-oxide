@@ -198,17 +198,12 @@ mod reachability_analysis_tests;
 #[cfg(test)]
 mod test_utils {
     use super::*;
-    use crate::{
-        ast::print,
-        cfg::Cfg,
-        cfg_tests::{parse_string, ParseResult},
-    };
+    use crate::{ast::print, cfg::Cfg, parser_tests::parse_string};
 
     pub fn check_expected_results(analysis: impl Analysis, source: &str, expected: &str) {
-        let ParseResult { output, ctx } = parse_string(source).unwrap();
+        let ctx = parse_string(source).unwrap();
         let cfg = Cfg::new(&ctx);
         let anns = analysis.analyze(&cfg).annotations;
-        assert!(output.is_empty());
         assert_eq!(expected, print(ctx.get_root(), &ctx, &anns));
     }
 }

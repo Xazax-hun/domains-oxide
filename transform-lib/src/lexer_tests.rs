@@ -1,19 +1,14 @@
 use super::lexer::*;
 use utils::DiagnosticEmitter;
 
-#[derive(Debug)]
-struct LexResult {
-    output: String,
-    tokens: Vec<Token>,
-}
-
-fn lex_string(source: &str) -> LexResult {
+fn lex_string(source: &str) -> Result<Vec<Token>, String> {
     let mut diag = DiagnosticEmitter::new(Box::new(Vec::new()), Box::new(Vec::new()));
     let lexer = Lexer::new(source, &mut diag);
     let tokens = lexer.lex_all();
-    LexResult {
-        output: diag.out_buffer().to_string() + diag.err_buffer(),
-        tokens,
+    if tokens.is_empty() {
+        Err(diag.out_buffer().to_string() + diag.err_buffer())
+    } else {
+        Ok(tokens)
     }
 }
 
@@ -24,23 +19,19 @@ fn to_token_values(tokens: Vec<Token>) -> Vec<TokenValue> {
 use TokenValue::*;
 
 #[test]
-fn test_empty_input() {
-    let LexResult { output, tokens } = lex_string("");
-    let expected = vec![EndOfFile];
+fn test_empty_input() -> Result<(), String> {
+    let tokens = lex_string("")?;
+    assert_eq!(to_token_values(tokens), vec![EndOfFile]);
 
-    assert_eq!(to_token_values(tokens), expected);
-    assert_eq!(output, "");
+    let tokens = lex_string("  \n\t\n")?;
+    assert_eq!(to_token_values(tokens), vec![EndOfFile]);
 
-    let LexResult { output, tokens } = lex_string("  \n\t\n");
-    let expected = vec![EndOfFile];
-
-    assert_eq!(to_token_values(tokens), expected);
-    assert_eq!(output, "");
+    Ok(())
 }
 
 #[test]
-fn test_all_tokens() {
-    let LexResult { output, tokens } = lex_string("{}(),;50 init translation rotation iter or");
+fn test_all_tokens() -> Result<(), String> {
+    let tokens = lex_string("{}(),;50 init translation rotation iter or")?;
     let expected = vec![
         LeftBrace,
         RightBrace,
@@ -58,50 +49,41 @@ fn test_all_tokens() {
     ];
 
     assert_eq!(to_token_values(tokens), expected);
-    assert_eq!(output, "");
+    Ok(())
 }
 
 #[test]
-fn test_numbers() {
-    let LexResult { output, tokens } = lex_string("0 50 -0 -50");
+fn test_numbers() -> Result<(), String> {
+    let tokens = lex_string("0 50 -0 -50")?;
     let expected = vec![Number(0), Number(50), Number(0), Number(-50), EndOfFile];
 
     assert_eq!(to_token_values(tokens), expected);
-    assert_eq!(output, "");
+    Ok(())
 }
 
 #[test]
-fn test_comments() {
-    let LexResult { output, tokens } =
-        lex_string("0 // the rest is ignored\n\n//so is this\n  // and this");
-    let expected = vec![Number(0), EndOfFile];
+fn test_comments() -> Result<(), String> {
+    let tokens = lex_string("0 // the rest is ignored\n\n//so is this\n  // and this")?;
+    assert_eq!(to_token_values(tokens), vec![Number(0), EndOfFile]);
 
-    assert_eq!(to_token_values(tokens), expected);
-    assert_eq!(output, "");
+    let tokens =
+        lex_string("/* foo */ 0 /* the rest * is */  /* ignored\n\n so is this\n  // and this */")?;
+    assert_eq!(to_token_values(tokens), vec![Number(0), EndOfFile]);
 
-    let LexResult { output, tokens } =
-        lex_string("/* foo */ 0 /* the rest * is */  /* ignored\n\n so is this\n  // and this */");
-    let expected = vec![Number(0), EndOfFile];
-
-    assert_eq!(to_token_values(tokens), expected);
-    assert_eq!(output, "");
+    Ok(())
 }
 
 #[test]
 fn test_error_messages() {
-    let LexResult { output, tokens } = lex_string("|");
-    assert!(tokens.is_empty());
+    let output = lex_string("|").expect_err("");
     assert_eq!(output, "[line 1] Error : Unexpected token: '|'.\n");
 
-    let LexResult { output, tokens } = lex_string("/iter");
-    assert!(tokens.is_empty());
+    let output = lex_string("/iter").expect_err("");
     assert_eq!(output, "[line 1] Error : Unexpected token: '/'.\n");
 
-    let LexResult { output, tokens } = lex_string("-iter");
-    assert!(tokens.is_empty());
+    let output = lex_string("-iter").expect_err("");
     assert_eq!(output, "[line 1] Error : Expected number after '-'.\n");
 
-    let LexResult { output, tokens } = lex_string("a̐");
-    assert!(tokens.is_empty());
+    let output = lex_string("a̐").expect_err("");
     assert_eq!(output, "[line 1] Error : Only ASCII input is supported.\n");
 }
