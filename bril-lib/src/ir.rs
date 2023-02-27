@@ -127,7 +127,7 @@ impl CfgBlock for BasicBlock {
 pub struct Cfg {
     basic_blocks: Vec<BasicBlock>,
     function: Token,
-    ret_ty: Type,
+    ty: Type,
     formals: Vec<Variable>,
 }
 
@@ -185,11 +185,11 @@ impl BlockMutableCfg for Cfg {
 }
 
 impl Cfg {
-    pub fn new(function: Token, ret_ty: Type, formals: Vec<Variable>) -> Self {
+    pub fn new(function: Token, ty: Type, formals: Vec<Variable>) -> Self {
         Self {
             basic_blocks: Vec::default(),
             function,
-            ret_ty,
+            ty,
             formals,
         }
     }
@@ -198,8 +198,12 @@ impl Cfg {
         self.function
     }
 
-    pub fn get_return_type(&self) -> Type {
-        self.ret_ty.clone()
+    pub fn get_type<'ctx>(&self, unit: &'ctx Unit) -> &'ctx FunctionType {
+        let Type::Fn(id) = self.ty
+        else {
+            panic!("Function type expected.");
+        };
+        &unit.function_types[id]
     }
 
     pub fn get_formals(&self) -> &[Variable] {
@@ -289,7 +293,7 @@ pub fn print_cfg(cfg: &Cfg, unit: &Unit) -> String {
 pub fn print(unit: &Unit) -> String {
     let mut result = String::new();
     for cfg in &unit.functions {
-        result.push_str(&print_cfg(cfg, &unit));
+        result.push_str(&print_cfg(cfg, unit));
         result.push('\n');
     }
     result.pop();

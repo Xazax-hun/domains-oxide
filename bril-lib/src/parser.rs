@@ -60,21 +60,21 @@ impl<'src> Parser<'src> {
         }
         let formal_tys: Vec<_> = formals.iter().map(|v| v.ty.clone()).collect();
 
-        let mut ty = Type::Void;
+        let mut ret = Type::Void;
         if self.try_consume(Colon).is_some() {
-            ty = self.parse_type()?;
+            ret = self.parse_type()?;
         }
         let func_ty = FunctionType {
-            ret: ty.clone(),
+            ret,
             formals: formal_tys,
         };
         self.unit.function_types.push(func_ty);
-        let fn_ty_idx = self.unit.function_types.len() - 1;
+        let func_ty = Type::Fn(self.unit.function_types.len() - 1);
         self.unit.globals.insert(
             func_id,
             Variable {
                 id: func_id,
-                ty: Type::Fn(fn_ty_idx),
+                ty: func_ty.clone(),
             },
         );
 
@@ -82,8 +82,8 @@ impl<'src> Parser<'src> {
         for v @ Variable { id, ty: _ } in &formals {
             symbols.insert(*id, v.clone());
         }
-        let mut cfg = Cfg::new(func, ty, formals);
-        cfg.new_block();
+        let mut cfg = Cfg::new(func, func_ty, formals);
+        self.current_block = cfg.new_block();
         self.consume(LeftBrace, "");
         self.parse_function_body(&mut cfg, &mut symbols)?;
 
