@@ -73,9 +73,9 @@ impl<'src> Parser<'src> {
         self.unit.context.function_types.push(func_ty);
         let fn_ty_idx = self.unit.context.function_types.len() - 1;
         self.unit.globals.insert(
-            Identifier(func_id),
+            func_id,
             Variable {
-                id: Identifier(func_id),
+                id: func_id,
                 ty: Type::Fn(fn_ty_idx),
             },
         );
@@ -98,10 +98,7 @@ impl<'src> Parser<'src> {
             let (_, id, _) = self.consume_identifier(&[Local])?;
             self.consume(Colon, "");
             let ty = self.parse_type()?;
-            result.push(Variable {
-                id: Identifier(id),
-                ty,
-            });
+            result.push(Variable { id, ty });
             if self.try_consume(Comma).is_none() {
                 break;
             }
@@ -143,7 +140,7 @@ impl<'src> Parser<'src> {
         if let Some(tok) = self.try_consume(Print) {
             let (_, id, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "");
-            if let Some(var) = symbols.get(&Identifier(id)) {
+            if let Some(var) = symbols.get(&id) {
                 return Some(Operation::Print(tok.line_num, var.clone()));
             } else {
                 self.undefined_variable(tok, id);
@@ -154,7 +151,7 @@ impl<'src> Parser<'src> {
         if let Some(tok) = self.try_consume(Return) {
             let (_, id, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "");
-            if let Some(var) = symbols.get(&Identifier(id)) {
+            if let Some(var) = symbols.get(&id) {
                 return Some(Operation::Ret(tok.line_num, var.clone()));
             } else {
                 self.undefined_variable(tok, id);
@@ -163,22 +160,22 @@ impl<'src> Parser<'src> {
         }
 
         if let Some(tok) = self.try_consume(Jump) {
-            let (_, id, _) = self.consume_identifier(&[Label])?;
+            let (_, _id, _) = self.consume_identifier(&[Label])?;
             self.consume(Semicolon, "");
-            return Some(Operation::Jump(tok.line_num, Target(id)));
+            return Some(Operation::Jump(tok.line_num, Target(0)));
         }
 
         if let Some(token) = self.try_consume(Branch) {
             let (_, cond, _) = self.consume_identifier(&[Local])?;
-            let (_, then, _) = self.consume_identifier(&[Label])?;
-            let (_, els, _) = self.consume_identifier(&[Label])?;
+            let (_, _then, _) = self.consume_identifier(&[Label])?;
+            let (_, _els, _) = self.consume_identifier(&[Label])?;
             self.consume(Semicolon, "");
-            if let Some(var) = symbols.get(&Identifier(cond)) {
+            if let Some(var) = symbols.get(&cond) {
                 return Some(Operation::Br(ir::Branch {
                     location: token.line_num,
                     cond: var.clone(),
-                    then: Target(then),
-                    els: Target(els),
+                    then: Target(0),
+                    els: Target(0),
                 }));
             } else {
                 self.undefined_variable(token, cond);
@@ -205,11 +202,11 @@ impl<'src> Parser<'src> {
         self.consume(Define, "");
 
         let result = Variable {
-            id: Identifier(res_id),
+            id: res_id,
             ty: result_ty,
         };
 
-        symbols.insert(Identifier(res_id), result.clone());
+        symbols.insert(res_id, result.clone());
 
         if self.check(Call) {
             return self.parse_call(Some(result), symbols);
@@ -229,7 +226,7 @@ impl<'src> Parser<'src> {
         if let Some(token) = self.match_tokens(&[Identity, Not]) {
             let (_, arg, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "");
-            if let Some(operand) = symbols.get(&Identifier(arg)) {
+            if let Some(operand) = symbols.get(&arg) {
                 return Some(Operation::UnOp(ir::UnaryOp {
                     token,
                     result,
@@ -258,8 +255,8 @@ impl<'src> Parser<'src> {
             let (_, lhs, _) = self.consume_identifier(&[Local])?;
             let (_, rhs, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "");
-            if let Some(lhs_var) = symbols.get(&Identifier(lhs)) {
-                if let Some(rhs_var) = symbols.get(&Identifier(rhs)) {
+            if let Some(lhs_var) = symbols.get(&lhs) {
+                if let Some(rhs_var) = symbols.get(&rhs) {
                     return Some(Operation::BinOp(ir::BinaryOp {
                         token,
                         result,
@@ -287,7 +284,7 @@ impl<'src> Parser<'src> {
     ) -> Option<Operation> {
         let tok = self.consume(Call, "")?;
         let (_, id, _) = self.consume_identifier(&[Global])?;
-        let Some(func) = self.unit.globals.get(&Identifier(id)).cloned()
+        let Some(func) = self.unit.globals.get(&id).cloned()
         else {
             self.undefined_variable(tok, id);
             return None;
@@ -295,7 +292,7 @@ impl<'src> Parser<'src> {
         let mut args = Vec::new();
         while !self.check(Semicolon) {
             let (_, arg, _) = self.consume_identifier(&[Local])?;
-            if let Some(var) = symbols.get(&Identifier(arg)) {
+            if let Some(var) = symbols.get(&arg) {
                 args.push(var.clone());
             } else {
                 self.undefined_variable(tok, arg);
@@ -362,10 +359,14 @@ impl<'src> Parser<'src> {
     fn consume_identifier(
         &mut self,
         expected: &[IdentifierType],
-    ) -> Option<(Token, usize, IdentifierType)> {
-        if let Id(Identifier(x)) = self.peek().value {
+    ) -> Option<(Token, Identifier, IdentifierType)> {
+        if let Id(id) = self.peek().value {
             let token = self.advance();
-            let id_type = match self.unit.context.identifier_table[x]
+            let id_type = match self
+                .unit
+                .context
+                .identifier_table
+                .get_name(id)
                 .chars()
                 .next()
                 .unwrap()
@@ -381,7 +382,7 @@ impl<'src> Parser<'src> {
                 return None;
             }
 
-            return Some((token, x, id_type));
+            return Some((token, id, id_type));
         }
         self.error(self.peek(), "Identifier expected.");
         None
@@ -402,12 +403,12 @@ impl<'src> Parser<'src> {
         }
     }
 
-    fn undefined_variable(&mut self, tok: Token, var_id: usize) {
+    fn undefined_variable(&mut self, tok: Token, var_id: Identifier) {
         self.error(
             tok,
             &format!(
                 "Undefined identifier: '{}'",
-                self.unit.context.identifier_table[var_id]
+                self.unit.context.identifier_table.get_name(var_id)
             ),
         );
     }

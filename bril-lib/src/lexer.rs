@@ -172,6 +172,26 @@ impl core::fmt::Display for Token {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct IdentifierTable(pub Vec<String>);
+
+impl IdentifierTable {
+    pub fn get_identifier(&mut self, ident: &str) -> Identifier {
+        // TODO: more efficient lookup.
+        match self.0.iter().position(|str| str == ident) {
+            Some(pos) => Identifier(pos),
+            _ => {
+                self.0.push(ident.to_owned());
+                Identifier(self.0.len() - 1)
+            }
+        }
+    }
+
+    pub fn get_name(&self, id: Identifier) -> &str {
+        &self.0[id.0]
+    }
+}
+
 pub struct Lexer<'src> {
     source: &'src str,
     start: usize,
@@ -179,13 +199,13 @@ pub struct Lexer<'src> {
     line_num: u32,
     has_error: bool, // TODO: can we get rid of this?
     diagnostic_emitter: &'src mut DiagnosticEmitter,
-    identifier_table: Vec<String>,
+    identifier_table: IdentifierTable,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct LexResult {
     pub tokens: Vec<Token>,
-    pub identifier_table: Vec<String>,
+    pub identifier_table: IdentifierTable,
 }
 
 impl<'src> Lexer<'src> {
@@ -197,13 +217,11 @@ impl<'src> Lexer<'src> {
             line_num: 1,
             has_error: false,
             diagnostic_emitter,
-            identifier_table: Vec::default(),
+            identifier_table: IdentifierTable::default(),
         }
     }
 
     pub fn lex_all(mut self) -> LexResult {
-        let mut tokens = Vec::new();
-
         // TODO: better support for unicode:
         //   * Point out where the non-ascii character is
         //   * Allow any non-control characters in comments.
@@ -211,20 +229,15 @@ impl<'src> Lexer<'src> {
         if !self.source.is_ascii() {
             self.diagnostic_emitter
                 .error(self.line_num, "Only ASCII input is supported.");
-            return LexResult {
-                tokens,
-                identifier_table: self.identifier_table,
-            };
+            return LexResult::default();
         }
 
+        let mut tokens = Vec::new();
         while !self.is_at_end() {
             if let Some(tok) = self.lex() {
                 tokens.push(tok);
             } else if self.has_error {
-                return LexResult {
-                    tokens: Vec::new(),
-                    identifier_table: self.identifier_table,
-                };
+                return LexResult::default();
             }
         }
 
@@ -310,7 +323,7 @@ impl<'src> Lexer<'src> {
                     if self.peek().is_ascii_alphabetic() {
                         if let Some(ident) = self.lex_identifier() {
                             return Some(Token {
-                                value: Id(Identifier(self.get_identifier(ident))),
+                                value: Id(self.identifier_table.get_identifier(ident)),
                                 line_num: Location(self.line_num),
                             });
                         }
@@ -329,7 +342,7 @@ impl<'src> Lexer<'src> {
                             let line_num = self.line_num;
                             return Some(KEYWORDS.get(ident).map_or_else(
                                 || Token {
-                                    value: Id(Identifier(self.get_identifier(ident))),
+                                    value: Id(self.identifier_table.get_identifier(ident)),
                                     line_num: Location(line_num),
                                 },
                                 |value| Token {
@@ -372,17 +385,6 @@ impl<'src> Lexer<'src> {
         }
 
         Some(&self.source[self.start..self.current])
-    }
-
-    fn get_identifier(&mut self, ident: &str) -> usize {
-        match self.identifier_table.iter().position(|str| str == ident) {
-            Some(pos) => pos,
-            _ => {
-                // TODO: more efficient lookup.
-                self.identifier_table.push(ident.to_owned());
-                self.identifier_table.len() - 1
-            }
-        }
     }
 
     fn is_at_end(&self) -> bool {

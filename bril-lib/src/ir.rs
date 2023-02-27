@@ -1,7 +1,7 @@
 use core::fmt::Display;
 use std::collections::HashMap;
 
-use crate::lexer::{Identifier, Location, Token, TokenValue};
+use crate::lexer::{Identifier, IdentifierTable, Location, Token, TokenValue};
 use analysis::cfg::*;
 use itertools::Itertools;
 
@@ -210,11 +210,11 @@ impl Cfg {
 #[derive(Clone, Debug)]
 pub struct IRContext {
     pub function_types: Vec<FunctionType>,
-    pub identifier_table: Vec<String>,
+    pub identifier_table: IdentifierTable,
 }
 
 impl IRContext {
-    pub fn new(identifier_table: Vec<String>) -> Self {
+    pub fn new(identifier_table: IdentifierTable) -> Self {
         Self {
             function_types: Vec::default(),
             identifier_table,
@@ -232,7 +232,7 @@ pub struct Unit {
 }
 
 pub fn print_operation(op: &Operation, ctx: &IRContext) -> String {
-    let get_name = |var: &Variable| &ctx.identifier_table[var.id.0];
+    let get_name = |var: &Variable| ctx.identifier_table.get_name(var.id);
     match op {
         Operation::BinOp(BinaryOp {
             token,
@@ -296,7 +296,7 @@ pub fn print_cfg(cfg: &Cfg, ctx: &IRContext) -> String {
     else {
         panic!("");
     };
-    let name = format!("\"{}\"", &ctx.identifier_table[id.0]);
+    let name = format!("\"{}\"", &ctx.identifier_table.get_name(id));
     analysis::cfg::print(Some(&name), cfg, |op| print_operation(op, ctx))
 }
 
