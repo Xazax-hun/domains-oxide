@@ -103,7 +103,7 @@ fn test_cfg_print() {
     let mut cfg = TestCfg::new(5);
     cfg.add_edges(&[(0, 1), (0, 2), (1, 4), (2, 3), (3, 4)]);
 
-    let printed = print(&cfg, |_| "".to_owned());
+    let printed = print(None, &cfg, |_| "".to_owned());
     let expected = r#"digraph CFG {
   Node_0[label=""]
   Node_1[label=""]
@@ -141,7 +141,7 @@ fn test_cfg_reverse() {
     //   \   /
     //     4
     let reversed = reverse(&cfg);
-    let printed = print(&reversed, |_| "".to_owned());
+    let printed = print(None, &reversed, |_| "".to_owned());
     let expected = r#"digraph CFG {
   Node_0[label=""]
   Node_1[label=""]

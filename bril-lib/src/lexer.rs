@@ -1,9 +1,15 @@
 use std::collections::HashMap;
 use utils::DiagnosticEmitter;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Identifier(pub usize);
+
+#[derive(Clone, Debug, Copy, Eq, PartialEq, Hash)]
+pub struct Location(pub u32);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenValue {
-    Identifier(usize),
+    Id(Identifier),
     Integer(i32),
 
     // Arithmetic
@@ -13,6 +19,8 @@ pub enum TokenValue {
     Div,
 
     // Logic
+    True,
+    False,
     Equal,
     LessThan,
     GreaterThan,
@@ -36,6 +44,11 @@ pub enum TokenValue {
     RightBrace,
     Colon,
     Semicolon,
+    Comma,
+
+    // Builtin types,
+    Int,
+    Bool,
 
     // Misc
     Const,
@@ -57,6 +70,7 @@ fn from_char(c: char) -> Option<TokenValue> {
         ':' => Some(Colon),
         ';' => Some(Semicolon),
         '=' => Some(Define),
+        ',' => Some(Comma),
         _ => None,
     }
 }
@@ -64,7 +78,7 @@ fn from_char(c: char) -> Option<TokenValue> {
 impl core::fmt::Display for TokenValue {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match *self {
-            Identifier(i) => write!(f, "ident_{}", i),
+            Id(i) => write!(f, "ident_{}", i.0),
             Integer(i) => write!(f, "{}", i),
 
             Add => write!(f, "add"),
@@ -72,6 +86,8 @@ impl core::fmt::Display for TokenValue {
             Sub => write!(f, "sub"),
             Div => write!(f, "div"),
 
+            True => write!(f, "true"),
+            False => write!(f, "false"),
             Equal => write!(f, "eq"),
             LessThan => write!(f, "lt"),
             GreaterThan => write!(f, "gt"),
@@ -93,11 +109,15 @@ impl core::fmt::Display for TokenValue {
             RightBrace => write!(f, "}}"),
             Colon => write!(f, ":"),
             Semicolon => write!(f, ";"),
+            Comma => write!(f, ","),
 
             Const => write!(f, "const"),
             Print => write!(f, "print"),
             Nop => write!(f, "nop"),
             Identity => write!(f, "id"),
+
+            Int => write!(f, "int"),
+            Bool => write!(f, "bool"),
 
             EndOfFile => write!(f, "END_OF_FILE"),
         }
@@ -112,6 +132,8 @@ lazy_static! {
         m.insert(format!("{Div}"), Div);
         m.insert(format!("{Sub}"), Sub);
 
+        m.insert(format!("{True}"), True);
+        m.insert(format!("{False}"), False);
         m.insert(format!("{Equal}"), Equal);
         m.insert(format!("{LessThan}"), LessThan);
         m.insert(format!("{GreaterThan}"), GreaterThan);
@@ -130,6 +152,9 @@ lazy_static! {
         m.insert(format!("{Print}"), Print);
         m.insert(format!("{Nop}"), Nop);
         m.insert(format!("{Identity}"), Identity);
+
+        m.insert(format!("{Int}"), Int);
+        m.insert(format!("{Bool}"), Bool);
         m
     };
 }
@@ -138,7 +163,7 @@ lazy_static! {
 pub struct Token {
     pub value: TokenValue,
 
-    pub line_num: u32,
+    pub line_num: Location,
 }
 
 impl core::fmt::Display for Token {
@@ -197,7 +222,7 @@ impl<'src> Lexer<'src> {
                 tokens.push(tok);
             } else if self.has_error {
                 return LexResult {
-                    tokens,
+                    tokens: Vec::new(),
                     identifier_table: self.identifier_table,
                 };
             }
@@ -205,7 +230,7 @@ impl<'src> Lexer<'src> {
 
         tokens.push(Token {
             value: EndOfFile,
-            line_num: self.line_num,
+            line_num: Location(self.line_num),
         });
 
         LexResult {
@@ -223,10 +248,10 @@ impl<'src> Lexer<'src> {
             self.start = self.current;
             match self.advance() {
                 // Unambiguous single character tokens.
-                c @ ('=' | '(' | ')' | '{' | '}' | ':' | ';') => {
+                c @ ('=' | '(' | ')' | '{' | '}' | ':' | ';' | ',') => {
                     return Some(Token {
                         value: from_char(c).unwrap(),
-                        line_num: self.line_num,
+                        line_num: Location(self.line_num),
                     })
                 }
 
@@ -281,16 +306,17 @@ impl<'src> Lexer<'src> {
                     self.has_error = true;
                     return None;
                 }
-                '@' => {
-                    self.advance();
-                    if let Some(ident) = self.lex_identifier() {
-                        return Some(Token {
-                            value: Identifier(self.get_identifier(ident)),
-                            line_num: self.line_num,
-                        });
+                c @ ('@' | '.') => {
+                    if self.peek().is_ascii_alphabetic() {
+                        if let Some(ident) = self.lex_identifier() {
+                            return Some(Token {
+                                value: Id(Identifier(self.get_identifier(ident))),
+                                line_num: Location(self.line_num),
+                            });
+                        }
                     }
                     self.diagnostic_emitter
-                        .error(self.line_num, "Unexpected token: '@'.");
+                        .error(self.line_num, &format!("Unexpected token: '{c}'."));
                     self.has_error = true;
                     return None;
                 }
@@ -298,18 +324,20 @@ impl<'src> Lexer<'src> {
                     if c.is_ascii_digit() {
                         return self.lex_number();
                     }
-                    if let Some(ident) = self.lex_identifier() {
-                        let line_num = self.line_num;
-                        return Some(KEYWORDS.get(ident).map_or_else(
-                            || Token {
-                                value: Identifier(self.get_identifier(ident)),
-                                line_num,
-                            },
-                            |value| Token {
-                                value: *value,
-                                line_num,
-                            },
-                        ));
+                    if c.is_ascii_alphabetic() {
+                        if let Some(ident) = self.lex_identifier() {
+                            let line_num = self.line_num;
+                            return Some(KEYWORDS.get(ident).map_or_else(
+                                || Token {
+                                    value: Id(Identifier(self.get_identifier(ident))),
+                                    line_num: Location(line_num),
+                                },
+                                |value| Token {
+                                    value: *value,
+                                    line_num: Location(line_num),
+                                },
+                            ));
+                        }
                     }
                     self.diagnostic_emitter.error(
                         self.line_num,
@@ -334,14 +362,11 @@ impl<'src> Lexer<'src> {
 
         Some(Token {
             value: Integer(value),
-            line_num: self.line_num,
+            line_num: Location(self.line_num),
         })
     }
 
     fn lex_identifier(&mut self) -> Option<&'src str> {
-        if !self.peek().is_ascii_alphabetic() {
-            return None;
-        }
         while self.peek().is_ascii_alphabetic() {
             self.advance();
         }

@@ -169,7 +169,7 @@ impl<'ctx> CfgImpl<'ctx> {
 
 pub fn print(cfg: &Cfg, ctx: &ASTContext) -> String {
     let anns = Annotations::new();
-    analysis::cfg::print(cfg, |&op| ast::print(Node::Operation(op), ctx, &anns))
+    analysis::cfg::print(None, cfg, |&op| ast::print(Node::Operation(op), ctx, &anns))
 }
 
 pub fn reverse<'ctx>(cfg: &Cfg<'ctx>) -> Cfg<'ctx> {

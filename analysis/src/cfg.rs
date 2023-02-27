@@ -103,12 +103,12 @@ pub fn reverse_in_place<Cfg: BlockMutableCfg>(cfg: &Cfg, empty: &mut Cfg) {
 /// as a picture using graphviz. The `printer` is responsible for
 /// rendering the individual operations and it has to do its own
 /// dot escaping.
-pub fn print<Cfg, OpPrinter>(cfg: &Cfg, printer: OpPrinter) -> String
+pub fn print<Cfg, OpPrinter>(name: Option<&str>, cfg: &Cfg, printer: OpPrinter) -> String
 where
     Cfg: ControlFlowGraph,
     OpPrinter: Fn(&<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation) -> String,
 {
-    let mut output = "digraph CFG {\n".to_owned();
+    let mut output = format!("digraph {} {{\n", name.unwrap_or("CFG"));
     for (counter, block) in cfg.blocks().iter().enumerate() {
         write!(output, "  Node_{counter}[label=\"").unwrap();
         // TODO: add escaping.
@@ -124,6 +124,10 @@ where
     }
     output.push_str("}\n");
     output
+}
+
+pub fn indent(indent: u32) -> String {
+    str::repeat(" ", indent as usize)
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]

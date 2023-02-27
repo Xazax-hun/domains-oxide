@@ -1,3 +1,4 @@
+use analysis::cfg::indent;
 use core::fmt::Write;
 use std::collections::HashMap;
 use utils::Vec2;
@@ -180,10 +181,6 @@ impl Annotations {
 
 pub fn print(root: Node, ctx: &ASTContext, ann: &Annotations) -> String {
     print_impl(0, root, ctx, ann)
-}
-
-fn indent(indent: u32) -> String {
-    str::repeat(" ", indent as usize)
 }
 
 fn print_impl(ind: u32, n: Node, ctx: &ASTContext, ann: &Annotations) -> String {

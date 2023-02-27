@@ -41,13 +41,14 @@ fn test_empty_input() {
 #[test]
 fn test_all_tokens() {
     let LexTestResult { output, result } = lex_string(
-        r"ident @global ident 50 -50 add mul sub div eq lt gt le ge not and or
-              jmp br call ret = (){} ;: const print nop id",
+        r"ident @global ident .label 50 -50 add mul sub div eq lt gt le ge not and or
+              jmp br call ret = (){} ;:, const print nop id int bool true false",
     );
     let expected = vec![
-        Identifier(0),
-        Identifier(1),
-        Identifier(0),
+        Id(Identifier(0)),
+        Id(Identifier(1)),
+        Id(Identifier(0)),
+        Id(Identifier(2)),
         Integer(50),
         Integer(-50),
         Add,
@@ -73,15 +74,20 @@ fn test_all_tokens() {
         RightBrace,
         Semicolon,
         Colon,
+        Comma,
         Const,
         Print,
         Nop,
         Identity,
+        Int,
+        Bool,
+        True,
+        False,
         EndOfFile,
     ];
 
     assert_eq!(to_token_values(result.tokens), expected);
-    assert_eq!(result.identifier_table, vec!["ident", "@global"]);
+    assert_eq!(result.identifier_table, vec!["ident", "@global", ".label"]);
     assert_eq!(output, "");
 }
 
@@ -111,6 +117,10 @@ fn test_error_messages() {
     let LexTestResult { output, result } = lex_string("@");
     assert!(result.tokens.is_empty());
     assert_eq!(output, "[line 1] Error : Unexpected token: '@'.\n");
+
+    let LexTestResult { output, result } = lex_string(".@");
+    assert!(result.tokens.is_empty());
+    assert_eq!(output, "[line 1] Error : Unexpected token: '.'.\n");
 
     let LexTestResult { output, result } = lex_string("/and");
     assert!(result.tokens.is_empty());
