@@ -87,6 +87,8 @@ fn parse_multiple_blocks() -> Result<(), String> {
   Node_1[label="u: int = const 42;\nprint u;\nret;"]
   Node_2[label="ret;"]
 
+  Node_0 -> Node_1
+  Node_0 -> Node_2
 }
 "#;
     let unit = parse_string(source)?;

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use analysis::cfg::{BlockMutableCfg, MutableCfg};
+use analysis::cfg::{BlockMutableCfg, CfgBlock, ControlFlowGraph, MutableCfg};
 use utils::DiagnosticEmitter;
 
 use crate::{
@@ -89,6 +89,37 @@ impl<'src> Parser<'src> {
         self.current_block = cfg.new_block();
         self.consume(LeftBrace, "");
         self.parse_function_body(&mut cfg, &mut symbols, &mut jumps)?;
+
+        // Add edges to the Cfg.
+        let mut edges = Vec::new();
+        for (id, block) in cfg.blocks().iter().enumerate() {
+            match block.operations().last().unwrap() {
+                Operation::Br(ir::Branch { then, els, .. }) => {
+                    let Some(to) = jumps.get(then)
+                    else {
+                        // TODO: report error.
+                        return None;
+                    };
+                    edges.push((id, *to));
+                    let Some(to) = jumps.get(els)
+                    else {
+                        // TODO: report error.
+                        return None;
+                    };
+                    edges.push((id, *to));
+                }
+                Operation::Jump(_, next) => {
+                    let Some(to) = jumps.get(next)
+                    else {
+                        // TODO: report error.
+                        return None;
+                    };
+                    edges.push((id, *to));
+                }
+                _ => continue,
+            }
+        }
+        cfg.add_edges(&edges);
 
         Some(cfg)
     }
