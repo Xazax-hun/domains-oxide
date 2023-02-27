@@ -207,32 +207,18 @@ impl Cfg {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct IRContext {
-    pub function_types: Vec<FunctionType>,
-    pub identifier_table: IdentifierTable,
-}
-
-impl IRContext {
-    pub fn new(identifier_table: IdentifierTable) -> Self {
-        Self {
-            function_types: Vec::default(),
-            identifier_table,
-        }
-    }
-}
-
 pub type SymbolTable = HashMap<Identifier, Variable>;
 
 #[derive(Clone, Debug)]
 pub struct Unit {
     pub functions: Vec<Cfg>,
+    pub function_types: Vec<FunctionType>,
+    pub identifier_table: IdentifierTable,
     pub globals: SymbolTable,
-    pub context: IRContext,
 }
 
-pub fn print_operation(op: &Operation, ctx: &IRContext) -> String {
-    let get_name = |var: &Variable| ctx.identifier_table.get_name(var.id);
+pub fn print_operation(op: &Operation, unit: &Unit) -> String {
+    let get_name = |var: &Variable| unit.identifier_table.get_name(var.id);
     match op {
         Operation::BinOp(BinaryOp {
             token,
@@ -291,19 +277,19 @@ pub fn print_operation(op: &Operation, ctx: &IRContext) -> String {
     }
 }
 
-pub fn print_cfg(cfg: &Cfg, ctx: &IRContext) -> String {
+pub fn print_cfg(cfg: &Cfg, unit: &Unit) -> String {
     let TokenValue::Id(id) = cfg.function.value
     else {
         panic!("");
     };
-    let name = format!("\"{}\"", &ctx.identifier_table.get_name(id));
-    analysis::cfg::print(Some(&name), cfg, |op| print_operation(op, ctx))
+    let name = format!("\"{}\"", &unit.identifier_table.get_name(id));
+    analysis::cfg::print(Some(&name), cfg, |op| print_operation(op, unit))
 }
 
 pub fn print(unit: &Unit) -> String {
     let mut result = String::new();
     for cfg in &unit.functions {
-        result.push_str(&print_cfg(cfg, &unit.context));
+        result.push_str(&print_cfg(cfg, &unit));
         result.push('\n');
     }
     result.pop();

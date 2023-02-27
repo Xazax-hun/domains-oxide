@@ -32,11 +32,9 @@ impl<'src> Parser<'src> {
             tokens,
             unit: Unit {
                 functions: Vec::new(),
+                function_types: Vec::new(),
                 globals: HashMap::new(),
-                context: IRContext {
-                    function_types: Vec::new(),
-                    identifier_table,
-                },
+                identifier_table,
             },
             diag,
         }
@@ -70,8 +68,8 @@ impl<'src> Parser<'src> {
             ret: ty.clone(),
             formals: formal_tys,
         };
-        self.unit.context.function_types.push(func_ty);
-        let fn_ty_idx = self.unit.context.function_types.len() - 1;
+        self.unit.function_types.push(func_ty);
+        let fn_ty_idx = self.unit.function_types.len() - 1;
         self.unit.globals.insert(
             func_id,
             Variable {
@@ -364,7 +362,6 @@ impl<'src> Parser<'src> {
             let token = self.advance();
             let id_type = match self
                 .unit
-                .context
                 .identifier_table
                 .get_name(id)
                 .chars()
@@ -408,7 +405,7 @@ impl<'src> Parser<'src> {
             tok,
             &format!(
                 "Undefined identifier: '{}'",
-                self.unit.context.identifier_table.get_name(var_id)
+                self.unit.identifier_table.get_name(var_id)
             ),
         );
     }
