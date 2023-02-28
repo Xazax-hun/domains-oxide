@@ -44,11 +44,8 @@ impl<'src> Parser<'src> {
 
     pub fn parse(mut self) -> Option<ir::Unit> {
         while !self.is_at_end() {
-            if let Some(cfg) = self.parse_function() {
-                self.unit.functions.push(cfg);
-            } else {
-                return None;
-            }
+            let cfg = self.parse_function()?;
+            self.unit.functions.push(cfg);
         }
         Some(self.unit)
     }

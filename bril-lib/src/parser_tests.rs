@@ -103,5 +103,7 @@ fn parse_multiple_blocks() -> Result<(), String> {
 // * Same local variable with inconsistent types
 // * Function call with the wrong number of arguments
 // * Function call with the wrong type of arguments
+// * Last operation of block is not a terminator.
 
 // TODO: support and test when use is before def lexically.
+// TODO: test when label is the first instruction.
