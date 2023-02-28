@@ -127,34 +127,36 @@ impl core::fmt::Display for TokenValue {
 lazy_static! {
     static ref KEYWORDS: HashMap<String, TokenValue> = {
         let mut m = HashMap::new();
-        m.insert(format!("{Add}"), Add);
-        m.insert(format!("{Mul}"), Mul);
-        m.insert(format!("{Div}"), Div);
-        m.insert(format!("{Sub}"), Sub);
+        for kw in [Add, Mul, Div, Sub] {
+            m.insert(kw.to_string(), kw);
+        }
 
-        m.insert(format!("{True}"), True);
-        m.insert(format!("{False}"), False);
-        m.insert(format!("{Equal}"), Equal);
-        m.insert(format!("{LessThan}"), LessThan);
-        m.insert(format!("{GreaterThan}"), GreaterThan);
-        m.insert(format!("{LessThanOrEq}"), LessThanOrEq);
-        m.insert(format!("{GreaterThanOrEq}"), GreaterThanOrEq);
-        m.insert(format!("{Not}"), Not);
-        m.insert(format!("{And}"), And);
-        m.insert(format!("{Or}"), Or);
+        for kw in [
+            True,
+            False,
+            Equal,
+            LessThan,
+            GreaterThan,
+            LessThanOrEq,
+            GreaterThanOrEq,
+            Not,
+            And,
+            Or,
+        ] {
+            m.insert(kw.to_string(), kw);
+        }
 
-        m.insert(format!("{Jump}"), Jump);
-        m.insert(format!("{Branch}"), Branch);
-        m.insert(format!("{Call}"), Call);
-        m.insert(format!("{Return}"), Return);
+        for kw in [Jump, Branch, Call, Return] {
+            m.insert(kw.to_string(), kw);
+        }
 
-        m.insert(format!("{Const}"), Const);
-        m.insert(format!("{Print}"), Print);
-        m.insert(format!("{Nop}"), Nop);
-        m.insert(format!("{Identity}"), Identity);
+        for kw in [Const, Print, Nop, Identity] {
+            m.insert(kw.to_string(), kw);
+        }
 
-        m.insert(format!("{Int}"), Int);
-        m.insert(format!("{Bool}"), Bool);
+        for kw in [Int, Bool] {
+            m.insert(kw.to_string(), kw);
+        }
         m
     };
 }

@@ -70,11 +70,9 @@ impl core::fmt::Display for TokenValue {
 lazy_static! {
     static ref KEYWORDS: HashMap<String, TokenValue> = {
         let mut m = HashMap::new();
-        m.insert(format!("{Init}"), Init);
-        m.insert(format!("{Or}"), Or);
-        m.insert(format!("{Translation}"), Translation);
-        m.insert(format!("{Rotation}"), Rotation);
-        m.insert(format!("{Iter}"), Iter);
+        for kw in [Init, Or, Translation, Rotation, Iter] {
+            m.insert(kw.to_string(), kw);
+        }
         m
     };
 }
