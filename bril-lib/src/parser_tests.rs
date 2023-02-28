@@ -97,3 +97,11 @@ fn parse_multiple_blocks() -> Result<(), String> {
 
     Ok(())
 }
+
+// TODO: implement and test more error cases:
+// * Duplicated labels
+// * Same local variable with inconsistent types
+// * Function call with the wrong number of arguments
+// * Function call with the wrong type of arguments
+
+// TODO: support and test when use is before def lexically.

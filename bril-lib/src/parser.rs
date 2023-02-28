@@ -5,7 +5,7 @@ use utils::DiagnosticEmitter;
 
 use crate::{
     ir::{self, *},
-    lexer::{Identifier, LexResult, Token, TokenValue},
+    lexer::{Identifier, LexResult, Location, Token, TokenValue},
 };
 
 pub struct Parser<'src> {
@@ -94,24 +94,29 @@ impl<'src> Parser<'src> {
         let mut edges = Vec::new();
         for (id, block) in cfg.blocks().iter().enumerate() {
             match block.operations().last().unwrap() {
-                Operation::Br(ir::Branch { then, els, .. }) => {
+                Operation::Br(ir::Branch {
+                    location,
+                    then,
+                    els,
+                    ..
+                }) => {
                     let Some(to) = jumps.get(then)
                     else {
-                        // TODO: report error.
+                        self.error_at_loc(*location, &Branch.to_string(), &format!("Branch target '{}' is missing.", self.unit.identifier_table.get_name(*then)));
                         return None;
                     };
                     edges.push((id, *to));
                     let Some(to) = jumps.get(els)
                     else {
-                        // TODO: report error.
+                        self.error_at_loc(*location,&Branch.to_string(), &format!("Branch target '{}' is missing.", self.unit.identifier_table.get_name(*els)));
                         return None;
                     };
                     edges.push((id, *to));
                 }
-                Operation::Jump(_, next) => {
+                Operation::Jump(location, next) => {
                     let Some(to) = jumps.get(next)
                     else {
-                        // TODO: report error.
+                        self.error_at_loc(*location, &Jump.to_string(), &format!("Jump target '{}' is missing.", self.unit.identifier_table.get_name(*next)));
                         return None;
                     };
                     edges.push((id, *to));
@@ -452,6 +457,14 @@ impl<'src> Parser<'src> {
             self.diag.report(tok.line_num.0, "at end of file", s);
         } else {
             self.diag.report(tok.line_num.0, &format!("at '{tok}'"), s);
+        }
+    }
+
+    fn error_at_loc(&mut self, loc: Location, item: &str, s: &str) {
+        if item.is_empty() {
+            self.diag.error(loc.0, s);
+        } else {
+            self.diag.report(loc.0, &format!("at '{item}'"), s);
         }
     }
 
