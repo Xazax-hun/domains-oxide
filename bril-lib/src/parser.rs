@@ -154,7 +154,7 @@ impl<'src> Parser<'src> {
         let mut ops = Vec::new();
         while !self.check(RightBrace) {
             let prev = self.current_block;
-            let op = self.parse_instruction(cfg, symbols, jumps)?;
+            let op = self.parse_instruction(cfg, symbols, jumps, ops.len())?;
             if prev == self.current_block {
                 ops.push(op);
             } else {
@@ -174,6 +174,7 @@ impl<'src> Parser<'src> {
         cfg: &mut Cfg,
         symbols: &mut SymbolTable,
         jumps: &mut LabelsToBlocks,
+        num: usize,
     ) -> Option<Operation> {
         if let Some(tok) = self.try_consume(Print) {
             let (_, id, _) = self.consume_identifier(&[Local])?;
@@ -224,9 +225,13 @@ impl<'src> Parser<'src> {
         let (tok, res_id, id_ty) = self.consume_identifier(&[Local, Label])?;
         if id_ty == Label {
             self.consume(Colon, "");
-            // Each block has to have at least one instruction,
-            // so we can continue to parsing the next one.
-            self.current_block = cfg.new_block();
+            // The only way to have a label when the previous block is empty
+            // if the function starts with a label.
+            if num != 0 {
+                self.current_block = cfg.new_block();
+            } else {
+                assert_eq!(self.current_block, 0);
+            }
             jumps.insert(
                 self.diag,
                 &self.unit.identifiers,
@@ -234,7 +239,9 @@ impl<'src> Parser<'src> {
                 res_id,
                 self.current_block,
             );
-            return self.parse_instruction(cfg, symbols, jumps);
+            // Each block has to have at least one instruction,
+            // so we can continue to parsing the next one.
+            return self.parse_instruction(cfg, symbols, jumps, num);
         }
         self.consume(Colon, "");
         let result_ty = self.parse_type()?;

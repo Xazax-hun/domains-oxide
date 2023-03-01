@@ -98,12 +98,32 @@ fn parse_multiple_blocks() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn parse_starting_label() -> Result<(), String> {
+    let source = r"
+@main {
+.start:
+  ret;
+}";
+    let expected = r#"digraph "@main" {
+  Node_0[label="ret;"]
+
+}
+"#;
+    let unit = parse_string(source)?;
+    let printed = print(&unit);
+    assert_eq!(printed, expected);
+
+    Ok(())
+}
+
 // TODO: implement and test more error cases:
 // * Duplicated labels
 // * Same local variable with inconsistent types
 // * Function call with the wrong number of arguments
 // * Function call with the wrong type of arguments
 // * Last operation of block is not a terminator.
+// * Basic block starts without a label.
 
 // TODO: support and test when use is before def lexically.
 // TODO: test when label is the first instruction.
