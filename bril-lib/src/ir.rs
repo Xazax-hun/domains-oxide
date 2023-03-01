@@ -1,11 +1,12 @@
 use core::fmt::Display;
 use std::collections::HashMap;
+use utils::DiagnosticEmitter;
 
 use crate::lexer::{Identifier, IdentifierTable, Location, Token, TokenValue};
 use analysis::cfg::*;
 use itertools::Itertools;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Type {
     Int,
     Bool,
@@ -208,7 +209,52 @@ impl Cfg {
     }
 }
 
-pub type SymbolTable = HashMap<Identifier, Variable>;
+#[derive(Clone, Debug, Default)]
+pub struct SymbolTable(HashMap<Identifier, Variable>);
+
+impl SymbolTable {
+    pub fn insert(
+        &mut self,
+        diag: &mut DiagnosticEmitter,
+        ids: &IdentifierTable,
+        loc: Location,
+        var: Identifier,
+        ty: Type,
+    ) -> Variable {
+        let existing = self.0.entry(var).or_insert(Variable {
+            id: var,
+            ty: ty.clone(),
+        });
+        if existing.ty != ty {
+            diag.report(
+                loc.0,
+                &format!("at '{}'", ids.get_name(var)),
+                &format!("Unexpected type '{}'. Expected '{}'.", ty, existing.ty),
+            );
+        }
+        existing.clone()
+    }
+
+    pub fn get(
+        &self,
+        diag: &mut DiagnosticEmitter,
+        ids: &IdentifierTable,
+        loc: Location,
+        var: Identifier,
+    ) -> Option<Variable> {
+        match self.0.get(&var).cloned() {
+            None => {
+                diag.report(
+                    loc.0,
+                    &format!("at '{}'", ids.get_name(var)),
+                    "Undefined identifier.",
+                );
+                None
+            }
+            res => res,
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Unit {

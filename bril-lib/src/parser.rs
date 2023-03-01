@@ -35,7 +35,7 @@ impl<'src> Parser<'src> {
             unit: Unit {
                 functions: Vec::new(),
                 function_types: Vec::new(),
-                globals: HashMap::new(),
+                globals: SymbolTable::default(),
                 identifier_table,
             },
             diag,
@@ -70,17 +70,23 @@ impl<'src> Parser<'src> {
         self.unit.function_types.push(func_ty);
         let func_ty = Type::Fn(self.unit.function_types.len() - 1);
         self.unit.globals.insert(
+            self.diag,
+            &self.unit.identifier_table,
+            func.line_num,
             func_id,
-            Variable {
-                id: func_id,
-                ty: func_ty.clone(),
-            },
+            func_ty.clone(),
         );
 
-        let mut symbols = HashMap::new();
+        let mut symbols = SymbolTable::default();
         let mut jumps = HashMap::new();
-        for v @ Variable { id, ty: _ } in &formals {
-            symbols.insert(*id, v.clone());
+        for Variable { id, ty } in &formals {
+            symbols.insert(
+                self.diag,
+                &self.unit.identifier_table,
+                func.line_num,
+                *id,
+                ty.clone(),
+            );
         }
         let mut cfg = Cfg::new(func, func_ty, formals);
         self.current_block = cfg.new_block();
@@ -188,12 +194,8 @@ impl<'src> Parser<'src> {
         if let Some(tok) = self.try_consume(Print) {
             let (_, id, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "");
-            if let Some(var) = symbols.get(&id) {
-                return Some(Operation::Print(tok.line_num, var.clone()));
-            } else {
-                self.undefined_variable(tok, id);
-                return None;
-            }
+            let var = symbols.get(self.diag, &self.unit.identifier_table, tok.line_num, id)?;
+            return Some(Operation::Print(tok.line_num, var));
         }
 
         if let Some(tok) = self.try_consume(Return) {
@@ -202,12 +204,8 @@ impl<'src> Parser<'src> {
             }
             let (_, id, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "");
-            if let Some(var) = symbols.get(&id) {
-                return Some(Operation::Ret(tok.line_num, Some(var.clone())));
-            } else {
-                self.undefined_variable(tok, id);
-                return None;
-            }
+            let var = symbols.get(self.diag, &self.unit.identifier_table, tok.line_num, id)?;
+            return Some(Operation::Ret(tok.line_num, Some(var)));
         }
 
         if let Some(tok) = self.try_consume(Jump) {
@@ -216,22 +214,18 @@ impl<'src> Parser<'src> {
             return Some(Operation::Jump(tok.line_num, id));
         }
 
-        if let Some(token) = self.try_consume(Branch) {
+        if let Some(tok) = self.try_consume(Branch) {
             let (_, cond, _) = self.consume_identifier(&[Local])?;
             let (_, then, _) = self.consume_identifier(&[Label])?;
             let (_, els, _) = self.consume_identifier(&[Label])?;
             self.consume(Semicolon, "");
-            if let Some(var) = symbols.get(&cond) {
-                return Some(Operation::Br(ir::Branch {
-                    location: token.line_num,
-                    cond: var.clone(),
-                    then,
-                    els,
-                }));
-            } else {
-                self.undefined_variable(token, cond);
-                return None;
-            }
+            let cond = symbols.get(self.diag, &self.unit.identifier_table, tok.line_num, cond)?;
+            return Some(Operation::Br(ir::Branch {
+                location: tok.line_num,
+                cond,
+                then,
+                els,
+            }));
         }
 
         if let Some(tok) = self.try_consume(Nop) {
@@ -243,7 +237,7 @@ impl<'src> Parser<'src> {
             return self.parse_call(None, symbols);
         }
 
-        let (_, res_id, id_ty) = self.consume_identifier(&[Local, Label])?;
+        let (tok, res_id, id_ty) = self.consume_identifier(&[Local, Label])?;
         if id_ty == Label {
             self.consume(Colon, "");
             // Each block has to have at least one instruction,
@@ -256,12 +250,13 @@ impl<'src> Parser<'src> {
         let result_ty = self.parse_type()?;
         self.consume(Define, "");
 
-        let result = Variable {
-            id: res_id,
-            ty: result_ty,
-        };
-
-        symbols.insert(res_id, result.clone());
+        let result = symbols.insert(
+            self.diag,
+            &self.unit.identifier_table,
+            tok.line_num,
+            res_id,
+            result_ty,
+        );
 
         if self.check(Call) {
             return self.parse_call(Some(result), symbols);
@@ -281,16 +276,13 @@ impl<'src> Parser<'src> {
         if let Some(token) = self.match_tokens(&[Identity, Not]) {
             let (_, arg, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "");
-            if let Some(operand) = symbols.get(&arg) {
-                return Some(Operation::UnOp(ir::UnaryOp {
-                    token,
-                    result,
-                    operand: operand.clone(),
-                }));
-            } else {
-                self.undefined_variable(token, arg);
-                return None;
-            }
+            let operand =
+                symbols.get(self.diag, &self.unit.identifier_table, token.line_num, arg)?;
+            return Some(Operation::UnOp(ir::UnaryOp {
+                token,
+                result,
+                operand,
+            }));
         }
 
         // Binary operations.
@@ -310,22 +302,14 @@ impl<'src> Parser<'src> {
             let (_, lhs, _) = self.consume_identifier(&[Local])?;
             let (_, rhs, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "");
-            if let Some(lhs_var) = symbols.get(&lhs) {
-                if let Some(rhs_var) = symbols.get(&rhs) {
-                    return Some(Operation::BinOp(ir::BinaryOp {
-                        token,
-                        result,
-                        lhs: lhs_var.clone(),
-                        rhs: rhs_var.clone(),
-                    }));
-                } else {
-                    self.undefined_variable(token, rhs);
-                    return None;
-                }
-            } else {
-                self.undefined_variable(token, lhs);
-                return None;
-            }
+            let lhs = symbols.get(self.diag, &self.unit.identifier_table, token.line_num, lhs)?;
+            let rhs = symbols.get(self.diag, &self.unit.identifier_table, token.line_num, rhs)?;
+            return Some(Operation::BinOp(ir::BinaryOp {
+                token,
+                result,
+                lhs,
+                rhs,
+            }));
         }
 
         self.error(self.peek(), "Unexpected token.");
@@ -339,20 +323,15 @@ impl<'src> Parser<'src> {
     ) -> Option<Operation> {
         let tok = self.consume(Call, "")?;
         let (_, id, _) = self.consume_identifier(&[Global])?;
-        let Some(func) = self.unit.globals.get(&id).cloned()
-        else {
-            self.undefined_variable(tok, id);
-            return None;
-        };
+        let func =
+            self.unit
+                .globals
+                .get(self.diag, &self.unit.identifier_table, tok.line_num, id)?;
         let mut args = Vec::new();
         while !self.check(Semicolon) {
             let (_, arg, _) = self.consume_identifier(&[Local])?;
-            if let Some(var) = symbols.get(&arg) {
-                args.push(var.clone());
-            } else {
-                self.undefined_variable(tok, arg);
-                return None;
-            }
+            let var = symbols.get(self.diag, &self.unit.identifier_table, tok.line_num, arg)?;
+            args.push(var);
         }
         self.consume(Semicolon, "");
         Some(Operation::Call(ir::Call {
@@ -463,15 +442,5 @@ impl<'src> Parser<'src> {
         } else {
             self.diag.report(loc.0, &format!("at '{item}'"), s);
         }
-    }
-
-    fn undefined_variable(&mut self, tok: Token, var_id: Identifier) {
-        self.error(
-            tok,
-            &format!(
-                "Undefined identifier: '{}'",
-                self.unit.identifier_table.get_name(var_id)
-            ),
-        );
     }
 }
