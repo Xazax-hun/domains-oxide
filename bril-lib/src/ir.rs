@@ -256,17 +256,59 @@ impl SymbolTable {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct LabelsToBlocks(HashMap<Identifier, usize>);
+
+impl LabelsToBlocks {
+    pub fn insert(
+        &mut self,
+        diag: &mut DiagnosticEmitter,
+        ids: &IdentifierTable,
+        loc: Location,
+        label: Identifier,
+        block: usize,
+    ) {
+        let existing = self.0.entry(label).or_insert(block);
+        if *existing != block {
+            diag.report(
+                loc.0,
+                &format!("at '{}'", ids.get_name(label)),
+                "Duplicate label found.",
+            );
+        }
+    }
+
+    pub fn get(
+        &self,
+        diag: &mut DiagnosticEmitter,
+        ids: &IdentifierTable,
+        loc: Location,
+        label: Identifier,
+    ) -> Option<usize> {
+        match self.0.get(&label).cloned() {
+            None => {
+                diag.error(
+                    loc.0,
+                    &format!("Branch target '{}' is missing", ids.get_name(label)),
+                );
+                None
+            }
+            res => res,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Unit {
     pub functions: Vec<Cfg>,
     pub function_types: Vec<FunctionType>,
-    pub identifier_table: IdentifierTable,
+    pub identifiers: IdentifierTable,
     pub globals: SymbolTable,
 }
 
 pub fn print_operation(op: &Operation, unit: &Unit) -> String {
-    let get_name = |var: &Variable| unit.identifier_table.get_name(var.id);
-    let get_label_name = |&l: &Identifier| unit.identifier_table.get_name(l);
+    let get_name = |var: &Variable| unit.identifiers.get_name(var.id);
+    let get_label_name = |&l: &Identifier| unit.identifiers.get_name(l);
     match op {
         Operation::BinOp(BinaryOp {
             token,
@@ -338,7 +380,7 @@ pub fn print_cfg(cfg: &Cfg, unit: &Unit) -> String {
     else {
         panic!("");
     };
-    let name = format!("\"{}\"", &unit.identifier_table.get_name(id));
+    let name = format!("\"{}\"", &unit.identifiers.get_name(id));
     analysis::cfg::print(Some(&name), cfg, |op| print_operation(op, unit))
 }
 

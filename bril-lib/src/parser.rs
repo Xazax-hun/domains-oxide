@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
 use analysis::cfg::{BlockMutableCfg, CfgBlock, ControlFlowGraph, MutableCfg};
 use utils::DiagnosticEmitter;
 
 use crate::{
     ir::{self, *},
-    lexer::{Identifier, LexResult, Location, Token, TokenValue},
+    lexer::{Identifier, LexResult, Token, TokenValue},
 };
 
 pub struct Parser<'src> {
@@ -18,8 +16,6 @@ pub struct Parser<'src> {
 
 use IdentifierType::*;
 use TokenValue::*;
-
-type JumpTable = HashMap<Identifier, usize>;
 
 impl<'src> Parser<'src> {
     pub fn new(lexed: LexResult, diag: &'src mut DiagnosticEmitter) -> Self {
@@ -36,7 +32,7 @@ impl<'src> Parser<'src> {
                 functions: Vec::new(),
                 function_types: Vec::new(),
                 globals: SymbolTable::default(),
-                identifier_table,
+                identifiers: identifier_table,
             },
             diag,
         }
@@ -71,18 +67,18 @@ impl<'src> Parser<'src> {
         let func_ty = Type::Fn(self.unit.function_types.len() - 1);
         self.unit.globals.insert(
             self.diag,
-            &self.unit.identifier_table,
+            &self.unit.identifiers,
             func.line_num,
             func_id,
             func_ty.clone(),
         );
 
         let mut symbols = SymbolTable::default();
-        let mut jumps = HashMap::new();
+        let mut jumps = LabelsToBlocks::default();
         for Variable { id, ty } in &formals {
             symbols.insert(
                 self.diag,
-                &self.unit.identifier_table,
+                &self.unit.identifiers,
                 func.line_num,
                 *id,
                 ty.clone(),
@@ -103,26 +99,14 @@ impl<'src> Parser<'src> {
                     els,
                     ..
                 }) => {
-                    let Some(to) = jumps.get(then)
-                    else {
-                        self.error_at_loc(*location, &Branch.to_string(), &format!("Branch target '{}' is missing.", self.unit.identifier_table.get_name(*then)));
-                        return None;
-                    };
-                    edges.push((id, *to));
-                    let Some(to) = jumps.get(els)
-                    else {
-                        self.error_at_loc(*location,&Branch.to_string(), &format!("Branch target '{}' is missing.", self.unit.identifier_table.get_name(*els)));
-                        return None;
-                    };
-                    edges.push((id, *to));
+                    let to = jumps.get(self.diag, &self.unit.identifiers, *location, *then)?;
+                    edges.push((id, to));
+                    let to = jumps.get(self.diag, &self.unit.identifiers, *location, *els)?;
+                    edges.push((id, to));
                 }
                 Operation::Jump(location, next) => {
-                    let Some(to) = jumps.get(next)
-                    else {
-                        self.error_at_loc(*location, &Jump.to_string(), &format!("Jump target '{}' is missing.", self.unit.identifier_table.get_name(*next)));
-                        return None;
-                    };
-                    edges.push((id, *to));
+                    let to = jumps.get(self.diag, &self.unit.identifiers, *location, *next)?;
+                    edges.push((id, to));
                 }
                 _ => continue,
             }
@@ -165,7 +149,7 @@ impl<'src> Parser<'src> {
         &mut self,
         cfg: &mut Cfg,
         symbols: &mut SymbolTable,
-        jumps: &mut JumpTable,
+        jumps: &mut LabelsToBlocks,
     ) -> Option<()> {
         let mut ops = Vec::new();
         while !self.check(RightBrace) {
@@ -189,12 +173,12 @@ impl<'src> Parser<'src> {
         &mut self,
         cfg: &mut Cfg,
         symbols: &mut SymbolTable,
-        jumps: &mut JumpTable,
+        jumps: &mut LabelsToBlocks,
     ) -> Option<Operation> {
         if let Some(tok) = self.try_consume(Print) {
             let (_, id, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "");
-            let var = symbols.get(self.diag, &self.unit.identifier_table, tok.line_num, id)?;
+            let var = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, id)?;
             return Some(Operation::Print(tok.line_num, var));
         }
 
@@ -204,7 +188,7 @@ impl<'src> Parser<'src> {
             }
             let (_, id, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "");
-            let var = symbols.get(self.diag, &self.unit.identifier_table, tok.line_num, id)?;
+            let var = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, id)?;
             return Some(Operation::Ret(tok.line_num, Some(var)));
         }
 
@@ -219,7 +203,7 @@ impl<'src> Parser<'src> {
             let (_, then, _) = self.consume_identifier(&[Label])?;
             let (_, els, _) = self.consume_identifier(&[Label])?;
             self.consume(Semicolon, "");
-            let cond = symbols.get(self.diag, &self.unit.identifier_table, tok.line_num, cond)?;
+            let cond = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, cond)?;
             return Some(Operation::Br(ir::Branch {
                 location: tok.line_num,
                 cond,
@@ -243,7 +227,13 @@ impl<'src> Parser<'src> {
             // Each block has to have at least one instruction,
             // so we can continue to parsing the next one.
             self.current_block = cfg.new_block();
-            jumps.insert(res_id, self.current_block);
+            jumps.insert(
+                self.diag,
+                &self.unit.identifiers,
+                tok.line_num,
+                res_id,
+                self.current_block,
+            );
             return self.parse_instruction(cfg, symbols, jumps);
         }
         self.consume(Colon, "");
@@ -252,7 +242,7 @@ impl<'src> Parser<'src> {
 
         let result = symbols.insert(
             self.diag,
-            &self.unit.identifier_table,
+            &self.unit.identifiers,
             tok.line_num,
             res_id,
             result_ty,
@@ -276,8 +266,7 @@ impl<'src> Parser<'src> {
         if let Some(token) = self.match_tokens(&[Identity, Not]) {
             let (_, arg, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "");
-            let operand =
-                symbols.get(self.diag, &self.unit.identifier_table, token.line_num, arg)?;
+            let operand = symbols.get(self.diag, &self.unit.identifiers, token.line_num, arg)?;
             return Some(Operation::UnOp(ir::UnaryOp {
                 token,
                 result,
@@ -302,8 +291,8 @@ impl<'src> Parser<'src> {
             let (_, lhs, _) = self.consume_identifier(&[Local])?;
             let (_, rhs, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "");
-            let lhs = symbols.get(self.diag, &self.unit.identifier_table, token.line_num, lhs)?;
-            let rhs = symbols.get(self.diag, &self.unit.identifier_table, token.line_num, rhs)?;
+            let lhs = symbols.get(self.diag, &self.unit.identifiers, token.line_num, lhs)?;
+            let rhs = symbols.get(self.diag, &self.unit.identifiers, token.line_num, rhs)?;
             return Some(Operation::BinOp(ir::BinaryOp {
                 token,
                 result,
@@ -323,14 +312,14 @@ impl<'src> Parser<'src> {
     ) -> Option<Operation> {
         let tok = self.consume(Call, "")?;
         let (_, id, _) = self.consume_identifier(&[Global])?;
-        let func =
-            self.unit
-                .globals
-                .get(self.diag, &self.unit.identifier_table, tok.line_num, id)?;
+        let func = self
+            .unit
+            .globals
+            .get(self.diag, &self.unit.identifiers, tok.line_num, id)?;
         let mut args = Vec::new();
         while !self.check(Semicolon) {
             let (_, arg, _) = self.consume_identifier(&[Local])?;
-            let var = symbols.get(self.diag, &self.unit.identifier_table, tok.line_num, arg)?;
+            let var = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, arg)?;
             args.push(var);
         }
         self.consume(Semicolon, "");
@@ -396,14 +385,7 @@ impl<'src> Parser<'src> {
     ) -> Option<(Token, Identifier, IdentifierType)> {
         if let Id(id) = self.peek().value {
             let token = self.advance();
-            let id_type = match self
-                .unit
-                .identifier_table
-                .get_name(id)
-                .chars()
-                .next()
-                .unwrap()
-            {
+            let id_type = match self.unit.identifiers.get_name(id).chars().next().unwrap() {
                 '.' => Label,
                 '@' => Global,
                 _ => Local,
@@ -433,14 +415,6 @@ impl<'src> Parser<'src> {
             self.diag.report(tok.line_num.0, "at end of file", s);
         } else {
             self.diag.report(tok.line_num.0, &format!("at '{tok}'"), s);
-        }
-    }
-
-    fn error_at_loc(&mut self, loc: Location, item: &str, s: &str) {
-        if item.is_empty() {
-            self.diag.error(loc.0, s);
-        } else {
-            self.diag.report(loc.0, &format!("at '{item}'"), s);
         }
     }
 }
