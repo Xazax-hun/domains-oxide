@@ -1,5 +1,5 @@
 use core::fmt::Display;
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 use utils::DiagnosticEmitter;
 
 use crate::lexer::{Identifier, IdentifierTable, Location, Token, TokenValue};
@@ -220,7 +220,7 @@ impl SymbolTable {
         loc: Location,
         var: Identifier,
         ty: Type,
-    ) -> Variable {
+    ) -> Option<()> {
         let existing = self.0.entry(var).or_insert(Variable {
             id: var,
             ty: ty.clone(),
@@ -231,8 +231,9 @@ impl SymbolTable {
                 &format!("at '{}'", ids.get_name(var)),
                 &format!("Unexpected type '{}'. Expected '{}'.", ty, existing.ty),
             );
+            return None;
         }
-        existing.clone()
+        Some(())
     }
 
     pub fn get(
@@ -267,14 +268,20 @@ impl LabelsToBlocks {
         loc: Location,
         label: Identifier,
         block: usize,
-    ) {
-        let existing = self.0.entry(label).or_insert(block);
-        if *existing != block {
-            diag.report(
-                loc.0,
-                &format!("at '{}'", ids.get_name(label)),
-                "Duplicate label found.",
-            );
+    ) -> Option<()> {
+        match self.0.entry(label) {
+            Entry::Occupied(_) => {
+                diag.report(
+                    loc.0,
+                    &format!("at '{}'", ids.get_name(label)),
+                    "Duplicate label found.",
+                );
+                None
+            }
+            Entry::Vacant(v) => {
+                v.insert(block);
+                Some(())
+            }
         }
     }
 
@@ -301,7 +308,7 @@ impl LabelsToBlocks {
 #[derive(Clone, Debug)]
 pub struct Unit {
     pub functions: Vec<Cfg>,
-    pub function_types: Vec<FunctionType>,
+    pub function_types: Vec<FunctionType>, // TODO: deduplicate.
     pub identifiers: IdentifierTable,
     pub globals: SymbolTable,
 }

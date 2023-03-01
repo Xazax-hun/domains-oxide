@@ -19,6 +19,11 @@ fn parse_string(source: &str) -> Result<Unit, String> {
 }
 
 #[test]
+fn parse_empty() {
+    parse_string("").expect("");
+}
+
+#[test]
 fn parse_single_function() -> Result<(), String> {
     let source = r"@main {
   v: int = const 5;
@@ -117,13 +122,121 @@ fn parse_starting_label() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn parse_syntactic_errors() {
+    let source = r"@main";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 1] Error at end of file: '{' expected.\n");
+
+    let source = r"@main(";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 1] Error at end of file: Identifier expected.\n");
+
+    let source = r"@main(x";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 1] Error at end of file: ':' expected.\n");
+
+    let source = r"@main(x: ";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 1] Error at end of file: Type expected.\n");
+
+    let source = r"@main(x: int";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 1] Error at end of file: ')' expected.\n");
+
+    let source = r"@main(x: int,";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 1] Error at end of file: Identifier expected.\n");
+
+    let source = r"@main(x: int)";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 1] Error at end of file: '{' expected.\n");
+
+    let source = r"@main(x: int):";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 1] Error at end of file: Type expected.\n");
+
+    let source = r"@main(x: int): int";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 1] Error at end of file: '{' expected.\n");
+
+    // TODO: better error message.
+    let source = r"@main(x: int) {";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 1] Error at end of file: Identifier expected.\n");
+
+    // TODO: better error message, what if the next token should be ';'?
+    let source = r"@main(x: int) {
+      ret";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 2] Error at end of file: Identifier expected.\n");
+
+    let source = r"@main(x: int): int {
+      ret x";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 2] Error at end of file: ';' expected.\n");
+}
+
+#[test]
+fn parse_identifier_errors() {
+    let source = r"@main {
+.start:
+.start:
+  ret;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 3] Error at '.start': Duplicate label found.\n");
+
+    let source = r"@main {
+  jmp .nonexistent;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(
+        err,
+        "[line 2] Error : Branch target '.nonexistent' is missing\n"
+    );
+
+    let source = r"@main {
+  x: int = add y y;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 2] Error at 'y': Undefined identifier.\n");
+
+    let source = r"@main {
+  y: int = const 5; 
+  z: bool = const true; 
+  x: int = add y y;
+  x: bool = id z;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 5] Error at 'x': Unexpected type 'bool'. Expected 'int'.\n");
+
+    let source = r"@main {
+  call x;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 2] Error at ';': Unexpected identifier type.\n");
+
+    let source = r"@main {
+  x: int = add .x .y;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 2] Error at 'ident_3': Unexpected identifier type.\n");
+
+    // TODO: better error location.
+    let source = r"main {
+  ret;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 1] Error at '{': Unexpected identifier type.\n");
+}
+
 // TODO: implement and test more error cases:
-// * Duplicated labels
-// * Same local variable with inconsistent types
 // * Function call with the wrong number of arguments
 // * Function call with the wrong type of arguments
+// * Type check basic operations: add, or, const.
 // * Last operation of block is not a terminator.
 // * Basic block starts without a label.
+// * Ban x: int = add x x;
 
 // TODO: support and test when use is before def lexically.
-// TODO: test when label is the first instruction.

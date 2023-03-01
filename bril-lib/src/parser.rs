@@ -71,7 +71,7 @@ impl<'src> Parser<'src> {
             func.line_num,
             func_id,
             func_ty.clone(),
-        );
+        )?;
 
         let mut symbols = SymbolTable::default();
         let mut jumps = LabelsToBlocks::default();
@@ -82,11 +82,11 @@ impl<'src> Parser<'src> {
                 func.line_num,
                 *id,
                 ty.clone(),
-            );
+            )?;
         }
         let mut cfg = Cfg::new(func, func_ty, formals);
         self.current_block = cfg.new_block();
-        self.consume(LeftBrace, "");
+        self.consume(LeftBrace, "")?;
         self.parse_function_body(&mut cfg, &mut symbols, &mut jumps)?;
 
         // Add edges to the Cfg.
@@ -121,7 +121,7 @@ impl<'src> Parser<'src> {
         if !self.check(RightParen) {
             loop {
                 let (_, id, _) = self.consume_identifier(&[Local])?;
-                self.consume(Colon, "");
+                self.consume(Colon, "")?;
                 let ty = self.parse_type()?;
                 result.push(Variable { id, ty });
                 if self.try_consume(Comma).is_none() {
@@ -129,7 +129,7 @@ impl<'src> Parser<'src> {
                 }
             }
         }
-        self.consume(RightParen, "");
+        self.consume(RightParen, "")?;
         Some(result)
     }
 
@@ -165,7 +165,7 @@ impl<'src> Parser<'src> {
         }
         cfg.extend_block(self.current_block, ops.iter());
 
-        self.consume(RightBrace, "");
+        self.consume(RightBrace, "")?;
         Some(())
     }
 
@@ -178,7 +178,7 @@ impl<'src> Parser<'src> {
     ) -> Option<Operation> {
         if let Some(tok) = self.try_consume(Print) {
             let (_, id, _) = self.consume_identifier(&[Local])?;
-            self.consume(Semicolon, "");
+            self.consume(Semicolon, "")?;
             let var = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, id)?;
             return Some(Operation::Print(tok.line_num, var));
         }
@@ -188,14 +188,14 @@ impl<'src> Parser<'src> {
                 return Some(Operation::Ret(tok.line_num, None));
             }
             let (_, id, _) = self.consume_identifier(&[Local])?;
-            self.consume(Semicolon, "");
+            self.consume(Semicolon, "")?;
             let var = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, id)?;
             return Some(Operation::Ret(tok.line_num, Some(var)));
         }
 
         if let Some(tok) = self.try_consume(Jump) {
             let (_, id, _) = self.consume_identifier(&[Label])?;
-            self.consume(Semicolon, "");
+            self.consume(Semicolon, "")?;
             return Some(Operation::Jump(tok.line_num, id));
         }
 
@@ -203,7 +203,7 @@ impl<'src> Parser<'src> {
             let (_, cond, _) = self.consume_identifier(&[Local])?;
             let (_, then, _) = self.consume_identifier(&[Label])?;
             let (_, els, _) = self.consume_identifier(&[Label])?;
-            self.consume(Semicolon, "");
+            self.consume(Semicolon, "")?;
             let cond = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, cond)?;
             return Some(Operation::Br(ir::Branch {
                 location: tok.line_num,
@@ -214,7 +214,7 @@ impl<'src> Parser<'src> {
         }
 
         if let Some(tok) = self.try_consume(Nop) {
-            self.consume(Semicolon, "");
+            self.consume(Semicolon, "")?;
             return Some(Operation::Nop(tok.line_num));
         }
 
@@ -224,7 +224,7 @@ impl<'src> Parser<'src> {
 
         let (tok, res_id, id_ty) = self.consume_identifier(&[Local, Label])?;
         if id_ty == Label {
-            self.consume(Colon, "");
+            self.consume(Colon, "")?;
             // The only way to have a label when the previous block is empty
             // if the function starts with a label.
             if num != 0 {
@@ -238,22 +238,27 @@ impl<'src> Parser<'src> {
                 tok.line_num,
                 res_id,
                 self.current_block,
-            );
+            )?;
             // Each block has to have at least one instruction,
             // so we can continue to parsing the next one.
             return self.parse_instruction(cfg, symbols, jumps, num);
         }
-        self.consume(Colon, "");
+        self.consume(Colon, "")?;
         let result_ty = self.parse_type()?;
-        self.consume(Define, "");
+        self.consume(Define, "")?;
 
-        let result = symbols.insert(
+        let result = Variable {
+            id: res_id,
+            ty: result_ty.clone(),
+        };
+
+        symbols.insert(
             self.diag,
             &self.unit.identifiers,
             tok.line_num,
             res_id,
             result_ty,
-        );
+        )?;
 
         if self.check(Call) {
             return self.parse_call(Some(result), symbols);
@@ -265,14 +270,14 @@ impl<'src> Parser<'src> {
                 self.error(const_tok, "Integer or boolean constant expected.");
                 return None;
             };
-            self.consume(Semicolon, "");
+            self.consume(Semicolon, "")?;
             return Some(Operation::Const(tok, result));
         }
 
         // Unary operations.
         if let Some(token) = self.match_tokens(&[Identity, Not]) {
             let (_, arg, _) = self.consume_identifier(&[Local])?;
-            self.consume(Semicolon, "");
+            self.consume(Semicolon, "")?;
             let operand = symbols.get(self.diag, &self.unit.identifiers, token.line_num, arg)?;
             return Some(Operation::UnOp(ir::UnaryOp {
                 token,
@@ -297,7 +302,7 @@ impl<'src> Parser<'src> {
         ]) {
             let (_, lhs, _) = self.consume_identifier(&[Local])?;
             let (_, rhs, _) = self.consume_identifier(&[Local])?;
-            self.consume(Semicolon, "");
+            self.consume(Semicolon, "")?;
             let lhs = symbols.get(self.diag, &self.unit.identifiers, token.line_num, lhs)?;
             let rhs = symbols.get(self.diag, &self.unit.identifiers, token.line_num, rhs)?;
             return Some(Operation::BinOp(ir::BinaryOp {
@@ -329,7 +334,7 @@ impl<'src> Parser<'src> {
             let var = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, arg)?;
             args.push(var);
         }
-        self.consume(Semicolon, "");
+        self.consume(Semicolon, "")?;
         Some(Operation::Call(ir::Call {
             location: tok.line_num,
             callee: func,
