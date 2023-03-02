@@ -19,20 +19,15 @@ use TokenValue::*;
 
 impl<'src> Parser<'src> {
     pub fn new(lexed: LexResult, diag: &'src mut DiagnosticEmitter) -> Self {
-        let LexResult {
-            tokens,
-            identifier_table,
-        } = lexed;
-
-        Parser {
+        Self {
             current_tok: 0,
             current_block: 0,
-            tokens,
+            tokens: lexed.tokens,
             unit: Unit {
                 functions: Vec::new(),
                 function_types: Vec::new(),
                 globals: SymbolTable::default(),
-                identifiers: identifier_table,
+                identifiers: lexed.identifiers,
             },
             diag,
         }
@@ -50,19 +45,20 @@ impl<'src> Parser<'src> {
     fn parse_function(&mut self) -> Option<Cfg> {
         let (func, func_id, _) = self.consume_identifier(&[Global])?;
 
-        let mut formals = Vec::new();
-        if self.try_consume(LeftParen).is_some() {
-            formals = self.parse_formals()?;
-        }
-        let formal_tys: Vec<_> = formals.iter().map(|v| v.ty).collect();
+        let formals = if self.try_consume(LeftParen).is_some() {
+            self.parse_formals()?
+        } else {
+            Vec::new()
+        };
 
-        let mut ret = Type::Void;
-        if self.try_consume(Colon).is_some() {
-            ret = self.parse_type()?;
-        }
+        let ret = if self.try_consume(Colon).is_some() {
+            self.parse_type()?
+        } else {
+            Type::Void
+        };
         let func_ty = FunctionType {
             ret,
-            formals: formal_tys,
+            formals: formals.iter().map(|v| v.ty).collect(),
         };
         self.unit.function_types.push(func_ty);
         let func_ty = Type::Fn(self.unit.function_types.len() - 1);
@@ -88,9 +84,9 @@ impl<'src> Parser<'src> {
         let mut edges = Vec::new();
         for (id, block) in cfg.blocks().iter().enumerate() {
             match block.operations().last().unwrap() {
-                Operation::Br(ir::Branch {
+                Operation::Branch {
                     token, then, els, ..
-                }) => {
+                } => {
                     let to = jumps.get(self.diag, &self.unit.identifiers, token.line_num, *then)?;
                     edges.push((id, to));
                     let to = jumps.get(self.diag, &self.unit.identifiers, token.line_num, *els)?;
@@ -147,13 +143,11 @@ impl<'src> Parser<'src> {
         while !self.check(RightBrace) {
             let prev = self.current_block;
             let op = self.parse_instruction(cfg, symbols, jumps, ops.len())?;
-            if prev == self.current_block {
-                ops.push(op);
-            } else {
+            if prev != self.current_block {
                 cfg.extend_block(prev, ops.iter());
                 ops.clear();
-                ops.push(op);
             }
+            ops.push(op);
         }
         cfg.extend_block(self.current_block, ops.iter());
 
@@ -197,12 +191,12 @@ impl<'src> Parser<'src> {
             let (_, els, _) = self.consume_identifier(&[Label])?;
             self.consume(Semicolon, "")?;
             let cond = symbols.get(self.diag, &self.unit.identifiers, token.line_num, cond)?;
-            return Some(Operation::Br(ir::Branch {
+            return Some(Operation::Branch {
                 token,
                 cond,
                 then,
                 els,
-            }));
+            });
         }
 
         if let Some(tok) = self.try_consume(Nop) {
@@ -219,10 +213,10 @@ impl<'src> Parser<'src> {
             self.consume(Colon, "")?;
             // The only way to have a label when the previous block is empty
             // if the function starts with a label.
-            if num != 0 {
-                self.current_block = cfg.new_block();
-            } else {
+            if num == 0 {
                 assert_eq!(self.current_block, 0);
+            } else {
+                self.current_block = cfg.new_block();
             }
             jumps.insert(
                 self.diag,
@@ -271,11 +265,11 @@ impl<'src> Parser<'src> {
             let (_, arg, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "")?;
             let operand = symbols.get(self.diag, &self.unit.identifiers, token.line_num, arg)?;
-            return Some(Operation::UnOp(ir::UnaryOp {
+            return Some(Operation::UnaryOp {
                 token,
                 result,
                 operand,
-            }));
+            });
         }
 
         // Binary operations.
@@ -297,12 +291,12 @@ impl<'src> Parser<'src> {
             self.consume(Semicolon, "")?;
             let lhs = symbols.get(self.diag, &self.unit.identifiers, token.line_num, lhs)?;
             let rhs = symbols.get(self.diag, &self.unit.identifiers, token.line_num, rhs)?;
-            return Some(Operation::BinOp(ir::BinaryOp {
+            return Some(Operation::BinaryOp {
                 token,
                 result,
                 lhs,
                 rhs,
-            }));
+            });
         }
 
         self.error(self.peek(), "Unexpected token.");
@@ -327,12 +321,12 @@ impl<'src> Parser<'src> {
             args.push(var);
         }
         self.consume(Semicolon, "")?;
-        Some(Operation::Call(ir::Call {
+        Some(Operation::Call {
             token,
             callee: func,
             result,
             args,
-        }))
+        })
     }
 
     fn peek(&self) -> Token {
@@ -426,17 +420,14 @@ impl<'src> Parser<'src> {
         if found == expected {
             return Some(());
         }
-        self.error(
-            t,
-            &format!("'{}' type expected; '{}' found", expected, found),
-        );
+        self.error(t, &format!("'{expected}' type expected; '{found}' found"));
         None
     }
 
     fn analyze(&mut self, cfg: &Cfg) -> Option<()> {
         for block in cfg.blocks() {
             match block.operations().last()? {
-                Operation::Br(_) | Operation::Jump(_, _) | Operation::Ret(_, _) => (),
+                Operation::Branch { .. } | Operation::Jump(_, _) | Operation::Ret(_, _) => (),
                 op => {
                     self.error(
                         op.get_token(),
@@ -447,12 +438,12 @@ impl<'src> Parser<'src> {
             };
             for op in block.operations() {
                 match op.clone() {
-                    Operation::BinOp(ir::BinaryOp {
+                    Operation::BinaryOp {
                         token,
                         result,
                         lhs,
                         rhs,
-                    }) => match token.value {
+                    } => match token.value {
                         Add | Mul | Div | Sub => {
                             self.expect_type(token, result.ty, Type::Int)?;
                             self.expect_type(token, lhs.ty, Type::Int)?;
@@ -474,11 +465,11 @@ impl<'src> Parser<'src> {
                         }
                         _ => panic!("Unexpected binary operator."),
                     },
-                    Operation::UnOp(ir::UnaryOp {
+                    Operation::UnaryOp {
                         token,
                         result,
                         operand,
-                    }) => match token.value {
+                    } => match token.value {
                         Identity => {
                             self.expect_type(token, operand.ty, result.ty)?;
                         }
@@ -488,12 +479,12 @@ impl<'src> Parser<'src> {
                         }
                         _ => continue,
                     },
-                    Operation::Call(ir::Call {
+                    Operation::Call {
                         token,
                         callee,
                         result,
                         args,
-                    }) => {
+                    } => {
                         let fn_ty = callee.ty.get_function_type(&self.unit)?.clone();
 
                         match result {

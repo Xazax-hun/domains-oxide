@@ -79,7 +79,7 @@ impl core::fmt::Display for TokenValue {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match *self {
             Id(i) => write!(f, "ident_{}", i.0),
-            Integer(i) => write!(f, "{}", i),
+            Integer(i) => write!(f, "{i}"),
 
             Add => write!(f, "add"),
             Mul => write!(f, "mul"),
@@ -180,12 +180,11 @@ pub struct IdentifierTable(pub Vec<String>);
 impl IdentifierTable {
     pub fn get_identifier(&mut self, ident: &str) -> Identifier {
         // TODO: more efficient lookup.
-        match self.0.iter().position(|str| str == ident) {
-            Some(pos) => Identifier(pos),
-            _ => {
-                self.0.push(ident.to_owned());
-                Identifier(self.0.len() - 1)
-            }
+        if let Some(pos) = self.0.iter().position(|str| str == ident) {
+            Identifier(pos)
+        } else {
+            self.0.push(ident.to_owned());
+            Identifier(self.0.len() - 1)
         }
     }
 
@@ -201,13 +200,13 @@ pub struct Lexer<'src> {
     line_num: u32,
     has_error: bool, // TODO: can we get rid of this?
     diagnostic_emitter: &'src mut DiagnosticEmitter,
-    identifier_table: IdentifierTable,
+    identifiers: IdentifierTable,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct LexResult {
     pub tokens: Vec<Token>,
-    pub identifier_table: IdentifierTable,
+    pub identifiers: IdentifierTable,
 }
 
 impl<'src> Lexer<'src> {
@@ -219,7 +218,7 @@ impl<'src> Lexer<'src> {
             line_num: 1,
             has_error: false,
             diagnostic_emitter,
-            identifier_table: IdentifierTable::default(),
+            identifiers: IdentifierTable::default(),
         }
     }
 
@@ -250,7 +249,7 @@ impl<'src> Lexer<'src> {
 
         LexResult {
             tokens,
-            identifier_table: self.identifier_table,
+            identifiers: self.identifiers,
         }
     }
 
@@ -323,12 +322,11 @@ impl<'src> Lexer<'src> {
                 }
                 c @ ('@' | '.') => {
                     if self.peek().is_ascii_alphabetic() {
-                        if let Some(ident) = self.lex_identifier() {
-                            return Some(Token {
-                                value: Id(self.identifier_table.get_identifier(ident)),
-                                line_num: Location(self.line_num),
-                            });
-                        }
+                        let ident = self.lex_identifier();
+                        return Some(Token {
+                            value: Id(self.identifiers.get_identifier(ident)),
+                            line_num: Location(self.line_num),
+                        });
                     }
                     self.diagnostic_emitter
                         .error(self.line_num, &format!("Unexpected token: '{c}'."));
@@ -340,19 +338,18 @@ impl<'src> Lexer<'src> {
                         return self.lex_number();
                     }
                     if c.is_ascii_alphabetic() {
-                        if let Some(ident) = self.lex_identifier() {
-                            let line_num = self.line_num;
-                            return Some(KEYWORDS.get(ident).map_or_else(
-                                || Token {
-                                    value: Id(self.identifier_table.get_identifier(ident)),
-                                    line_num: Location(line_num),
-                                },
-                                |value| Token {
-                                    value: *value,
-                                    line_num: Location(line_num),
-                                },
-                            ));
-                        }
+                        let ident = self.lex_identifier();
+                        let line_num = self.line_num;
+                        return Some(KEYWORDS.get(ident).map_or_else(
+                            || Token {
+                                value: Id(self.identifiers.get_identifier(ident)),
+                                line_num: Location(line_num),
+                            },
+                            |value| Token {
+                                value: *value,
+                                line_num: Location(line_num),
+                            },
+                        ));
                     }
                     self.diagnostic_emitter.error(
                         self.line_num,
@@ -381,12 +378,12 @@ impl<'src> Lexer<'src> {
         })
     }
 
-    fn lex_identifier(&mut self) -> Option<&'src str> {
+    fn lex_identifier(&mut self) -> &'src str {
         while self.peek().is_ascii_alphabetic() {
             self.advance();
         }
 
-        Some(&self.source[self.start..self.current])
+        &self.source[self.start..self.current]
     }
 
     fn is_at_end(&self) -> bool {

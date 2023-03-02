@@ -54,43 +54,31 @@ pub struct Variable {
 }
 
 #[derive(Clone, Debug)]
-pub struct BinaryOp {
-    pub token: Token,
-    pub result: Variable,
-    pub lhs: Variable,
-    pub rhs: Variable,
-}
-
-#[derive(Clone, Debug)]
-pub struct UnaryOp {
-    pub token: Token,
-    pub result: Variable,
-    pub operand: Variable,
-}
-
-#[derive(Clone, Debug)]
-pub struct Call {
-    pub token: Token,
-    pub callee: Variable,
-    pub result: Option<Variable>,
-    pub args: Vec<Variable>,
-}
-
-#[derive(Clone, Debug)]
-pub struct Branch {
-    pub token: Token,
-    pub cond: Variable,
-    pub then: Identifier,
-    pub els: Identifier,
-}
-
-#[derive(Clone, Debug)]
 pub enum Operation {
-    BinOp(BinaryOp),
-    UnOp(UnaryOp),
+    BinaryOp {
+        token: Token,
+        result: Variable,
+        lhs: Variable,
+        rhs: Variable,
+    },
+    UnaryOp {
+        token: Token,
+        result: Variable,
+        operand: Variable,
+    },
     Jump(Token, Identifier),
-    Br(Branch),
-    Call(Call),
+    Branch {
+        token: Token,
+        cond: Variable,
+        then: Identifier,
+        els: Identifier,
+    },
+    Call {
+        token: Token,
+        callee: Variable,
+        result: Option<Variable>,
+        args: Vec<Variable>,
+    },
     Ret(Token, Option<Variable>),
     Print(Token, Variable),
     Nop(Token),
@@ -100,16 +88,17 @@ pub enum Operation {
 impl Operation {
     pub fn get_token(&self) -> Token {
         // TODO: hoist token into a struct.
+        use Operation::*;
         match self {
-            Operation::BinOp(BinaryOp { token, .. }) => *token,
-            Operation::UnOp(UnaryOp { token, .. }) => *token,
-            Operation::Br(Branch { token, .. }) => *token,
-            Operation::Call(Call { token, .. }) => *token,
-            Operation::Jump(token, _) => *token,
-            Operation::Ret(token, _) => *token,
-            Operation::Print(token, _) => *token,
-            Operation::Nop(token) => *token,
-            Operation::Const(token, _) => *token,
+            BinaryOp { token, .. }
+            | UnaryOp { token, .. }
+            | Branch { token, .. }
+            | Call { token, .. }
+            | Jump(token, _)
+            | Ret(token, _)
+            | Print(token, _)
+            | Nop(token)
+            | Const(token, _) => *token,
         }
     }
 }
@@ -266,7 +255,7 @@ impl SymbolTable {
         loc: Location,
         var: Identifier,
     ) -> Option<Variable> {
-        match self.0.get(&var).cloned() {
+        match self.0.get(&var).copied() {
             None => {
                 diag.report(
                     loc.0,
@@ -315,7 +304,7 @@ impl LabelsToBlocks {
         loc: Location,
         label: Identifier,
     ) -> Option<usize> {
-        match self.0.get(&label).cloned() {
+        match self.0.get(&label).copied() {
             None => {
                 diag.error(
                     loc.0,
@@ -340,12 +329,12 @@ pub fn print_operation(op: &Operation, unit: &Unit) -> String {
     let get_name = |var: &Variable| unit.identifiers.get_name(var.id);
     let get_label_name = |&l: &Identifier| unit.identifiers.get_name(l);
     match op {
-        Operation::BinOp(BinaryOp {
+        Operation::BinaryOp {
             token,
             result,
             lhs,
             rhs,
-        }) => format!(
+        } => format!(
             "{}: {} = {} {} {};",
             get_name(result),
             result.ty,
@@ -353,20 +342,20 @@ pub fn print_operation(op: &Operation, unit: &Unit) -> String {
             get_name(lhs),
             get_name(rhs)
         ),
-        Operation::UnOp(UnaryOp {
+        Operation::UnaryOp {
             token,
             result,
             operand,
-        }) => format!(
+        } => format!(
             "{}: {} = {} {};",
             get_name(result),
             result.ty,
             token.value,
             get_name(operand)
         ),
-        Operation::Br(Branch {
+        Operation::Branch {
             cond, then, els, ..
-        }) => format!(
+        } => format!(
             "br {} {} {};",
             get_name(cond),
             get_label_name(then),
@@ -376,24 +365,24 @@ pub fn print_operation(op: &Operation, unit: &Unit) -> String {
         Operation::Const(tok, var) => {
             format!("{}: {} = const {};", get_name(var), var.ty, tok.value)
         }
-        Operation::Call(Call {
+        Operation::Call {
             callee,
             result: Some(result),
             args,
             ..
-        }) => format!(
+        } => format!(
             "{}: {} = call {} {};",
             get_name(result),
             result.ty,
             get_name(callee),
             args.iter().map(|v| get_name(v)).join(" ")
         ),
-        Operation::Call(Call {
+        Operation::Call {
             callee,
             result: None,
             args,
             ..
-        }) => format!(
+        } => format!(
             "call {} {};",
             get_name(callee),
             args.iter().map(|v| get_name(v)).join(" ")
