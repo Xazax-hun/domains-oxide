@@ -6,12 +6,21 @@ use crate::lexer::{Identifier, IdentifierTable, Location, Token, TokenValue};
 use analysis::cfg::*;
 use itertools::Itertools;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Type {
     Int,
     Bool,
     Void,
     Fn(usize),
+}
+
+impl Type {
+    pub fn get_function_type(self, unit: &Unit) -> Option<&FunctionType> {
+        match self {
+            Type::Fn(id) => Some(&unit.function_types[id]),
+            _ => None,
+        }
+    }
 }
 
 impl Display for Type {
@@ -38,7 +47,7 @@ pub enum IdentifierType {
     Label,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Variable {
     pub id: Identifier,
     pub ty: Type,
@@ -61,7 +70,7 @@ pub struct UnaryOp {
 
 #[derive(Clone, Debug)]
 pub struct Call {
-    pub location: Location,
+    pub token: Token,
     pub callee: Variable,
     pub result: Option<Variable>,
     pub args: Vec<Variable>,
@@ -69,7 +78,7 @@ pub struct Call {
 
 #[derive(Clone, Debug)]
 pub struct Branch {
-    pub location: Location,
+    pub token: Token,
     pub cond: Variable,
     pub then: Identifier,
     pub els: Identifier,
@@ -79,13 +88,30 @@ pub struct Branch {
 pub enum Operation {
     BinOp(BinaryOp),
     UnOp(UnaryOp),
-    Jump(Location, Identifier),
+    Jump(Token, Identifier),
     Br(Branch),
     Call(Call),
-    Ret(Location, Option<Variable>),
-    Print(Location, Variable),
-    Nop(Location),
+    Ret(Token, Option<Variable>),
+    Print(Token, Variable),
+    Nop(Token),
     Const(Token, Variable),
+}
+
+impl Operation {
+    pub fn get_token(&self) -> Token {
+        // TODO: hoist token into a struct.
+        match self {
+            Operation::BinOp(BinaryOp { token, .. }) => *token,
+            Operation::UnOp(UnaryOp { token, .. }) => *token,
+            Operation::Br(Branch { token, .. }) => *token,
+            Operation::Call(Call { token, .. }) => *token,
+            Operation::Jump(token, _) => *token,
+            Operation::Ret(token, _) => *token,
+            Operation::Print(token, _) => *token,
+            Operation::Nop(token) => *token,
+            Operation::Const(token, _) => *token,
+        }
+    }
 }
 
 /// The last operation is a terminator:
@@ -221,10 +247,7 @@ impl SymbolTable {
         var: Identifier,
         ty: Type,
     ) -> Option<()> {
-        let existing = self.0.entry(var).or_insert(Variable {
-            id: var,
-            ty: ty.clone(),
-        });
+        let existing = self.0.entry(var).or_insert(Variable { id: var, ty });
         if existing.ty != ty {
             diag.report(
                 loc.0,

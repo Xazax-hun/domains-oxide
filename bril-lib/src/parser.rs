@@ -41,6 +41,7 @@ impl<'src> Parser<'src> {
     pub fn parse(mut self) -> Option<ir::Unit> {
         while !self.is_at_end() {
             let cfg = self.parse_function()?;
+            self.analyze(&cfg)?;
             self.unit.functions.push(cfg);
         }
         Some(self.unit)
@@ -53,7 +54,7 @@ impl<'src> Parser<'src> {
         if self.try_consume(LeftParen).is_some() {
             formals = self.parse_formals()?;
         }
-        let formal_tys: Vec<_> = formals.iter().map(|v| v.ty.clone()).collect();
+        let formal_tys: Vec<_> = formals.iter().map(|v| v.ty).collect();
 
         let mut ret = Type::Void;
         if self.try_consume(Colon).is_some() {
@@ -70,19 +71,13 @@ impl<'src> Parser<'src> {
             &self.unit.identifiers,
             func.line_num,
             func_id,
-            func_ty.clone(),
+            func_ty,
         )?;
 
         let mut symbols = SymbolTable::default();
         let mut jumps = LabelsToBlocks::default();
         for Variable { id, ty } in &formals {
-            symbols.insert(
-                self.diag,
-                &self.unit.identifiers,
-                func.line_num,
-                *id,
-                ty.clone(),
-            )?;
+            symbols.insert(self.diag, &self.unit.identifiers, func.line_num, *id, *ty)?;
         }
         let mut cfg = Cfg::new(func, func_ty, formals);
         self.current_block = cfg.new_block();
@@ -94,18 +89,15 @@ impl<'src> Parser<'src> {
         for (id, block) in cfg.blocks().iter().enumerate() {
             match block.operations().last().unwrap() {
                 Operation::Br(ir::Branch {
-                    location,
-                    then,
-                    els,
-                    ..
+                    token, then, els, ..
                 }) => {
-                    let to = jumps.get(self.diag, &self.unit.identifiers, *location, *then)?;
+                    let to = jumps.get(self.diag, &self.unit.identifiers, token.line_num, *then)?;
                     edges.push((id, to));
-                    let to = jumps.get(self.diag, &self.unit.identifiers, *location, *els)?;
+                    let to = jumps.get(self.diag, &self.unit.identifiers, token.line_num, *els)?;
                     edges.push((id, to));
                 }
-                Operation::Jump(location, next) => {
-                    let to = jumps.get(self.diag, &self.unit.identifiers, *location, *next)?;
+                Operation::Jump(token, next) => {
+                    let to = jumps.get(self.diag, &self.unit.identifiers, token.line_num, *next)?;
                     edges.push((id, to));
                 }
                 _ => continue,
@@ -180,33 +172,33 @@ impl<'src> Parser<'src> {
             let (_, id, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "")?;
             let var = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, id)?;
-            return Some(Operation::Print(tok.line_num, var));
+            return Some(Operation::Print(tok, var));
         }
 
         if let Some(tok) = self.try_consume(Return) {
             if self.try_consume(Semicolon).is_some() {
-                return Some(Operation::Ret(tok.line_num, None));
+                return Some(Operation::Ret(tok, None));
             }
             let (_, id, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "")?;
             let var = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, id)?;
-            return Some(Operation::Ret(tok.line_num, Some(var)));
+            return Some(Operation::Ret(tok, Some(var)));
         }
 
         if let Some(tok) = self.try_consume(Jump) {
             let (_, id, _) = self.consume_identifier(&[Label])?;
             self.consume(Semicolon, "")?;
-            return Some(Operation::Jump(tok.line_num, id));
+            return Some(Operation::Jump(tok, id));
         }
 
-        if let Some(tok) = self.try_consume(Branch) {
+        if let Some(token) = self.try_consume(Branch) {
             let (_, cond, _) = self.consume_identifier(&[Local])?;
             let (_, then, _) = self.consume_identifier(&[Label])?;
             let (_, els, _) = self.consume_identifier(&[Label])?;
             self.consume(Semicolon, "")?;
-            let cond = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, cond)?;
+            let cond = symbols.get(self.diag, &self.unit.identifiers, token.line_num, cond)?;
             return Some(Operation::Br(ir::Branch {
-                location: tok.line_num,
+                token,
                 cond,
                 then,
                 els,
@@ -215,7 +207,7 @@ impl<'src> Parser<'src> {
 
         if let Some(tok) = self.try_consume(Nop) {
             self.consume(Semicolon, "")?;
-            return Some(Operation::Nop(tok.line_num));
+            return Some(Operation::Nop(tok));
         }
 
         if self.check(Call) {
@@ -249,7 +241,7 @@ impl<'src> Parser<'src> {
 
         let result = Variable {
             id: res_id,
-            ty: result_ty.clone(),
+            ty: result_ty,
         };
 
         symbols.insert(
@@ -322,21 +314,21 @@ impl<'src> Parser<'src> {
         result: Option<Variable>,
         symbols: &mut SymbolTable,
     ) -> Option<Operation> {
-        let tok = self.consume(Call, "")?;
+        let token = self.consume(Call, "")?;
         let (_, id, _) = self.consume_identifier(&[Global])?;
         let func = self
             .unit
             .globals
-            .get(self.diag, &self.unit.identifiers, tok.line_num, id)?;
+            .get(self.diag, &self.unit.identifiers, token.line_num, id)?;
         let mut args = Vec::new();
         while !self.check(Semicolon) {
             let (_, arg, _) = self.consume_identifier(&[Local])?;
-            let var = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, arg)?;
+            let var = symbols.get(self.diag, &self.unit.identifiers, token.line_num, arg)?;
             args.push(var);
         }
         self.consume(Semicolon, "")?;
         Some(Operation::Call(ir::Call {
-            location: tok.line_num,
+            token,
             callee: func,
             result,
             args,
@@ -428,5 +420,142 @@ impl<'src> Parser<'src> {
         } else {
             self.diag.report(tok.line_num.0, &format!("at '{tok}'"), s);
         }
+    }
+
+    fn expect_type(&mut self, t: Token, found: Type, expected: Type) -> Option<()> {
+        if found == expected {
+            return Some(());
+        }
+        self.error(
+            t,
+            &format!("'{}' type expected; '{}' found", expected, found),
+        );
+        None
+    }
+
+    fn analyze(&mut self, cfg: &Cfg) -> Option<()> {
+        for block in cfg.blocks() {
+            match block.operations().last()? {
+                Operation::Br(_) | Operation::Jump(_, _) | Operation::Ret(_, _) => (),
+                op => {
+                    self.error(
+                        op.get_token(),
+                        "Block terminator expected to be jump, br, or ret.",
+                    );
+                    return None;
+                }
+            };
+            for op in block.operations() {
+                match op.clone() {
+                    Operation::BinOp(ir::BinaryOp {
+                        token,
+                        result,
+                        lhs,
+                        rhs,
+                    }) => match token.value {
+                        Add | Mul | Div | Sub => {
+                            self.expect_type(token, result.ty, Type::Int)?;
+                            self.expect_type(token, lhs.ty, Type::Int)?;
+                            self.expect_type(token, rhs.ty, Type::Int)?;
+                        }
+                        LessThan | GreaterThan | LessThanOrEq | GreaterThanOrEq => {
+                            self.expect_type(token, result.ty, Type::Bool)?;
+                            self.expect_type(token, lhs.ty, Type::Int)?;
+                            self.expect_type(token, rhs.ty, Type::Int)?;
+                        }
+                        And | Or => {
+                            self.expect_type(token, result.ty, Type::Bool)?;
+                            self.expect_type(token, lhs.ty, Type::Bool)?;
+                            self.expect_type(token, rhs.ty, Type::Bool)?;
+                        }
+                        Equal => {
+                            self.expect_type(token, lhs.ty, result.ty)?;
+                            self.expect_type(token, rhs.ty, result.ty)?;
+                        }
+                        _ => panic!("Unexpected binary operator."),
+                    },
+                    Operation::UnOp(ir::UnaryOp {
+                        token,
+                        result,
+                        operand,
+                    }) => match token.value {
+                        Identity => {
+                            self.expect_type(token, operand.ty, result.ty)?;
+                        }
+                        Not => {
+                            self.expect_type(token, result.ty, Type::Bool)?;
+                            self.expect_type(token, operand.ty, Type::Bool)?;
+                        }
+                        _ => continue,
+                    },
+                    Operation::Call(ir::Call {
+                        token,
+                        callee,
+                        result,
+                        args,
+                    }) => {
+                        let fn_ty = callee.ty.get_function_type(&self.unit)?.clone();
+
+                        match result {
+                            Some(ret) => {
+                                if fn_ty.ret == Type::Void {
+                                    self.error(token, "Void functions cannot return a value.");
+                                    return None;
+                                }
+                                self.expect_type(token, ret.ty, fn_ty.ret)?;
+                            }
+                            None => {
+                                if fn_ty.ret != Type::Void {
+                                    self.error(token, "Non-void functions must return a value.");
+                                    return None;
+                                }
+                            }
+                        }
+
+                        if fn_ty.formals.len() != args.len() {
+                            self.error(
+                                token,
+                                &format!(
+                                    "{} arguments expected, got {}",
+                                    fn_ty.formals.len(),
+                                    args.len()
+                                ),
+                            );
+                            return None;
+                        }
+
+                        for (formal, arg) in fn_ty.formals.iter().zip(args.iter()) {
+                            self.expect_type(token, arg.ty, *formal)?;
+                        }
+                    }
+                    Operation::Const(token, result) => match token.value {
+                        Integer(_) => self.expect_type(token, Type::Int, result.ty)?,
+                        True | False => self.expect_type(token, Type::Bool, result.ty)?,
+                        _ => panic!("Unexpected constant type"),
+                    },
+                    Operation::Ret(token, ret) => {
+                        let ret_ty = cfg.get_type(&self.unit).ret;
+                        match ret {
+                            Some(var) => {
+                                if ret_ty == Type::Void {
+                                    self.error(token, "Void functions cannot return a value.");
+                                    return None;
+                                }
+
+                                self.expect_type(token, var.ty, ret_ty)?;
+                            }
+                            None => {
+                                if ret_ty != Type::Void {
+                                    self.error(token, "Non-void functions must return a value.");
+                                    return None;
+                                }
+                            }
+                        }
+                    }
+                    _ => continue,
+                }
+            }
+        }
+        Some(())
     }
 }

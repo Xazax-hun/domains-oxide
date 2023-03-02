@@ -25,12 +25,14 @@ fn parse_empty() {
 
 #[test]
 fn parse_single_function() -> Result<(), String> {
+    // TODO: Should we allow implicit ret in void functions?
     let source = r"@main {
   v: int = const 5;
   print v;
+  ret;
 }";
     let expected = r#"digraph "@main" {
-  Node_0[label="v: int = const 5;\nprint v;"]
+  Node_0[label="v: int = const 5;\nprint v;\nret;"]
 
 }
 "#;
@@ -50,7 +52,7 @@ fn parse_multiple_functions() -> Result<(), String> {
     ret w;
 }
     
-@main {
+@main(): int {
   v: int = const 5;
   u: int = call @mul v v;
   nop;
@@ -209,7 +211,10 @@ fn parse_identifier_errors() {
   x: bool = id z;
 }";
     let err = parse_string(source).expect_err("");
-    assert_eq!(err, "[line 5] Error at 'x': Unexpected type 'bool'. Expected 'int'.\n");
+    assert_eq!(
+        err,
+        "[line 5] Error at 'x': Unexpected type 'bool'. Expected 'int'.\n"
+    );
 
     let source = r"@main {
   call x;
@@ -221,7 +226,10 @@ fn parse_identifier_errors() {
   x: int = add .x .y;
 }";
     let err = parse_string(source).expect_err("");
-    assert_eq!(err, "[line 2] Error at 'ident_3': Unexpected identifier type.\n");
+    assert_eq!(
+        err,
+        "[line 2] Error at 'ident_3': Unexpected identifier type.\n"
+    );
 
     // TODO: better error location.
     let source = r"main {
@@ -231,12 +239,145 @@ fn parse_identifier_errors() {
     assert_eq!(err, "[line 1] Error at '{': Unexpected identifier type.\n");
 }
 
+#[test]
+fn parse_type_errors() {
+    let source = r"@main {
+  x: int = const true;
+  ret;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(
+        err,
+        "[line 2] Error at 'true': 'int' type expected; 'bool' found\n"
+    );
+
+    let source = r"@main {
+  x: bool = const true;
+  y: int = add x x;
+  ret;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(
+        err,
+        "[line 3] Error at 'add': 'int' type expected; 'bool' found\n"
+    );
+
+    let source = r"@main {
+  x: int = const 5;
+  y: bool = mul x x;
+  ret;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(
+        err,
+        "[line 3] Error at 'mul': 'int' type expected; 'bool' found\n"
+    );
+
+    let source = r"@main {
+  x: bool = const true;
+  y: int = not x;
+  ret;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(
+        err,
+        "[line 3] Error at 'not': 'bool' type expected; 'int' found\n"
+    );
+
+    let source = r"@main {
+  x: bool = const true;
+  y: int = id x;
+  ret;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(
+        err,
+        "[line 3] Error at 'id': 'int' type expected; 'bool' found\n"
+    );
+
+    let source = r"@foo(a: bool, b: bool) {
+  ret;
+}
+
+@main {
+  x: bool = const true;
+  call @foo x;
+  ret;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(
+        err,
+        "[line 7] Error at 'call': 2 arguments expected, got 1\n"
+    );
+
+    let source = r"@foo(a: bool, b: int) {
+  ret;
+}
+
+@main {
+  x: bool = const true;
+  call @foo x x;
+  ret;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(
+        err,
+        "[line 7] Error at 'call': 'int' type expected; 'bool' found\n"
+    );
+
+    let source = r"@foo(a: bool, b: bool) {
+  ret;
+}
+
+@main {
+  x: bool = const true;
+  y: int = call @foo x x;
+  ret;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(
+        err,
+        "[line 7] Error at 'call': Void functions cannot return a value.\n"
+    );
+
+    let source = r"@foo(a: bool, b: bool) : bool {
+  ret a;
+}
+
+@main {
+  x: bool = const true;
+  call @foo x x;
+  ret;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(
+        err,
+        "[line 7] Error at 'call': Non-void functions must return a value.\n"
+    );
+
+    let source = r"@foo(a: bool, b: bool) {
+  ret a;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(
+        err,
+        "[line 2] Error at 'ret': Void functions cannot return a value.\n"
+    );
+
+    let source = r"@foo(a: bool, b: bool): bool {
+  ret;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(
+        err,
+        "[line 2] Error at 'ret': Non-void functions must return a value.\n"
+    );
+}
+
 // TODO: implement and test more error cases:
-// * Function call with the wrong number of arguments
-// * Function call with the wrong type of arguments
-// * Type check basic operations: add, or, const.
 // * Last operation of block is not a terminator.
 // * Basic block starts without a label.
 // * Ban x: int = add x x;
 
 // TODO: support and test when use is before def lexically.
+// TODO: support any function definition order.
