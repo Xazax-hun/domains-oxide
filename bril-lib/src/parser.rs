@@ -243,6 +243,8 @@ impl<'src> Parser<'src> {
             ty: result_ty,
         };
 
+        // TODO: avoid copying the symbol table.
+        let prev_symbols = symbols.clone();
         symbols.insert(
             self.diag,
             &self.unit.identifiers,
@@ -252,7 +254,7 @@ impl<'src> Parser<'src> {
         )?;
 
         if self.check(Call) {
-            return self.parse_call(Some(result), symbols);
+            return self.parse_call(Some(result), &prev_symbols);
         }
 
         if let Some(const_tok) = self.try_consume(Const) {
@@ -269,7 +271,8 @@ impl<'src> Parser<'src> {
         if let Some(token) = self.match_tokens(&[Identity, Not]) {
             let (_, arg, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "")?;
-            let operand = symbols.get(self.diag, &self.unit.identifiers, token.line_num, arg)?;
+            let operand =
+                prev_symbols.get(self.diag, &self.unit.identifiers, token.line_num, arg)?;
             return Some(Operation::UnaryOp {
                 token,
                 result,
@@ -294,8 +297,8 @@ impl<'src> Parser<'src> {
             let (_, lhs, _) = self.consume_identifier(&[Local])?;
             let (_, rhs, _) = self.consume_identifier(&[Local])?;
             self.consume(Semicolon, "")?;
-            let lhs = symbols.get(self.diag, &self.unit.identifiers, token.line_num, lhs)?;
-            let rhs = symbols.get(self.diag, &self.unit.identifiers, token.line_num, rhs)?;
+            let lhs = prev_symbols.get(self.diag, &self.unit.identifiers, token.line_num, lhs)?;
+            let rhs = prev_symbols.get(self.diag, &self.unit.identifiers, token.line_num, rhs)?;
             return Some(Operation::BinaryOp {
                 token,
                 result,
@@ -308,11 +311,7 @@ impl<'src> Parser<'src> {
         None
     }
 
-    fn parse_call(
-        &mut self,
-        result: Option<Variable>,
-        symbols: &mut SymbolTable,
-    ) -> Option<Operation> {
+    fn parse_call(&mut self, result: Option<Variable>, symbols: &SymbolTable) -> Option<Operation> {
         let token = self.consume(Call, "")?;
         let (_, id, _) = self.consume_identifier(&[Global])?;
         let func = self

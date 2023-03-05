@@ -205,6 +205,12 @@ fn parse_identifier_errors() {
     assert_eq!(err, "[line 2] Error at 'y': Undefined identifier.\n");
 
     let source = r"@main {
+  x: int = add x x;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(err, "[line 2] Error at 'x': Undefined identifier.\n");
+
+    let source = r"@main {
   y: int = const 5; 
   z: bool = const true; 
   x: int = add y y;
