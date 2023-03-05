@@ -9,7 +9,9 @@ pub struct Location(pub u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenValue {
-    Id(Identifier),
+    Local(Identifier),
+    Global(Identifier),
+    Label(Identifier),
     Integer(i32),
 
     // Arithmetic
@@ -78,7 +80,9 @@ fn from_char(c: char) -> Option<TokenValue> {
 impl core::fmt::Display for TokenValue {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match *self {
-            Id(i) => write!(f, "ident_{}", i.0),
+            Local(i) => write!(f, "local_{}", i.0),
+            Global(i) => write!(f, "global_{}", i.0),
+            Label(i) => write!(f, "label_{}", i.0),
             Integer(i) => write!(f, "{i}"),
 
             Add => write!(f, "add"),
@@ -323,8 +327,13 @@ impl<'src> Lexer<'src> {
                 c @ ('@' | '.') => {
                     if self.peek().is_ascii_alphabetic() {
                         let ident = self.lex_identifier();
+                        let value = if c == '@' {
+                            Global(self.identifiers.get_identifier(ident))
+                        } else {
+                            Label(self.identifiers.get_identifier(ident))
+                        };
                         return Some(Token {
-                            value: Id(self.identifiers.get_identifier(ident)),
+                            value,
                             line_num: Location(self.line_num),
                         });
                     }
@@ -342,7 +351,7 @@ impl<'src> Lexer<'src> {
                         let line_num = self.line_num;
                         return Some(KEYWORDS.get(ident).map_or_else(
                             || Token {
-                                value: Id(self.identifiers.get_identifier(ident)),
+                                value: Local(self.identifiers.get_identifier(ident)),
                                 line_num: Location(line_num),
                             },
                             |value| Token {

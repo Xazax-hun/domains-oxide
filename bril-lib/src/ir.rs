@@ -40,13 +40,6 @@ pub struct FunctionType {
     pub formals: Vec<Type>,
 }
 
-#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
-pub enum IdentifierType {
-    Local,
-    Global,
-    Label,
-}
-
 #[derive(Clone, Copy, Debug)]
 pub struct Variable {
     pub id: Identifier,
@@ -400,7 +393,7 @@ pub fn print_operation(op: &Operation, unit: &Unit) -> String {
 }
 
 pub fn print_cfg(cfg: &Cfg, unit: &Unit) -> String {
-    let TokenValue::Id(id) = cfg.function.value
+    let TokenValue::Global(id) = cfg.function.value
     else {
         panic!("");
     };

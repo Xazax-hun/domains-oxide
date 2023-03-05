@@ -45,10 +45,10 @@ fn test_all_tokens() {
               jmp br call ret = (){} ;:, const print nop id int bool true false",
     );
     let expected = vec![
-        Id(Identifier(0)),
-        Id(Identifier(1)),
-        Id(Identifier(0)),
-        Id(Identifier(2)),
+        Local(Identifier(0)),
+        Global(Identifier(1)),
+        Local(Identifier(0)),
+        Label(Identifier(2)),
         Integer(50),
         Integer(-50),
         Add,

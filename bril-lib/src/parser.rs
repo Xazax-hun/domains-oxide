@@ -14,7 +14,6 @@ pub struct Parser<'src> {
     diag: &'src mut DiagnosticEmitter,
 }
 
-use IdentifierType::*;
 use TokenValue::*;
 
 impl<'src> Parser<'src> {
@@ -43,7 +42,7 @@ impl<'src> Parser<'src> {
     }
 
     fn parse_function(&mut self) -> Option<Cfg> {
-        let (func, func_id, _) = self.consume_identifier(&[Global])?;
+        let (func, func_id) = self.consume_global()?;
 
         let formals = if self.try_consume(LeftParen).is_some() {
             self.parse_formals()?
@@ -108,7 +107,7 @@ impl<'src> Parser<'src> {
         let mut result = Vec::new();
         if !self.check(RightParen) {
             loop {
-                let (_, id, _) = self.consume_identifier(&[Local])?;
+                let (_, id) = self.consume_local()?;
                 self.consume(Colon, "")?;
                 let ty = self.parse_type()?;
                 result.push(Variable { id, ty });
@@ -168,7 +167,7 @@ impl<'src> Parser<'src> {
         num: usize,
     ) -> Option<Operation> {
         if let Some(tok) = self.try_consume(Print) {
-            let (_, id, _) = self.consume_identifier(&[Local])?;
+            let (_, id) = self.consume_local()?;
             self.consume(Semicolon, "")?;
             let var = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, id)?;
             return Some(Operation::Print(tok, var));
@@ -178,22 +177,22 @@ impl<'src> Parser<'src> {
             if self.try_consume(Semicolon).is_some() {
                 return Some(Operation::Ret(tok, None));
             }
-            let (_, id, _) = self.consume_identifier(&[Local])?;
+            let (_, id) = self.consume_local()?;
             self.consume(Semicolon, "")?;
             let var = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, id)?;
             return Some(Operation::Ret(tok, Some(var)));
         }
 
         if let Some(tok) = self.try_consume(Jump) {
-            let (_, id, _) = self.consume_identifier(&[Label])?;
+            let (_, id) = self.consume_label(true)?;
             self.consume(Semicolon, "")?;
             return Some(Operation::Jump(tok, id));
         }
 
         if let Some(token) = self.try_consume(Branch) {
-            let (_, cond, _) = self.consume_identifier(&[Local])?;
-            let (_, then, _) = self.consume_identifier(&[Label])?;
-            let (_, els, _) = self.consume_identifier(&[Label])?;
+            let (_, cond) = self.consume_local()?;
+            let (_, then) = self.consume_label(true)?;
+            let (_, els) = self.consume_label(true)?;
             self.consume(Semicolon, "")?;
             let cond = symbols.get(self.diag, &self.unit.identifiers, token.line_num, cond)?;
             return Some(Operation::Branch {
@@ -213,8 +212,7 @@ impl<'src> Parser<'src> {
             return self.parse_call(None, symbols);
         }
 
-        let (tok, res_id, id_ty) = self.consume_identifier(&[Local, Label])?;
-        if id_ty == Label {
+        if let Some((tok, label)) = self.consume_label(false) {
             self.consume(Colon, "")?;
             // The only way to have a label when the previous block is empty
             // if the function starts with a label.
@@ -227,13 +225,15 @@ impl<'src> Parser<'src> {
                 self.diag,
                 &self.unit.identifiers,
                 tok.line_num,
-                res_id,
+                label,
                 self.current_block,
             )?;
             // Each block has to have at least one instruction,
             // so we can continue to parsing the next one.
             return self.parse_instruction(cfg, symbols, jumps, num);
         }
+
+        let (tok, res_id) = self.consume_local()?;
         self.consume(Colon, "")?;
         let result_ty = self.parse_type()?;
         self.consume(Define, "")?;
@@ -269,7 +269,7 @@ impl<'src> Parser<'src> {
 
         // Unary operations.
         if let Some(token) = self.match_tokens(&[Identity, Not]) {
-            let (_, arg, _) = self.consume_identifier(&[Local])?;
+            let (_, arg) = self.consume_local()?;
             self.consume(Semicolon, "")?;
             let operand =
                 prev_symbols.get(self.diag, &self.unit.identifiers, token.line_num, arg)?;
@@ -294,8 +294,8 @@ impl<'src> Parser<'src> {
             And,
             Or,
         ]) {
-            let (_, lhs, _) = self.consume_identifier(&[Local])?;
-            let (_, rhs, _) = self.consume_identifier(&[Local])?;
+            let (_, lhs) = self.consume_local()?;
+            let (_, rhs) = self.consume_local()?;
             self.consume(Semicolon, "")?;
             let lhs = prev_symbols.get(self.diag, &self.unit.identifiers, token.line_num, lhs)?;
             let rhs = prev_symbols.get(self.diag, &self.unit.identifiers, token.line_num, rhs)?;
@@ -313,21 +313,21 @@ impl<'src> Parser<'src> {
 
     fn parse_call(&mut self, result: Option<Variable>, symbols: &SymbolTable) -> Option<Operation> {
         let token = self.consume(Call, "")?;
-        let (_, id, _) = self.consume_identifier(&[Global])?;
-        let func = self
-            .unit
-            .globals
-            .get(self.diag, &self.unit.identifiers, token.line_num, id)?;
+        let (_, id) = self.consume_global()?;
+        let callee =
+            self.unit
+                .globals
+                .get(self.diag, &self.unit.identifiers, token.line_num, id)?;
         let mut args = Vec::new();
         while !self.check(Semicolon) {
-            let (_, arg, _) = self.consume_identifier(&[Local])?;
+            let (_, arg) = self.consume_local()?;
             let var = symbols.get(self.diag, &self.unit.identifiers, token.line_num, arg)?;
             args.push(var);
         }
         self.consume(Semicolon, "")?;
         Some(Operation::Call {
             token,
-            callee: func,
+            callee,
             result,
             args,
         })
@@ -381,27 +381,32 @@ impl<'src> Parser<'src> {
         None
     }
 
-    fn consume_identifier(
-        &mut self,
-        expected: &[IdentifierType],
-    ) -> Option<(Token, Identifier, IdentifierType)> {
-        if let Id(id) = self.peek().value {
+    fn consume_local(&mut self) -> Option<(Token, Identifier)> {
+        if let Local(id) = self.peek().value {
             let token = self.advance();
-            let id_type = match self.unit.identifiers.get_name(id).chars().next().unwrap() {
-                '.' => Label,
-                '@' => Global,
-                _ => Local,
-            };
-
-            if !expected.iter().any(|&t| t == id_type) {
-                // TODO: better error message.
-                self.error(self.peek(), "Unexpected identifier type.");
-                return None;
-            }
-
-            return Some((token, id, id_type));
+            return Some((token, id));
         }
-        self.error(self.peek(), "Identifier expected.");
+        self.error(self.peek(), "Local identifier expected.");
+        None
+    }
+
+    fn consume_global(&mut self) -> Option<(Token, Identifier)> {
+        if let Global(id) = self.peek().value {
+            let token = self.advance();
+            return Some((token, id));
+        }
+        self.error(self.peek(), "Global identifier expected.");
+        None
+    }
+
+    fn consume_label(&mut self, err: bool) -> Option<(Token, Identifier)> {
+        if let Label(id) = self.peek().value {
+            let token = self.advance();
+            return Some((token, id));
+        }
+        if err {
+            self.error(self.peek(), "Label identifier expected.");
+        }
         None
     }
 

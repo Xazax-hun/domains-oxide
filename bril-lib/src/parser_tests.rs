@@ -132,7 +132,10 @@ fn parse_syntactic_errors() {
 
     let source = r"@main(";
     let err = parse_string(source).expect_err("");
-    assert_eq!(err, "[line 1] Error at end of file: Identifier expected.\n");
+    assert_eq!(
+        err,
+        "[line 1] Error at end of file: Local identifier expected.\n"
+    );
 
     let source = r"@main(x";
     let err = parse_string(source).expect_err("");
@@ -148,7 +151,10 @@ fn parse_syntactic_errors() {
 
     let source = r"@main(x: int,";
     let err = parse_string(source).expect_err("");
-    assert_eq!(err, "[line 1] Error at end of file: Identifier expected.\n");
+    assert_eq!(
+        err,
+        "[line 1] Error at end of file: Local identifier expected.\n"
+    );
 
     let source = r"@main(x: int)";
     let err = parse_string(source).expect_err("");
@@ -165,13 +171,19 @@ fn parse_syntactic_errors() {
     // TODO: better error message.
     let source = r"@main(x: int) {";
     let err = parse_string(source).expect_err("");
-    assert_eq!(err, "[line 1] Error at end of file: Identifier expected.\n");
+    assert_eq!(
+        err,
+        "[line 1] Error at end of file: Local identifier expected.\n"
+    );
 
     // TODO: better error message, what if the next token should be ';'?
     let source = r"@main(x: int) {
       ret";
     let err = parse_string(source).expect_err("");
-    assert_eq!(err, "[line 2] Error at end of file: Identifier expected.\n");
+    assert_eq!(
+        err,
+        "[line 2] Error at end of file: Local identifier expected.\n"
+    );
 
     let source = r"@main(x: int): int {
       ret x";
@@ -226,7 +238,10 @@ fn parse_identifier_errors() {
   call x;
 }";
     let err = parse_string(source).expect_err("");
-    assert_eq!(err, "[line 2] Error at ';': Unexpected identifier type.\n");
+    assert_eq!(
+        err,
+        "[line 2] Error at 'local_1': Global identifier expected.\n"
+    );
 
     let source = r"@main {
   x: int = add .x .y;
@@ -234,7 +249,7 @@ fn parse_identifier_errors() {
     let err = parse_string(source).expect_err("");
     assert_eq!(
         err,
-        "[line 2] Error at 'ident_3': Unexpected identifier type.\n"
+        "[line 2] Error at 'label_2': Local identifier expected.\n"
     );
 
     // TODO: better error location.
@@ -242,7 +257,10 @@ fn parse_identifier_errors() {
   ret;
 }";
     let err = parse_string(source).expect_err("");
-    assert_eq!(err, "[line 1] Error at '{': Unexpected identifier type.\n");
+    assert_eq!(
+        err,
+        "[line 1] Error at 'local_0': Global identifier expected.\n"
+    );
 }
 
 #[test]
