@@ -146,6 +146,11 @@ impl<'src> Parser<'src> {
             if prev != self.current_block {
                 cfg.extend_block(prev, ops.iter());
                 ops.clear();
+            } else if let Some(prev_op) = ops.last() {
+                if prev_op.is_terminator() {
+                    self.error(op.get_token(), "Basic block must start with a label.");
+                    return None;
+                }
             }
             ops.push(op);
         }
@@ -426,15 +431,13 @@ impl<'src> Parser<'src> {
 
     fn analyze(&mut self, cfg: &Cfg) -> Option<()> {
         for block in cfg.blocks() {
-            match block.operations().last()? {
-                Operation::Branch { .. } | Operation::Jump(_, _) | Operation::Ret(_, _) => (),
-                op => {
-                    self.error(
-                        op.get_token(),
-                        "Block terminator expected to be jump, br, or ret.",
-                    );
-                    return None;
-                }
+            let op = block.operations().last()?;
+            if !op.is_terminator() {
+                self.error(
+                    op.get_token(),
+                    "Block terminator expected to be jump, br, or ret.",
+                );
+                return None;
             };
             for op in block.operations() {
                 match op.clone() {

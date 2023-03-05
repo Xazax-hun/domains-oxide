@@ -101,6 +101,11 @@ impl Operation {
             | Const(token, _) => *token,
         }
     }
+
+    pub fn is_terminator(&self) -> bool {
+        use Operation::*;
+        matches!(self, Branch { .. } | Jump(_, _) | Ret(_, _))
+    }
 }
 
 /// The last operation is a terminator:

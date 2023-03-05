@@ -374,10 +374,36 @@ fn parse_type_errors() {
     );
 }
 
-// TODO: implement and test more error cases:
-// * Last operation of block is not a terminator.
-// * Basic block starts without a label.
-// * Ban x: int = add x x;
+#[test]
+fn parse_misc_errors() {
+    let source = r"
+@main {
+  v: int = const 5;
+.then:
+  ret;
+.else:
+  ret;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(
+        err,
+        "[line 3] Error at '5': Block terminator expected to be jump, br, or ret.\n"
+    );
+
+    let source = r"
+@main {
+  v: int = const 5;
+  jmp .else;
+  ret;
+.else:
+  ret;
+}";
+    let err = parse_string(source).expect_err("");
+    assert_eq!(
+        err,
+        "[line 5] Error at 'ret': Basic block must start with a label.\n"
+    );
+}
 
 // TODO: support and test when use is before def lexically.
 // TODO: support any function definition order.
