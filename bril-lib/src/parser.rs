@@ -2,7 +2,7 @@ use analysis::cfg::{BlockMutableCfg, CfgBlock, ControlFlowGraph, MutableCfg};
 use utils::DiagnosticEmitter;
 
 use crate::{
-    ir::{self, *},
+    ir::*,
     lexer::{Identifier, LexResult, Token, TokenValue},
 };
 
@@ -32,7 +32,7 @@ impl<'src> Parser<'src> {
         }
     }
 
-    pub fn parse(mut self) -> Option<ir::Unit> {
+    pub fn parse(mut self) -> Option<Unit> {
         while !self.is_at_end() {
             let cfg = self.parse_function()?;
             self.analyze(&cfg)?;
@@ -467,8 +467,8 @@ impl<'src> Parser<'src> {
                             self.expect_type(token, rhs.ty, Type::Bool)?;
                         }
                         Equal => {
-                            self.expect_type(token, lhs.ty, result.ty)?;
-                            self.expect_type(token, rhs.ty, result.ty)?;
+                            self.expect_type(token, rhs.ty, lhs.ty)?;
+                            self.expect_type(token, result.ty, Type::Bool)?;
                         }
                         _ => panic!("Unexpected binary operator."),
                     },

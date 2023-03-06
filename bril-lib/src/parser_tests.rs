@@ -47,9 +47,9 @@ fn parse_single_function() -> Result<(), String> {
 fn parse_multiple_functions() -> Result<(), String> {
     let source = r"
 @mul(x: int, y: int): int {
-    w: int = mul x y;
-    print w;
-    ret w;
+  w: int = mul x y;
+  print w;
+  ret w;
 }
     
 @main(): int {

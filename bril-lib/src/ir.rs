@@ -205,8 +205,17 @@ impl Cfg {
         }
     }
 
-    pub fn get_function(&self) -> Token {
+    pub fn get_function_token(&self) -> Token {
         self.function
+    }
+
+    pub fn get_function(&self) -> Identifier {
+        let tok = self.get_function_token();
+        let TokenValue::Global(id) = tok.value
+        else {
+            panic!("Unexpected function name.");
+        };
+        id
     }
 
     pub fn get_type<'ctx>(&self, unit: &'ctx Unit) -> &'ctx FunctionType {

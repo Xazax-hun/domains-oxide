@@ -182,10 +182,17 @@ impl core::fmt::Display for Token {
 pub struct IdentifierTable(pub Vec<String>);
 
 impl IdentifierTable {
-    pub fn get_identifier(&mut self, ident: &str) -> Identifier {
+    pub fn lookup(&self, ident: &str) -> Option<Identifier> {
         // TODO: more efficient lookup.
-        if let Some(pos) = self.0.iter().position(|str| str == ident) {
-            Identifier(pos)
+        self.0
+            .iter()
+            .position(|str| str == ident)
+            .map(|pos| Identifier(pos))
+    }
+
+    pub fn get_identifier(&mut self, ident: &str) -> Identifier {
+        if let Some(id) = self.lookup(ident) {
+            id
         } else {
             self.0.push(ident.to_owned());
             Identifier(self.0.len() - 1)
