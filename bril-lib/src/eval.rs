@@ -26,22 +26,20 @@ impl Display for Value {
 
 impl Value {
     pub fn as_int(self, diag: &mut DiagnosticEmitter) -> Option<i32> {
-        match self {
-            Value::I(i) => Some(i),
-            _ => {
-                diag.err("Integer expected.");
-                None
-            }
+        if let Value::I(i) = self {
+            Some(i)
+        } else {
+            diag.err("Integer expected.");
+            None
         }
     }
 
     pub fn as_bool(self, diag: &mut DiagnosticEmitter) -> Option<bool> {
-        match self {
-            Value::B(b) => Some(b),
-            _ => {
-                diag.err("Bool expected.");
-                None
-            }
+        if let Value::B(b) = self {
+            Some(b)
+        } else {
+            diag.err("Bool expected.");
+            None
         }
     }
 }
@@ -113,11 +111,9 @@ impl<'u> Interpreter<'u> {
             match formal.ty {
                 Type::Int => {
                     val.as_int(self.diag)?;
-                    ()
                 }
                 Type::Bool => {
                     val.as_bool(self.diag)?;
-                    ()
                 }
                 Type::Void | Type::Fn(_) => panic!("Unexpected type."),
             };
@@ -151,7 +147,7 @@ impl<'u> Interpreter<'u> {
                         rhs,
                     } => {
                         let result_val = self.eval_binary_op(*token, *lhs, *rhs)?;
-                        self.env.set_local(result.id, result_val)
+                        self.env.set_local(result.id, result_val);
                     }
                     Operation::UnaryOp {
                         token,
@@ -159,7 +155,7 @@ impl<'u> Interpreter<'u> {
                         operand,
                     } => {
                         let result_val = self.eval_unary_op(*token, *operand)?;
-                        self.env.set_local(result.id, result_val)
+                        self.env.set_local(result.id, result_val);
                     }
                     Operation::Jump(_, _) => {
                         assert_eq!(1, block.successors().len());
@@ -188,7 +184,7 @@ impl<'u> Interpreter<'u> {
                     }
                     Operation::Print(_, var) => {
                         let val = self.env.lookup(var.id, self.diag, self.unit)?;
-                        self.diag.out(&format!("{}\n", val));
+                        self.diag.out(&format!("{val}\n"));
                     }
                     Operation::Nop(_) => continue,
                     Operation::Const(tok, res) => {

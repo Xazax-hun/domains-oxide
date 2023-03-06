@@ -184,10 +184,7 @@ pub struct IdentifierTable(pub Vec<String>);
 impl IdentifierTable {
     pub fn lookup(&self, ident: &str) -> Option<Identifier> {
         // TODO: more efficient lookup.
-        self.0
-            .iter()
-            .position(|str| str == ident)
-            .map(|pos| Identifier(pos))
+        self.0.iter().position(|str| str == ident).map(Identifier)
     }
 
     pub fn get_identifier(&mut self, ident: &str) -> Identifier {
