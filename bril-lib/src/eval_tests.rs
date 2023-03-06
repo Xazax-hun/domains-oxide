@@ -88,3 +88,32 @@ fn eval_test_control_flow() -> Result<(), String> {
 
     Ok(())
 }
+
+#[test]
+fn eval_function_call() -> Result<(), String> {
+    let source = r"@fact(y: int): int {
+  base: int = const 1;
+  cond: bool = le y base;
+  br cond .base .rec;
+
+.base:
+  res: int = const 1;
+  ret res;
+
+.rec:
+  one: int = const 1;
+  dec: int = sub y one;
+  res: int = call @fact dec;
+  res: int = mul y res;
+  ret res;
+}
+    
+@main(x: int): int { 
+  res: int = call @fact x;
+  ret res;
+}";
+    let (result, _) = eval_string(source, &[Value::I(5)])?;
+    assert_eq!(result, Value::I(120));
+
+    Ok(())
+}

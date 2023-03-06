@@ -93,11 +93,7 @@ impl<'u> Interpreter<'u> {
             self.diag.err("'@main' function not found.");
             return None;
         };
-        let main = self
-            .unit
-            .functions
-            .iter()
-            .find(|&cfg| cfg.get_function() == func)?;
+        let main = self.unit.get_function(func)?;
         let formals = main.get_formals();
         if formals.len() != args.len() {
             self.diag.err(&format!(
@@ -128,7 +124,7 @@ impl<'u> Interpreter<'u> {
         for formal in cfg.get_formals() {
             if !self.env.locals.contains_key(&formal.id) {
                 self.diag.err(&format!(
-                    "No value set for formal '{}'",
+                    "No value set for formal '{}'.",
                     self.unit.identifiers.get_name(formal.id)
                 ));
                 return None;
@@ -169,15 +165,41 @@ impl<'u> Interpreter<'u> {
                             Value::B(false) => current_block = block.successors()[1],
                             Value::I(_) => {
                                 self.diag.err(&format!(
-                                    "Unexpected value for '{}'",
+                                    "Unexpected value for '{}'.",
                                     self.unit.identifiers.get_name(cond.id)
                                 ));
                             }
                         }
                         break;
                     }
-                    Operation::Call { .. } => {
-                        todo!()
+                    Operation::Call {
+                        callee,
+                        result,
+                        args,
+                        ..
+                    } => {
+                        let Some(cfg) = self.unit.get_function(callee.id)
+                        else {
+                            self.diag.err(&format!("Function '{}' not found.", self.unit.identifiers.get_name(callee.id)));
+                            return None;
+                        };
+                        let mut vals = Vec::new();
+                        for arg in args {
+                            vals.push(self.env.lookup(arg.id, self.diag, self.unit)?);
+                        }
+                        let mut sub_interp = Interpreter::new(self.unit, self.diag);
+                        for (arg, val) in cfg.get_formals().iter().zip(vals) {
+                            sub_interp.env.set_local(arg.id, val);
+                        }
+                        let returned = sub_interp.eval_func(cfg);
+                        if let Some(res) = result {
+                            let Some(returned_unwrapped) = returned
+                            else {
+                                self.diag.err("Function failed to return a value.");
+                                return None;
+                            };
+                            self.env.set_local(res.id, returned_unwrapped);
+                        }
                     }
                     Operation::Ret(_, res) => {
                         return res.and_then(|var| self.env.lookup(var.id, self.diag, self.unit));

@@ -332,6 +332,14 @@ pub struct Unit {
     pub globals: SymbolTable,
 }
 
+impl Unit {
+    pub fn get_function(&self, func: Identifier) -> Option<&Cfg> {
+        self.functions
+            .iter()
+            .find(|&cfg| cfg.get_function() == func)
+    }
+}
+
 pub fn print_operation(op: &Operation, unit: &Unit) -> String {
     let get_name = |var: &Variable| unit.identifiers.get_name(var.id);
     let get_label_name = |&l: &Identifier| unit.identifiers.get_name(l);
