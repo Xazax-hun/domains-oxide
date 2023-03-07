@@ -6,7 +6,7 @@ use utils::DiagnosticEmitter;
 
 use crate::{
     ir::*,
-    lexer::{Identifier, Token, *},
+    lexer::{Identifier, Token, TokenValue},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -29,7 +29,7 @@ impl Value {
         if let Value::I(i) = self {
             Some(i)
         } else {
-            diag.err("Integer expected.");
+            diag.err_ln("Integer expected.");
             None
         }
     }
@@ -38,7 +38,7 @@ impl Value {
         if let Value::B(b) = self {
             Some(b)
         } else {
-            diag.err("Bool expected.");
+            diag.err_ln("Bool expected.");
             None
         }
     }
@@ -63,7 +63,7 @@ impl Environment {
         if let Some(&val) = self.locals.get(&id) {
             Some(val)
         } else {
-            diag.err(&format!(
+            diag.err_ln(&format!(
                 "Undefined value '{}'.",
                 unit.identifiers.get_name(id)
             ));
@@ -90,13 +90,13 @@ impl<'u> Interpreter<'u> {
     pub fn eval_main(&mut self, args: &[Value]) -> Option<Value> {
         let Some(func) = self.unit.identifiers.lookup("@main")
         else {
-            self.diag.err("'@main' function not found.");
+            self.diag.err_ln("'@main' function not found.");
             return None;
         };
         let main = self.unit.get_function(func)?;
         let formals = main.get_formals();
         if formals.len() != args.len() {
-            self.diag.err(&format!(
+            self.diag.err_ln(&format!(
                 "{} arguments expected; '{}' given.",
                 formals.len(),
                 args.len()
@@ -123,7 +123,7 @@ impl<'u> Interpreter<'u> {
     pub fn eval_func(&mut self, cfg: &Cfg) -> Option<Value> {
         for formal in cfg.get_formals() {
             if !self.env.locals.contains_key(&formal.id) {
-                self.diag.err(&format!(
+                self.diag.err_ln(&format!(
                     "No value set for formal '{}'.",
                     self.unit.identifiers.get_name(formal.id)
                 ));
@@ -164,7 +164,7 @@ impl<'u> Interpreter<'u> {
                             Value::B(true) => current_block = block.successors()[0],
                             Value::B(false) => current_block = block.successors()[1],
                             Value::I(_) => {
-                                self.diag.err(&format!(
+                                self.diag.err_ln(&format!(
                                     "Unexpected value for '{}'.",
                                     self.unit.identifiers.get_name(cond.id)
                                 ));
@@ -180,7 +180,7 @@ impl<'u> Interpreter<'u> {
                     } => {
                         let Some(cfg) = self.unit.get_function(callee.id)
                         else {
-                            self.diag.err(&format!("Function '{}' not found.", self.unit.identifiers.get_name(callee.id)));
+                            self.diag.err_ln(&format!("Function '{}' not found.", self.unit.identifiers.get_name(callee.id)));
                             return None;
                         };
                         let mut vals = Vec::new();
@@ -195,7 +195,7 @@ impl<'u> Interpreter<'u> {
                         if let Some(res) = result {
                             let Some(returned_unwrapped) = returned
                             else {
-                                self.diag.err("Function failed to return a value.");
+                                self.diag.err_ln("Function failed to return a value.");
                                 return None;
                             };
                             self.env.set_local(res.id, returned_unwrapped);
@@ -239,7 +239,7 @@ impl<'u> Interpreter<'u> {
             TokenValue::Div => {
                 let rhs_val = rhs_val.as_int(self.diag)?;
                 if rhs_val == 0 {
-                    self.diag.err("Division by zero.");
+                    self.diag.err_ln("Division by zero.");
                     return None;
                 }
                 Some(Value::I(lhs_val.as_int(self.diag)? / rhs_val))
@@ -267,7 +267,7 @@ impl<'u> Interpreter<'u> {
                 lhs_val.as_bool(self.diag)? || rhs_val.as_bool(self.diag)?,
             )),
             _ => {
-                self.diag.err("Unexpected binary operator.");
+                self.diag.err_ln("Unexpected binary operator.");
                 None
             }
         }
@@ -279,7 +279,7 @@ impl<'u> Interpreter<'u> {
             TokenValue::Not => Some(Value::B(!operand.as_bool(self.diag)?)),
             TokenValue::Identity => Some(operand),
             _ => {
-                self.diag.err("Unexpected unary operator.");
+                self.diag.err_ln("Unexpected unary operator.");
                 None
             }
         }

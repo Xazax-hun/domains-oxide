@@ -32,6 +32,11 @@ impl DiagnosticEmitter {
             .expect("Failed to write to error buffer.");
     }
 
+    pub fn err_ln(&mut self, msg: &str) {
+        self.err(msg);
+        self.err("\n");
+    }
+
     pub fn out_buffer(&self) -> &str {
         core::str::from_utf8(self.out.buffer()).expect("Failed to create string from bytes.")
     }

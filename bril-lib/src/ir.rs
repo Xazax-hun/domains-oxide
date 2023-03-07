@@ -1,5 +1,5 @@
 use core::fmt::Display;
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::HashMap;
 use utils::DiagnosticEmitter;
 
 use crate::lexer::{Identifier, IdentifierTable, Location, Token, TokenValue};
@@ -34,7 +34,7 @@ impl Display for Type {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionType {
     pub ret: Type,
     pub formals: Vec<Type>,
@@ -276,67 +276,42 @@ impl SymbolTable {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct LabelsToBlocks(HashMap<Identifier, usize>);
-
-impl LabelsToBlocks {
-    pub fn insert(
-        &mut self,
-        diag: &mut DiagnosticEmitter,
-        ids: &IdentifierTable,
-        loc: Location,
-        label: Identifier,
-        block: usize,
-    ) -> Option<()> {
-        match self.0.entry(label) {
-            Entry::Occupied(_) => {
-                diag.report(
-                    loc.0,
-                    &format!("at '{}'", ids.get_name(label)),
-                    "Duplicate label found.",
-                );
-                None
-            }
-            Entry::Vacant(v) => {
-                v.insert(block);
-                Some(())
-            }
-        }
-    }
-
-    pub fn get(
-        &self,
-        diag: &mut DiagnosticEmitter,
-        ids: &IdentifierTable,
-        loc: Location,
-        label: Identifier,
-    ) -> Option<usize> {
-        match self.0.get(&label).copied() {
-            None => {
-                diag.error(
-                    loc.0,
-                    &format!("Branch target '{}' is missing", ids.get_name(label)),
-                );
-                None
-            }
-            res => res,
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct Unit {
     pub functions: Vec<Cfg>,
-    pub function_types: Vec<FunctionType>, // TODO: deduplicate.
     pub identifiers: IdentifierTable,
     pub globals: SymbolTable,
+    function_types: Vec<FunctionType>,
 }
 
 impl Unit {
+    pub fn new(identifiers: IdentifierTable) -> Self {
+        Self {
+            functions: Vec::new(),
+            identifiers,
+            globals: SymbolTable::default(),
+            function_types: Vec::new(),
+        }
+    }
+
     pub fn get_function(&self, func: Identifier) -> Option<&Cfg> {
         self.functions
             .iter()
             .find(|&cfg| cfg.get_function() == func)
+    }
+
+    pub fn add_function_type(&mut self, ty: FunctionType) -> Type {
+        // TODO: make this more efficient
+        if let Some(pos) = self
+            .function_types
+            .iter()
+            .position(|existing| *existing == ty)
+        {
+            Type::Fn(pos)
+        } else {
+            self.function_types.push(ty);
+            Type::Fn(self.function_types.len() - 1)
+        }
     }
 }
 

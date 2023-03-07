@@ -187,7 +187,7 @@ impl IdentifierTable {
         self.0.iter().position(|str| str == ident).map(Identifier)
     }
 
-    pub fn get_identifier(&mut self, ident: &str) -> Identifier {
+    fn get_identifier(&mut self, ident: &str) -> Identifier {
         if let Some(id) = self.lookup(ident) {
             id
         } else {

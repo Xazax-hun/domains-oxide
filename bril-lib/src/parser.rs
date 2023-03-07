@@ -1,9 +1,11 @@
+use std::collections::{hash_map::Entry, HashMap};
+
 use analysis::cfg::{BlockMutableCfg, CfgBlock, ControlFlowGraph, MutableCfg};
 use utils::DiagnosticEmitter;
 
 use crate::{
     ir::*,
-    lexer::{Identifier, LexResult, Token, TokenValue},
+    lexer::{Identifier, IdentifierTable, LexResult, Location, Token, TokenValue},
 };
 
 pub struct Parser<'src> {
@@ -22,12 +24,7 @@ impl<'src> Parser<'src> {
             current_tok: 0,
             current_block: 0,
             tokens: lexed.tokens,
-            unit: Unit {
-                functions: Vec::new(),
-                function_types: Vec::new(),
-                globals: SymbolTable::default(),
-                identifiers: lexed.identifiers,
-            },
+            unit: Unit::new(lexed.identifiers),
             diag,
         }
     }
@@ -59,8 +56,7 @@ impl<'src> Parser<'src> {
             ret,
             formals: formals.iter().map(|v| v.ty).collect(),
         };
-        self.unit.function_types.push(func_ty);
-        let func_ty = Type::Fn(self.unit.function_types.len() - 1);
+        let func_ty = self.unit.add_function_type(func_ty);
         self.unit.globals.insert(
             self.diag,
             &self.unit.identifiers,
@@ -555,5 +551,53 @@ impl<'src> Parser<'src> {
             }
         }
         Some(())
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct LabelsToBlocks(HashMap<Identifier, usize>);
+
+impl LabelsToBlocks {
+    fn insert(
+        &mut self,
+        diag: &mut DiagnosticEmitter,
+        ids: &IdentifierTable,
+        loc: Location,
+        label: Identifier,
+        block: usize,
+    ) -> Option<()> {
+        match self.0.entry(label) {
+            Entry::Occupied(_) => {
+                diag.report(
+                    loc.0,
+                    &format!("at '{}'", ids.get_name(label)),
+                    "Duplicate label found.",
+                );
+                None
+            }
+            Entry::Vacant(v) => {
+                v.insert(block);
+                Some(())
+            }
+        }
+    }
+
+    fn get(
+        &self,
+        diag: &mut DiagnosticEmitter,
+        ids: &IdentifierTable,
+        loc: Location,
+        label: Identifier,
+    ) -> Option<usize> {
+        match self.0.get(&label).copied() {
+            None => {
+                diag.error(
+                    loc.0,
+                    &format!("Branch target '{}' is missing", ids.get_name(label)),
+                );
+                None
+            }
+            res => res,
+        }
     }
 }
