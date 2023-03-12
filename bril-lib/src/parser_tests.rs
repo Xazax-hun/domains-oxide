@@ -6,7 +6,7 @@ use super::parser::*;
 use analysis::cfg::OpPos;
 use utils::DiagnosticEmitter;
 
-fn parse_string(source: &str) -> Result<Unit, String> {
+pub fn parse_string(source: &str) -> Result<Unit, String> {
     let mut diag = DiagnosticEmitter::new(Box::new(Vec::new()), Box::new(Vec::new()));
     let lexer = Lexer::new(source, &mut diag);
     let tokens = lexer.lex_all();
@@ -41,7 +41,7 @@ fn parse_single_function() -> Result<(), String> {
 }
 "#;
     let unit = parse_string(source)?;
-    let printed = print(&unit, &Annotations::default());
+    let printed = print(&unit, &AnnotationMap::default());
     assert_eq!(printed, source);
     let printed_dot = print_dot(&unit);
     assert_eq!(printed_dot, expected);
@@ -75,7 +75,7 @@ digraph "@main" {
 }
 "#;
     let unit = parse_string(source)?;
-    let printed = print(&unit, &Annotations::default());
+    let printed = print(&unit, &AnnotationMap::default());
     assert_eq!(printed, source);
     let printed_dot = print_dot(&unit);
     assert_eq!(printed_dot, expected);
@@ -109,7 +109,7 @@ fn parse_multiple_blocks() -> Result<(), String> {
 }
 "#;
     let unit = parse_string(source)?;
-    let printed = print(&unit, &Annotations::default());
+    let printed = print(&unit, &AnnotationMap::default());
     assert_eq!(printed, source);
     let printed_dot = print_dot(&unit);
     assert_eq!(printed_dot, expected);
@@ -472,7 +472,8 @@ fn print_annotations() -> Result<(), String> {
             vec!["Baz".to_owned()],
         )]),
     };
-    let printed = print(&unit, &ann);
+    let map = AnnotationMap::from([(unit.identifiers.lookup("@main").unwrap(), ann)]);
+    let printed = print(&unit, &map);
     assert_eq!(printed, expected);
 
     Ok(())

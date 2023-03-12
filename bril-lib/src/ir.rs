@@ -483,10 +483,14 @@ pub fn print_dot(unit: &Unit) -> String {
     result
 }
 
-pub fn print(unit: &Unit, anns: &Annotations) -> String {
+pub type AnnotationMap = HashMap<Identifier, Annotations>;
+
+pub fn print(unit: &Unit, anns: &AnnotationMap) -> String {
     let mut result = String::new();
+    let default = Annotations::default();
     for cfg in &unit.functions {
-        result.push_str(&print_cfg(cfg, unit, anns));
+        let ann = anns.get(&cfg.get_function()).unwrap_or(&default);
+        result.push_str(&print_cfg(cfg, unit, ann));
         result.push('\n');
     }
     result.pop();
