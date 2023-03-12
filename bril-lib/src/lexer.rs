@@ -285,6 +285,10 @@ impl<'src> Lexer<'src> {
                 ' ' | '\t' | '\r' => continue,
 
                 // Comments
+                '#' => {
+                    while self.advance() != '\n' && !self.is_at_end() {}
+                    continue;
+                }
                 '/' => {
                     if self.match_char('/') {
                         while self.advance() != '\n' && !self.is_at_end() {}

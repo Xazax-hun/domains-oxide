@@ -96,14 +96,18 @@ fn test_comments() {
     let LexTestResult { output, result } =
         lex_string("0 // the rest is ignored\n\n//so is this\n  // and this");
     let expected = vec![Integer(0), EndOfFile];
+    assert_eq!(to_token_values(result.tokens), expected);
+    assert_eq!(output, "");
 
+    let LexTestResult { output, result } =
+        lex_string("0 # the rest is ignored\n\n#so is this\n  # and this");
+    let expected = vec![Integer(0), EndOfFile];
     assert_eq!(to_token_values(result.tokens), expected);
     assert_eq!(output, "");
 
     let LexTestResult { output, result } =
         lex_string("/* foo */ 0 /* the rest * is */  /* ignored\n\n so is this\n  // and this */");
     let expected = vec![Integer(0), EndOfFile];
-
     assert_eq!(to_token_values(result.tokens), expected);
     assert_eq!(output, "");
 }
