@@ -1,6 +1,6 @@
 [package]
-name = "transform-driver"
-description = "Executable for a toy language to help experiment with static analysis"
+name = "bril-driver"
+description = "Executable for parsing and analyzing the Bril IR (https://github.com/sampsyo/bril)"
 repository = "https://github.com/Xazax-hun/domains-oxide"
 readme = "../README.md"
 license = "Apache-2.0"
@@ -8,11 +8,10 @@ keywords = ["compiler", "interpreter", "static analysis", "program analysis", "l
 categories = ["compilers", "command-line-utilities", "development-tools"]
 version = "0.1.0"
 edition = "2021"
-default-run = "transform-driver"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 clap = { version = "4.0.18", features = ["derive"] }
 utils = { path = "../utils"}
-transform-lib = { path = "../transform-lib"}
+bril-lib = { path = "../bril-lib"}

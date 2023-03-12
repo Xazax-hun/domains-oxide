@@ -1,0 +1,18 @@
+@main(x: int): int { 
+  res: int = const 1;
+  i: int = const 0;
+  jmp .test;
+
+.test:
+  cond: bool = lt i x;
+  br cond .loop .done;
+
+.loop:
+  one: int = const 1;
+  i: int = add i one;
+  res: int = mul res i;
+  jmp .test;
+
+.done:
+  ret res;
+}

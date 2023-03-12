@@ -2,6 +2,7 @@
 
 members = [
   "analysis",
+  "bril-driver",
   "bril-lib",
   "transform-driver",
   "transform-lib",

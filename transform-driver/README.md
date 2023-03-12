@@ -22,7 +22,7 @@ iter {
 ```
 
 Running `./transform-driver example.tr --svg --executions 3` will output the SVG to the standard output
-that visualizes some execution traces of the program. Alternatively, once can do
+that visualizes some execution traces of the program. Alternatively, one can do
 `cargo run -- example.tr --svg --executions 3` instead.
 An execution is defined as a random walk of the control flow graph.
 
