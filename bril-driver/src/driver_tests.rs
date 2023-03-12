@@ -20,7 +20,6 @@ fn simple_execution() {
     assert_eq!(output, expected);
 }
 
-
 #[test]
 fn cfg_dump() {
     let source = r"@main {
@@ -35,7 +34,10 @@ fn cfg_dump() {
 
 5
 "#;
-    let opts = Opt { dump_cfg: true, ..Opt::default()};
+    let opts = Opt {
+        dump_cfg: true,
+        ..Opt::default()
+    };
     let output = run_driver(source, opts).unwrap();
     assert_eq!(output, expected);
 }
