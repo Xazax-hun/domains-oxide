@@ -11,5 +11,5 @@ The framework include:
 * Fixed-point iteration-based solvers
 
 For more details, look at the documentation of the `analysis` crate.
-For examples, look at the [transform language documentation](transform-driver/README.md)
-and its source code.
+For examples, look at the [transform language](transform-driver/README.md)
+and [Bril](bril-driver/README.md) analyzers.
