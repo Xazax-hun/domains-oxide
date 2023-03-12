@@ -157,8 +157,7 @@ pub fn annotate_with_walks(walks: &[Walk]) -> Annotations {
 
     let mut anns = Annotations::new();
     for (&op, pos) in &collected_steps {
-        anns.post_annotations
-            .insert(Node::Operation(op), vec![print_set(pos)]);
+        anns.post.insert(Node::Operation(op), vec![print_set(pos)]);
     }
 
     anns

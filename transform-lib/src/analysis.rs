@@ -75,9 +75,7 @@ where
         &D,
     ) -> D,
 {
-    annotations_from_analysis_results(cfg, lat_ctx, transfer, result, &mut |anns| {
-        &mut anns.post_annotations
-    })
+    annotations_from_analysis_results(cfg, lat_ctx, transfer, result, &mut |anns| &mut anns.post)
 }
 
 pub fn annotations_from_backward_analysis_results<D, F>(
@@ -95,9 +93,7 @@ where
         &D,
     ) -> D,
 {
-    annotations_from_analysis_results(cfg, lat_ctx, transfer, result, &mut |anns| {
-        &mut anns.pre_annotations
-    })
+    annotations_from_analysis_results(cfg, lat_ctx, transfer, result, &mut |anns| &mut anns.pre)
 }
 
 fn annotations_from_analysis_results<D, F, G>(

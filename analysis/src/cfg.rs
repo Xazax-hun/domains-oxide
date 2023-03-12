@@ -99,6 +99,12 @@ pub fn reverse_in_place<Cfg: BlockMutableCfg>(cfg: &Cfg, empty: &mut Cfg) {
 
 // TODO: add other helpers like cleaning up unreachable nodes.
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct OpPos {
+    pub block_id: usize,
+    pub op_id: usize,
+}
+
 /// Print the control flow graph in dot language that can be rendered
 /// as a picture using graphviz. The `printer` is responsible for
 /// rendering the individual operations and it has to do its own
@@ -106,20 +112,25 @@ pub fn reverse_in_place<Cfg: BlockMutableCfg>(cfg: &Cfg, empty: &mut Cfg) {
 pub fn print<Cfg, OpPrinter>(name: Option<&str>, cfg: &Cfg, printer: OpPrinter) -> String
 where
     Cfg: ControlFlowGraph,
-    OpPrinter: Fn(&<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation) -> String,
+    OpPrinter: Fn(OpPos, &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation) -> String,
 {
     let mut output = format!("digraph {} {{\n", name.unwrap_or("CFG"));
-    for (counter, block) in cfg.blocks().iter().enumerate() {
-        write!(output, "  Node_{counter}[label=\"").unwrap();
+    for (block_id, block) in cfg.blocks().iter().enumerate() {
+        write!(output, "  Node_{block_id}[label=\"").unwrap();
         // TODO: add escaping.
-        let text: Vec<_> = block.operations().iter().map(&printer).collect();
+        let text: Vec<_> = block
+            .operations()
+            .iter()
+            .enumerate()
+            .map(|(op_id, op)| printer(OpPos { block_id, op_id }, op))
+            .collect();
         output.push_str(&text.join("\\n"));
         output.push_str("\"]\n");
     }
     output.push('\n');
-    for (counter, block) in cfg.blocks().iter().enumerate() {
+    for (block_id, block) in cfg.blocks().iter().enumerate() {
         for next in block.successors() {
-            writeln!(output, "  Node_{counter} -> Node_{next}").unwrap();
+            writeln!(output, "  Node_{block_id} -> Node_{next}").unwrap();
         }
     }
     output.push_str("}\n");

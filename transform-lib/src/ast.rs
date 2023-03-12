@@ -169,8 +169,8 @@ impl ASTContext {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Annotations {
-    pub pre_annotations: HashMap<Node, Vec<String>>,
-    pub post_annotations: HashMap<Node, Vec<String>>,
+    pub pre: HashMap<Node, Vec<String>>,
+    pub post: HashMap<Node, Vec<String>>,
 }
 
 impl Annotations {
@@ -265,9 +265,9 @@ impl<const PRE: bool> RenderAnnotations for IsPre<PRE> {
 }
 
 fn render_pre_annotations(n: Node, ann: &Annotations) -> String {
-    IsPre::<true>::render_annotations(n, &ann.pre_annotations)
+    IsPre::<true>::render_annotations(n, &ann.pre)
 }
 
 fn render_post_annotations(n: Node, ann: &Annotations) -> String {
-    IsPre::<false>::render_annotations(n, &ann.post_annotations)
+    IsPre::<false>::render_annotations(n, &ann.post)
 }

@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
 use super::ir::*;
 use super::lexer::*;
 use super::parser::*;
+use analysis::cfg::OpPos;
 use utils::DiagnosticEmitter;
 
 fn parse_string(source: &str) -> Result<Unit, String> {
@@ -38,7 +41,7 @@ fn parse_single_function() -> Result<(), String> {
 }
 "#;
     let unit = parse_string(source)?;
-    let printed = print(&unit);
+    let printed = print(&unit, &Annotations::default());
     assert_eq!(printed, source);
     let printed_dot = print_dot(&unit);
     assert_eq!(printed_dot, expected);
@@ -72,7 +75,7 @@ digraph "@main" {
 }
 "#;
     let unit = parse_string(source)?;
-    let printed = print(&unit);
+    let printed = print(&unit, &Annotations::default());
     assert_eq!(printed, source);
     let printed_dot = print_dot(&unit);
     assert_eq!(printed_dot, expected);
@@ -106,7 +109,7 @@ fn parse_multiple_blocks() -> Result<(), String> {
 }
 "#;
     let unit = parse_string(source)?;
-    let printed = print(&unit);
+    let printed = print(&unit, &Annotations::default());
     assert_eq!(printed, source);
     let printed_dot = print_dot(&unit);
     assert_eq!(printed_dot, expected);
@@ -436,6 +439,43 @@ fn parse_misc_errors() {
         err,
         "[line 5] Error at 'ret': Basic block must start with a label.\n"
     );
+}
+
+#[test]
+fn print_annotations() -> Result<(), String> {
+    let source = r"@main {
+  v: int = const 5;
+  print v;
+  ret;
+}
+";
+    let expected = r"@main {
+  /* Foo, Bar */ v: int = const 5;
+  print v; /* Baz */
+  ret;
+}
+";
+    let unit = parse_string(source)?;
+    let ann = Annotations {
+        pre: HashMap::from([(
+            OpPos {
+                block_id: 0,
+                op_id: 0,
+            },
+            vec!["Foo".to_owned(), "Bar".to_owned()],
+        )]),
+        post: HashMap::from([(
+            OpPos {
+                block_id: 0,
+                op_id: 1,
+            },
+            vec!["Baz".to_owned()],
+        )]),
+    };
+    let printed = print(&unit, &ann);
+    assert_eq!(printed, expected);
+
+    Ok(())
 }
 
 // TODO: support and test when use is before def lexically.

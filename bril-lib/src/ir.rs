@@ -315,79 +315,99 @@ impl Unit {
     }
 }
 
-pub fn print_operation(op: &Operation, unit: &Unit) -> String {
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Annotations {
+    pub pre: HashMap<OpPos, Vec<String>>,
+    pub post: HashMap<OpPos, Vec<String>>,
+}
+
+pub fn print_operation(pos: OpPos, op: &Operation, unit: &Unit, anns: &Annotations) -> String {
     let get_name = |var: &Variable| unit.identifiers.get_name(var.id);
     let get_label_name = |&l: &Identifier| unit.identifiers.get_name(l);
+    let mut printed = String::new();
+    if let Some(ann_list) = anns.pre.get(&pos) {
+        printed.push_str(&format!("/* {} */ ", ann_list.join(", ")));
+    }
     match op {
         Operation::BinaryOp {
             token,
             result,
             lhs,
             rhs,
-        } => format!(
+        } => printed.push_str(&format!(
             "{}: {} = {} {} {};",
             get_name(result),
             result.ty,
             token.value,
             get_name(lhs),
             get_name(rhs)
-        ),
+        )),
         Operation::UnaryOp {
             token,
             result,
             operand,
-        } => format!(
+        } => printed.push_str(&format!(
             "{}: {} = {} {};",
             get_name(result),
             result.ty,
             token.value,
             get_name(operand)
-        ),
+        )),
         Operation::Branch {
             cond, then, els, ..
-        } => format!(
+        } => printed.push_str(&format!(
             "br {} {} {};",
             get_name(cond),
             get_label_name(then),
             get_label_name(els)
-        ),
-        Operation::Jump(_, id) => format!("jmp {};", get_label_name(id)),
-        Operation::Const(tok, var) => {
-            format!("{}: {} = const {};", get_name(var), var.ty, tok.value)
-        }
+        )),
+        Operation::Jump(_, id) => printed.push_str(&format!("jmp {};", get_label_name(id))),
+        Operation::Const(tok, var) => printed.push_str(&format!(
+            "{}: {} = const {};",
+            get_name(var),
+            var.ty,
+            tok.value
+        )),
         Operation::Call {
             callee,
             result: Some(result),
             args,
             ..
-        } => format!(
+        } => printed.push_str(&format!(
             "{}: {} = call {} {};",
             get_name(result),
             result.ty,
             get_name(callee),
             args.iter().map(|v| get_name(v)).join(" ")
-        ),
+        )),
         Operation::Call {
             callee,
             result: None,
             args,
             ..
-        } => format!(
+        } => printed.push_str(&format!(
             "call {} {};",
             get_name(callee),
             args.iter().map(|v| get_name(v)).join(" ")
-        ),
-        Operation::Print(_, v) => format!("print {};", get_name(v)),
-        Operation::Nop(_) => "nop;".to_owned(),
-        Operation::Ret(_, Some(v)) => format!("ret {};", get_name(v)),
-        Operation::Ret(_, None) => "ret;".to_owned(),
+        )),
+        Operation::Print(_, v) => printed.push_str(&format!("print {};", get_name(v))),
+        Operation::Nop(_) => printed.push_str("nop;"),
+        Operation::Ret(_, Some(v)) => printed.push_str(&format!("ret {};", get_name(v))),
+        Operation::Ret(_, None) => printed.push_str("ret;"),
+    };
+    if let Some(ann_list) = anns.post.get(&pos) {
+        printed.push_str(&format!(" /* {} */", ann_list.join(", ")));
     }
+    printed
 }
 
 pub fn print_cfg_dot(cfg: &Cfg, unit: &Unit) -> String {
     let id = cfg.get_function();
     let name = format!("\"{}\"", &unit.identifiers.get_name(id));
-    analysis::cfg::print(Some(&name), cfg, |op| print_operation(op, unit))
+    let anns = Annotations::default();
+    analysis::cfg::print(Some(&name), cfg, |pos, op| {
+        print_operation(pos, op, unit, &anns)
+    })
 }
 
 fn get_block_name<'u>(unit: &'u Unit, cfg: &Cfg, block_id: usize) -> Option<&'u str> {
@@ -416,7 +436,7 @@ fn get_block_name<'u>(unit: &'u Unit, cfg: &Cfg, block_id: usize) -> Option<&'u 
     None
 }
 
-pub fn print_cfg(cfg: &Cfg, unit: &Unit) -> String {
+pub fn print_cfg(cfg: &Cfg, unit: &Unit, anns: &Annotations) -> String {
     let mut result = String::new();
     result.push_str(unit.identifiers.get_name(cfg.get_function()));
     let formals = cfg.get_formals();
@@ -435,12 +455,15 @@ pub fn print_cfg(cfg: &Cfg, unit: &Unit) -> String {
         result.push_str(&ret_ty.to_string());
     }
     result.push_str(" {\n");
-    for (id, block) in cfg.blocks().iter().enumerate() {
-        if let Some(name) = get_block_name(unit, cfg, id) {
+    for (block_id, block) in cfg.blocks().iter().enumerate() {
+        if let Some(name) = get_block_name(unit, cfg, block_id) {
             result.push_str(&format!("{name}:\n"));
         }
-        for op in block.operations() {
-            result.push_str(&format!("  {}\n", print_operation(op, unit)));
+        for (op_id, op) in block.operations().iter().enumerate() {
+            result.push_str(&format!(
+                "  {}\n",
+                print_operation(OpPos { block_id, op_id }, op, unit, anns)
+            ));
         }
         result.push('\n');
     }
@@ -460,10 +483,10 @@ pub fn print_dot(unit: &Unit) -> String {
     result
 }
 
-pub fn print(unit: &Unit) -> String {
+pub fn print(unit: &Unit, anns: &Annotations) -> String {
     let mut result = String::new();
     for cfg in &unit.functions {
-        result.push_str(&print_cfg(cfg, unit));
+        result.push_str(&print_cfg(cfg, unit, anns));
         result.push('\n');
     }
     result.pop();
