@@ -22,3 +22,5 @@ jobs:
       run: cargo test --verbose
     - name: Lint
       run: cargo clippy --verbose -- -D warnings
+    - name: Docs
+      run: cargo doc --no-deps --all-features
