@@ -384,13 +384,80 @@ pub fn print_operation(op: &Operation, unit: &Unit) -> String {
     }
 }
 
-pub fn print_cfg(cfg: &Cfg, unit: &Unit) -> String {
-    let TokenValue::Global(id) = cfg.function.value
-    else {
-        panic!("");
-    };
+pub fn print_cfg_dot(cfg: &Cfg, unit: &Unit) -> String {
+    let id = cfg.get_function();
     let name = format!("\"{}\"", &unit.identifiers.get_name(id));
     analysis::cfg::print(Some(&name), cfg, |op| print_operation(op, unit))
+}
+
+fn get_block_name<'u>(unit: &'u Unit, cfg: &Cfg, block_id: usize) -> Option<&'u str> {
+    let block = &cfg.blocks()[block_id];
+    for pred_id in block.predecessors() {
+        let pred = &cfg.blocks()[*pred_id];
+        let terminator = pred.operations().last().unwrap();
+        match terminator {
+            Operation::Jump(_, label) => return Some(unit.identifiers.get_name(*label)),
+            Operation::Branch { then, els, .. } => {
+                let which_succ = pred
+                    .successors()
+                    .iter()
+                    .position(|&b| b == block_id)
+                    .unwrap();
+                assert!(which_succ < 2);
+                return Some(if which_succ == 0 {
+                    unit.identifiers.get_name(*then)
+                } else {
+                    unit.identifiers.get_name(*els)
+                });
+            }
+            _ => panic!("Unexpected terminator for predecessors.\n"),
+        }
+    }
+    None
+}
+
+pub fn print_cfg(cfg: &Cfg, unit: &Unit) -> String {
+    let mut result = String::new();
+    result.push_str(unit.identifiers.get_name(cfg.get_function()));
+    let formals = cfg.get_formals();
+    let ret_ty = cfg.get_type(unit).ret;
+    if !formals.is_empty() || !matches!(ret_ty, Type::Void) {
+        result.push('(');
+        let mut formal_strs = formals.iter().map(|var| {
+            let mut formal_str = String::new();
+            formal_str.push_str(unit.identifiers.get_name(var.id));
+            formal_str.push_str(": ");
+            formal_str.push_str(&var.ty.to_string());
+            formal_str
+        });
+        result.push_str(&formal_strs.join(", "));
+        result.push_str("): ");
+        result.push_str(&ret_ty.to_string());
+    }
+    result.push_str(" {\n");
+    for (id, block) in cfg.blocks().iter().enumerate() {
+        if let Some(name) = get_block_name(unit, cfg, id) {
+            result.push_str(&format!("{name}:\n"));
+        }
+        for op in block.operations() {
+            result.push_str(&format!("  {}\n", print_operation(op, unit)));
+        }
+        result.push('\n');
+    }
+    result.pop();
+
+    result.push_str("}\n");
+    result
+}
+
+pub fn print_dot(unit: &Unit) -> String {
+    let mut result = String::new();
+    for cfg in &unit.functions {
+        result.push_str(&print_cfg_dot(cfg, unit));
+        result.push('\n');
+    }
+    result.pop();
+    result
 }
 
 pub fn print(unit: &Unit) -> String {

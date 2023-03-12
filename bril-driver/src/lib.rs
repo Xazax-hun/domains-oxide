@@ -1,6 +1,6 @@
 use bril_lib::{
     eval::{Interpreter, Value},
-    ir::print,
+    ir::print_dot,
     lexer::Lexer,
     parser::Parser,
 };
@@ -32,7 +32,7 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
     let unit = parser.parse()?;
 
     if opts.dump_cfg {
-        diag.out_ln(&print(&unit));
+        diag.out_ln(&print_dot(&unit));
     }
 
     let mut interp = Interpreter::new(&unit, diag);

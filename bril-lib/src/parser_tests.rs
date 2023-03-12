@@ -30,7 +30,8 @@ fn parse_single_function() -> Result<(), String> {
   v: int = const 5;
   print v;
   ret;
-}";
+}
+";
     let expected = r#"digraph "@main" {
   Node_0[label="v: int = const 5;\nprint v;\nret;"]
 
@@ -38,26 +39,28 @@ fn parse_single_function() -> Result<(), String> {
 "#;
     let unit = parse_string(source)?;
     let printed = print(&unit);
-    assert_eq!(printed, expected);
+    assert_eq!(printed, source);
+    let printed_dot = print_dot(&unit);
+    assert_eq!(printed_dot, expected);
 
     Ok(())
 }
 
 #[test]
 fn parse_multiple_functions() -> Result<(), String> {
-    let source = r"
-@mul(x: int, y: int): int {
+    let source = r"@mul(x: int, y: int): int {
   w: int = mul x y;
   print w;
   ret w;
 }
-    
+
 @main(): int {
   v: int = const 5;
   u: int = call @mul v v;
   nop;
   ret u;
-}";
+}
+";
     let expected = r#"digraph "@mul" {
   Node_0[label="w: int = mul x y;\nprint w;\nret w;"]
 
@@ -70,25 +73,29 @@ digraph "@main" {
 "#;
     let unit = parse_string(source)?;
     let printed = print(&unit);
-    assert_eq!(printed, expected);
+    assert_eq!(printed, source);
+    let printed_dot = print_dot(&unit);
+    assert_eq!(printed_dot, expected);
 
     Ok(())
 }
 
 #[test]
 fn parse_multiple_blocks() -> Result<(), String> {
-    let source = r"
-@main {
+    let source = r"@main {
   v: int = const 5;
   b: bool = gt v v;
   br b .then .else;
+
 .then:
   u: int = const 42;
   print u;
   ret;
+
 .else:
   ret;
-}";
+}
+";
     let expected = r#"digraph "@main" {
   Node_0[label="v: int = const 5;\nb: bool = gt v v;\nbr b .then .else;"]
   Node_1[label="u: int = const 42;\nprint u;\nret;"]
@@ -100,7 +107,9 @@ fn parse_multiple_blocks() -> Result<(), String> {
 "#;
     let unit = parse_string(source)?;
     let printed = print(&unit);
-    assert_eq!(printed, expected);
+    assert_eq!(printed, source);
+    let printed_dot = print_dot(&unit);
+    assert_eq!(printed_dot, expected);
 
     Ok(())
 }
@@ -118,7 +127,7 @@ fn parse_starting_label() -> Result<(), String> {
 }
 "#;
     let unit = parse_string(source)?;
-    let printed = print(&unit);
+    let printed = print_dot(&unit);
     assert_eq!(printed, expected);
 
     Ok(())
