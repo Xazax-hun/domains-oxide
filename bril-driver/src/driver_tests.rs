@@ -41,3 +41,25 @@ fn cfg_dump() {
     let output = run_driver(source, opts).unwrap();
     assert_eq!(output, expected);
 }
+
+
+#[test]
+fn analyze() {
+    let source = r"@main {
+  v: int = const 5;
+  ret;
+}
+";
+
+    let expected = r"@main {
+  v: int = const 5;
+  ret; /* v: Positive */
+}
+";
+    let opts = Opt {
+        analyze: Some(CLIAnalyses::Sign),
+        ..Opt::default()
+    };
+    let output = run_driver(source, opts).unwrap();
+    assert_eq!(output, expected);
+}

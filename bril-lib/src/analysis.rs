@@ -29,6 +29,11 @@ lazy_static! {
     };
 }
 
+pub fn get_analysis_results(analysis: Analyses, unit: &Unit) -> AnnotationMap {
+    let analysis = ANALYSES.get(&analysis).expect("Unimplemented analysis!");
+    analysis.analyze_all(unit)
+}
+
 #[cfg(test)]
 mod sign_analysis_tests;
 

@@ -1,11 +1,25 @@
 use bril_lib::{
+    analysis::{get_analysis_results, Analyses},
     eval::{Interpreter, Value},
-    ir::print_dot,
+    ir::{self, print_dot},
     lexer::Lexer,
     parser::Parser,
 };
-use clap::Parser as CommandLineParser;
+use clap::{Parser as CommandLineParser, ValueEnum};
 use utils::DiagnosticEmitter;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, ValueEnum)]
+pub enum CLIAnalyses {
+    Sign,
+}
+
+impl From<CLIAnalyses> for Analyses {
+    fn from(value: CLIAnalyses) -> Self {
+        match value {
+            CLIAnalyses::Sign => Analyses::Sign,
+        }
+    }
+}
 
 #[derive(Debug, CommandLineParser, Default)]
 #[command(name = "bril", version, about = "Analyze and interpret Bril IR.")]
@@ -13,6 +27,10 @@ pub struct Opt {
     /// Dump the control flow graph representation of the program in graphviz format.
     #[arg(long)]
     pub dump_cfg: bool,
+
+    /// Name of the analysis to execute
+    #[arg(long, value_name = "ANALYSIS_NAME")]
+    pub analyze: Option<CLIAnalyses>,
 
     /// File containing the program written in the language.
     pub filename: String,
@@ -33,6 +51,12 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
 
     if opts.dump_cfg {
         diag.out_ln(&print_dot(&unit));
+    }
+
+    if let Some(analysis) = opts.analyze {
+        let anns = get_analysis_results(analysis.into(), &unit);
+        diag.out(&ir::print(&unit, &anns));
+        return Some(());
     }
 
     let mut interp = Interpreter::new(&unit, diag);
