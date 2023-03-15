@@ -325,7 +325,8 @@ pub fn print_operation(pos: OpPos, op: &Operation, unit: &Unit, anns: &Annotatio
     let get_name = |var: &Variable| unit.identifiers.get_name(var.id);
     let get_label_name = |&l: &Identifier| unit.identifiers.get_name(l);
     let mut printed = String::new();
-    if let Some(ann_list) = anns.pre.get(&pos) {
+    if let Some(mut ann_list) = anns.pre.get(&pos).cloned() {
+        ann_list.sort();
         printed.push_str(&format!("/* {} */ ", ann_list.join(", ")));
     }
     match op {
@@ -395,7 +396,8 @@ pub fn print_operation(pos: OpPos, op: &Operation, unit: &Unit, anns: &Annotatio
         Operation::Ret(_, Some(v)) => printed.push_str(&format!("ret {};", get_name(v))),
         Operation::Ret(_, None) => printed.push_str("ret;"),
     };
-    if let Some(ann_list) = anns.post.get(&pos) {
+    if let Some(mut ann_list) = anns.post.get(&pos).cloned() {
+        ann_list.sort();
         printed.push_str(&format!(" /* {} */", ann_list.join(", ")));
     }
     printed

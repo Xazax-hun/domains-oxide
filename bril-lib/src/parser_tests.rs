@@ -450,7 +450,7 @@ fn print_annotations() -> Result<(), String> {
 }
 ";
     let expected = r"@main {
-  /* Foo, Bar */ v: int = const 5;
+  /* Bar, Foo */ v: int = const 5;
   print v; /* Baz */
   ret;
 }

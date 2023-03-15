@@ -467,6 +467,9 @@ impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> JoinSemiLattice for Map<K
     }
 
     fn widen(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+        if *previous == Self::bottom(ctx) {
+            return self.clone();
+        }
         let mut result = HashMap::new();
         for (k, v) in &self.0 {
             if let Some(prev_v) = previous.get(k) {
