@@ -172,6 +172,16 @@ pub struct Token {
     pub line_num: Location,
 }
 
+impl Token {
+    pub fn error(&self, diag: &mut DiagnosticEmitter, s: &str) {
+        if self.value == EndOfFile {
+            diag.report(self.line_num.0, "at end of file", s);
+        } else {
+            diag.report(self.line_num.0, &format!("at '{self}'"), s);
+        }
+    }
+}
+
 impl core::fmt::Display for Token {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "{}", self.value)

@@ -124,7 +124,7 @@ impl<'src> Parser<'src> {
         if self.try_consume(Bool).is_some() {
             return Some(Type::Bool);
         }
-        self.error(self.peek(), "Type expected.");
+        self.peek().error(self.diag, "Type expected.");
         None
     }
 
@@ -143,7 +143,8 @@ impl<'src> Parser<'src> {
                 ops.clear();
             } else if let Some(prev_op) = ops.last() {
                 if prev_op.is_terminator() {
-                    self.error(op.get_token(), "Basic block must start with a label.");
+                    op.get_token()
+                        .error(self.diag, "Basic block must start with a label.");
                     return None;
                 }
             }
@@ -256,7 +257,7 @@ impl<'src> Parser<'src> {
         if let Some(const_tok) = self.try_consume(Const) {
             let Some(tok) = self.match_tokens(&[True, False, Integer(0)])
             else {
-                self.error(const_tok, "Integer or boolean constant expected.");
+                const_tok.error(self.diag, "Integer or boolean constant expected.");
                 return None;
             };
             self.consume(Semicolon, "")?;
@@ -303,7 +304,7 @@ impl<'src> Parser<'src> {
             });
         }
 
-        self.error(self.peek(), "Unexpected token.");
+        self.peek().error(self.diag, "Unexpected token.");
         None
     }
 
@@ -373,7 +374,7 @@ impl<'src> Parser<'src> {
         } else {
             s.to_owned()
         };
-        self.error(self.peek(), &msg);
+        self.peek().error(self.diag, &msg);
         None
     }
 
@@ -382,7 +383,7 @@ impl<'src> Parser<'src> {
             let token = self.advance();
             return Some((token, id));
         }
-        self.error(self.peek(), "Local identifier expected.");
+        self.peek().error(self.diag, "Local identifier expected.");
         None
     }
 
@@ -391,7 +392,7 @@ impl<'src> Parser<'src> {
             let token = self.advance();
             return Some((token, id));
         }
-        self.error(self.peek(), "Global identifier expected.");
+        self.peek().error(self.diag, "Global identifier expected.");
         None
     }
 
@@ -401,7 +402,7 @@ impl<'src> Parser<'src> {
             return Some((token, id));
         }
         if err {
-            self.error(self.peek(), "Label identifier expected.");
+            self.peek().error(self.diag, "Label identifier expected.");
         }
         None
     }
@@ -413,19 +414,14 @@ impl<'src> Parser<'src> {
         None
     }
 
-    fn error(&mut self, tok: Token, s: &str) {
-        if tok.value == EndOfFile {
-            self.diag.report(tok.line_num.0, "at end of file", s);
-        } else {
-            self.diag.report(tok.line_num.0, &format!("at '{tok}'"), s);
-        }
-    }
-
     fn expect_type(&mut self, t: Token, found: Type, expected: Type) -> Option<()> {
         if found == expected {
             return Some(());
         }
-        self.error(t, &format!("'{expected}' type expected; '{found}' found"));
+        t.error(
+            self.diag,
+            &format!("'{expected}' type expected; '{found}' found"),
+        );
         None
     }
 
@@ -433,8 +429,8 @@ impl<'src> Parser<'src> {
         for block in cfg.blocks() {
             let op = block.operations().last()?;
             if !op.is_terminator() {
-                self.error(
-                    op.get_token(),
+                op.get_token().error(
+                    self.diag,
                     "Block terminator expected to be jump, br, or ret.",
                 );
                 return None;
@@ -493,22 +489,25 @@ impl<'src> Parser<'src> {
                         match result {
                             Some(ret) => {
                                 if fn_ty.ret == Type::Void {
-                                    self.error(token, "Void functions cannot return a value.");
+                                    token.error(self.diag, "Void functions cannot return a value.");
                                     return None;
                                 }
                                 self.expect_type(token, ret.ty, fn_ty.ret)?;
                             }
                             None => {
                                 if fn_ty.ret != Type::Void {
-                                    self.error(token, "Non-void functions must return a value.");
+                                    token.error(
+                                        self.diag,
+                                        "Non-void functions must return a value.",
+                                    );
                                     return None;
                                 }
                             }
                         }
 
                         if fn_ty.formals.len() != args.len() {
-                            self.error(
-                                token,
+                            token.error(
+                                self.diag,
                                 &format!(
                                     "{} arguments expected, got {}",
                                     fn_ty.formals.len(),
@@ -532,7 +531,7 @@ impl<'src> Parser<'src> {
                         match ret {
                             Some(var) => {
                                 if ret_ty == Type::Void {
-                                    self.error(token, "Void functions cannot return a value.");
+                                    token.error(self.diag, "Void functions cannot return a value.");
                                     return None;
                                 }
 
@@ -540,7 +539,10 @@ impl<'src> Parser<'src> {
                             }
                             None => {
                                 if ret_ty != Type::Void {
-                                    self.error(token, "Non-void functions must return a value.");
+                                    token.error(
+                                        self.diag,
+                                        "Non-void functions must return a value.",
+                                    );
                                     return None;
                                 }
                             }

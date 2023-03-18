@@ -70,8 +70,8 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
     }
 
     let mut interp = Interpreter::new(&unit, diag);
-    // TODO: Handle failures in eval.
-    if let Some(result) = interp.eval_main(&opts.arguments) {
+    let result = interp.eval_main(&opts.arguments)?;
+    if result != Value::Unit {
         diag.out_ln(&format!("Return value: {result}"));
     }
 

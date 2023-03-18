@@ -117,3 +117,16 @@ fn eval_function_call() -> Result<(), String> {
 
     Ok(())
 }
+
+#[test]
+fn eval_test_div_zero() {
+    let source = r"@main { 
+  x: int = const 0;
+  x: int = div x x;
+  ret;
+}";
+    assert_eq!(
+        eval_string(source, &[]).expect_err("Div zero."),
+        "[line 3] Error at 'div': Division by zero.\n"
+    );
+}

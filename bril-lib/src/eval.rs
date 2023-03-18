@@ -13,6 +13,7 @@ use crate::{
 pub enum Value {
     I(i32),
     B(bool),
+    Unit,
 }
 
 impl Display for Value {
@@ -20,25 +21,26 @@ impl Display for Value {
         match self {
             Value::I(i) => write!(f, "{i}"),
             Value::B(b) => write!(f, "{b}"),
+            Value::Unit => write!(f, "()"),
         }
     }
 }
 
 impl Value {
-    pub fn as_int(self, diag: &mut DiagnosticEmitter) -> Option<i32> {
+    pub fn as_int(self, tok: Token, diag: &mut DiagnosticEmitter) -> Option<i32> {
         if let Value::I(i) = self {
             Some(i)
         } else {
-            diag.err_ln("Integer expected.");
+            tok.error(diag, "Integer expected.");
             None
         }
     }
 
-    pub fn as_bool(self, diag: &mut DiagnosticEmitter) -> Option<bool> {
+    pub fn as_bool(self, tok: Token, diag: &mut DiagnosticEmitter) -> Option<bool> {
         if let Value::B(b) = self {
             Some(b)
         } else {
-            diag.err_ln("Bool expected.");
+            tok.error(diag, "Bool expected.");
             None
         }
     }
@@ -94,22 +96,26 @@ impl<'u> Interpreter<'u> {
             return None;
         };
         let main = self.unit.get_function(func)?;
+        let main_token = main.get_function_token();
         let formals = main.get_formals();
         if formals.len() != args.len() {
-            self.diag.err_ln(&format!(
-                "{} arguments expected; '{}' given.",
-                formals.len(),
-                args.len()
-            ));
+            main_token.error(
+                self.diag,
+                &format!(
+                    "{} arguments expected; '{}' given.",
+                    formals.len(),
+                    args.len()
+                ),
+            );
             return None;
         }
         for (formal, val) in formals.iter().zip(args) {
             match formal.ty {
                 Type::Int => {
-                    val.as_int(self.diag)?;
+                    val.as_int(main_token, self.diag)?;
                 }
                 Type::Bool => {
-                    val.as_bool(self.diag)?;
+                    val.as_bool(main_token, self.diag)?;
                 }
                 Type::Void | Type::Fn(_) => panic!("Unexpected type."),
             };
@@ -123,10 +129,13 @@ impl<'u> Interpreter<'u> {
     pub fn eval_func(&mut self, cfg: &Cfg) -> Option<Value> {
         for formal in cfg.get_formals() {
             if !self.env.locals.contains_key(&formal.id) {
-                self.diag.err_ln(&format!(
-                    "No value set for formal '{}'.",
-                    self.unit.identifiers.get_name(formal.id)
-                ));
+                cfg.get_function_token().error(
+                    self.diag,
+                    &format!(
+                        "No value set for formal '{}'.",
+                        self.unit.identifiers.get_name(formal.id)
+                    ),
+                );
                 return None;
             }
         }
@@ -158,21 +167,25 @@ impl<'u> Interpreter<'u> {
                         current_block = *block.successors().first()?;
                         break;
                     }
-                    Operation::Branch { cond, .. } => {
+                    Operation::Branch { token, cond, .. } => {
                         assert_eq!(2, block.successors().len());
                         match self.env.lookup(cond.id, self.diag, self.unit)? {
                             Value::B(true) => current_block = block.successors()[0],
                             Value::B(false) => current_block = block.successors()[1],
-                            Value::I(_) => {
-                                self.diag.err_ln(&format!(
-                                    "Unexpected value for '{}'.",
-                                    self.unit.identifiers.get_name(cond.id)
-                                ));
+                            Value::I(_) | Value::Unit => {
+                                token.error(
+                                    self.diag,
+                                    &format!(
+                                        "Unexpected value for '{}'.",
+                                        self.unit.identifiers.get_name(cond.id)
+                                    ),
+                                );
                             }
                         }
                         break;
                     }
                     Operation::Call {
+                        token,
                         callee,
                         result,
                         args,
@@ -180,7 +193,7 @@ impl<'u> Interpreter<'u> {
                     } => {
                         let Some(cfg) = self.unit.get_function(callee.id)
                         else {
-                            self.diag.err_ln(&format!("Function '{}' not found.", self.unit.identifiers.get_name(callee.id)));
+                            token.error(self.diag, &format!("Function '{}' not found.", self.unit.identifiers.get_name(callee.id)));
                             return None;
                         };
                         let mut vals = Vec::new();
@@ -195,14 +208,17 @@ impl<'u> Interpreter<'u> {
                         if let Some(res) = result {
                             let Some(returned_unwrapped) = returned
                             else {
-                                self.diag.err_ln("Function failed to return a value.");
+                                token.error(self.diag, "Function failed to return a value.");
                                 return None;
                             };
                             self.env.set_local(res.id, returned_unwrapped);
                         }
                     }
                     Operation::Ret(_, res) => {
-                        return res.and_then(|var| self.env.lookup(var.id, self.diag, self.unit));
+                        return match res {
+                            Some(var) => self.env.lookup(var.id, self.diag, self.unit),
+                            None => Some(Value::Unit),
+                        };
                     }
                     Operation::Print(_, var) => {
                         let val = self.env.lookup(var.id, self.diag, self.unit)?;
@@ -228,46 +244,50 @@ impl<'u> Interpreter<'u> {
         let rhs_val = self.env.lookup(rhs.id, self.diag, self.unit)?;
         match token.value {
             TokenValue::Add => Some(Value::I(
-                lhs_val.as_int(self.diag)? + rhs_val.as_int(self.diag)?,
+                lhs_val.as_int(token, self.diag)? + rhs_val.as_int(token, self.diag)?,
             )),
             TokenValue::Mul => Some(Value::I(
-                lhs_val.as_int(self.diag)? * rhs_val.as_int(self.diag)?,
+                lhs_val.as_int(token, self.diag)? * rhs_val.as_int(token, self.diag)?,
             )),
             TokenValue::Sub => Some(Value::I(
-                lhs_val.as_int(self.diag)? - rhs_val.as_int(self.diag)?,
+                lhs_val.as_int(token, self.diag)? - rhs_val.as_int(token, self.diag)?,
             )),
             TokenValue::Div => {
-                let rhs_val = rhs_val.as_int(self.diag)?;
+                let rhs_val = rhs_val.as_int(token, self.diag)?;
                 if rhs_val == 0 {
-                    self.diag.err_ln("Division by zero.");
+                    token.error(self.diag, "Division by zero.");
                     return None;
                 }
-                Some(Value::I(lhs_val.as_int(self.diag)? / rhs_val))
+                Some(Value::I(lhs_val.as_int(token, self.diag)? / rhs_val))
             }
             TokenValue::Equal => match lhs_val {
-                Value::I(lhs_val) => Some(Value::B(lhs_val == rhs_val.as_int(self.diag)?)),
-                Value::B(lhs_val) => Some(Value::B(lhs_val == rhs_val.as_bool(self.diag)?)),
+                Value::I(lhs_val) => Some(Value::B(lhs_val == rhs_val.as_int(token, self.diag)?)),
+                Value::B(lhs_val) => Some(Value::B(lhs_val == rhs_val.as_bool(token, self.diag)?)),
+                _ => {
+                    token.error(self.diag, "Unexpected unit.");
+                    None
+                }
             },
             TokenValue::LessThan => Some(Value::B(
-                lhs_val.as_int(self.diag)? < rhs_val.as_int(self.diag)?,
+                lhs_val.as_int(token, self.diag)? < rhs_val.as_int(token, self.diag)?,
             )),
             TokenValue::GreaterThan => Some(Value::B(
-                lhs_val.as_int(self.diag)? > rhs_val.as_int(self.diag)?,
+                lhs_val.as_int(token, self.diag)? > rhs_val.as_int(token, self.diag)?,
             )),
             TokenValue::LessThanOrEq => Some(Value::B(
-                lhs_val.as_int(self.diag)? <= rhs_val.as_int(self.diag)?,
+                lhs_val.as_int(token, self.diag)? <= rhs_val.as_int(token, self.diag)?,
             )),
             TokenValue::GreaterThanOrEq => Some(Value::B(
-                lhs_val.as_int(self.diag)? >= rhs_val.as_int(self.diag)?,
+                lhs_val.as_int(token, self.diag)? >= rhs_val.as_int(token, self.diag)?,
             )),
             TokenValue::And => Some(Value::B(
-                lhs_val.as_bool(self.diag)? && rhs_val.as_bool(self.diag)?,
+                lhs_val.as_bool(token, self.diag)? && rhs_val.as_bool(token, self.diag)?,
             )),
             TokenValue::Or => Some(Value::B(
-                lhs_val.as_bool(self.diag)? || rhs_val.as_bool(self.diag)?,
+                lhs_val.as_bool(token, self.diag)? || rhs_val.as_bool(token, self.diag)?,
             )),
             _ => {
-                self.diag.err_ln("Unexpected binary operator.");
+                token.error(self.diag, "Unexpected binary operator.");
                 None
             }
         }
@@ -276,10 +296,10 @@ impl<'u> Interpreter<'u> {
     fn eval_unary_op(&mut self, token: Token, operand: Variable) -> Option<Value> {
         let operand = self.env.lookup(operand.id, self.diag, self.unit)?;
         match token.value {
-            TokenValue::Not => Some(Value::B(!operand.as_bool(self.diag)?)),
+            TokenValue::Not => Some(Value::B(!operand.as_bool(token, self.diag)?)),
             TokenValue::Identity => Some(operand),
             _ => {
-                self.diag.err_ln("Unexpected unary operator.");
+                token.error(self.diag, "Unexpected unary operator.");
                 None
             }
         }
