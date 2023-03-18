@@ -8,23 +8,17 @@ pub fn calculate_dominators(
 ) -> Vec<Flipped<BitSetDomain>> {
     let node_num = cfg.blocks().len();
     let ctx = BitSetTop(node_num);
-    let mut states = Vec::new();
-    states.push(Flipped(BitSetDomain::from(&ctx, &[0])));
-    for _ in 1..node_num {
-        states.push(Flipped::<BitSetDomain>::bottom(&ctx));
-    }
     let solver = SolveMonotone { node_limit };
-    solver.transfer_blocks_in_place(
+    solver.transfer_blocks(
         cfg,
+        Flipped(BitSetDomain::from(&ctx, &[0])),
         &ctx,
-        &mut states,
         &mut |id, _cfg, _lat_ctx, preds_merged| {
             let mut result = Flipped(BitSetDomain::from(&ctx, &[id]));
             result = result.meet(preds_merged, &ctx);
             result
         },
-    );
-    states
+    )
 }
 
 pub fn calculate_post_dominators<Cfg: BlockMutableCfg + Default>(
