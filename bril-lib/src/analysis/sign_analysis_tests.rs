@@ -17,6 +17,36 @@ fn basic_test() {
 }
 
 #[test]
+fn logical_operators() {
+    let source = r"@main {
+  pos: int = const 5;
+  neg: int = const -5;
+  zero: int = const 0;
+  less: bool = lt neg pos;
+  greater: bool = gt zero pos;
+  equal: bool = eq less greater;
+  conj: bool = and equal less;
+  disj: bool = or equal less;
+  ret;
+}
+";
+
+    let expected = r"@main {
+  pos: int = const 5;
+  neg: int = const -5;
+  zero: int = const 0;
+  less: bool = lt neg pos;
+  greater: bool = gt zero pos;
+  equal: bool = eq less greater;
+  conj: bool = and equal less;
+  disj: bool = or equal less;
+  ret; /* conj: Zero, disj: Positive, equal: Zero, greater: Zero, less: Positive, neg: Negative, pos: Positive, zero: Zero */
+}
+";
+    check_expected_results(SignAnalysis, source, expected)
+}
+
+#[test]
 fn factorial() {
     let source = r"@main(x: int): int {
   res: int = const 1;

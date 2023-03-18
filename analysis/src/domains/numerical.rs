@@ -147,6 +147,34 @@ mod sign_tables {
     /* ~Zero    */ [ Some(Less),  Some(Greater), Some(Greater), None,          Some(Greater), None,          Some(Equal),   None         ],
     /* ~Positive*/ [ Some(Less),  Some(Greater), Some(Greater), Some(Greater), None,          None,          None,          Some(Equal)  ],
     ];
+
+    #[rustfmt::skip]
+    pub const STRICT_CONCRETE_COMPARISON : [[Option<Ordering>; 8]; 8] =
+    [
+    // LHS/RHS,      Top,  Bottom, Negative,      Zero,          Positive    ~Negative   ~Zero ~Positive
+    /* Top      */ [ None, None,   None,          None,          None,       None,       None, None         ],
+    /* Bottom   */ [ None, None,   None,          None,          None,       None,       None, None         ],
+    /* Negative */ [ None, None,   None,          Some(Less),    Some(Less), Some(Less), None, None         ],
+    /* Zero     */ [ None, None,   Some(Greater), Some(Equal),   Some(Less), None,       None, None         ],
+    /* Positive */ [ None, None,   Some(Greater), Some(Greater), None,       None,       None, Some(Greater)],
+    /* ~Negative*/ [ None, None,   Some(Greater), None,          None,       None,       None, None         ],
+    /* ~Zero    */ [ None, None,   None,          None,          None,       None,       None, None         ],
+    /* ~Positive*/ [ None, None,   None,          None,          Some(Less), None,       None, None         ],
+    ];
+
+    #[rustfmt::skip]
+    pub const WEAK_CONCRETE_COMPARISON : [[Option<Ordering>; 8]; 8] =
+    [
+    // LHS/RHS,      Top,  Bottom, Negative,      Zero,          Positive    ~Negative      ~Zero ~Positive
+    /* Top      */ [ None, None,   None,          None,          None,       None,          None, None         ],
+    /* Bottom   */ [ None, None,   None,          None,          None,       None,          None, None         ],
+    /* Negative */ [ None, None,   None,          Some(Less),    Some(Less), Some(Less),    None, None         ],
+    /* Zero     */ [ None, None,   Some(Greater), Some(Equal),   Some(Less), Some(Greater), None, Some(Less)   ],
+    /* Positive */ [ None, None,   Some(Greater), Some(Greater), None,       None,          None, Some(Greater)],
+    /* ~Negative*/ [ None, None,   Some(Greater), Some(Greater), None,       None,          None, Some(Greater)],
+    /* ~Zero    */ [ None, None,   None,          None,          None,       None,          None, None         ],
+    /* ~Positive*/ [ None, None,   None,          Some(Less),    Some(Less), Some(Less),    None, None         ],
+    ];
 }
 
 impl Add for SignDomain {
@@ -202,6 +230,50 @@ impl PartialOrd for SignDomain {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         use sign_tables::*;
         COMPARISON[index_of(*self)][index_of(*other)]
+    }
+}
+
+impl SignDomain {
+    pub fn logical_eq(self, other: SignDomain, is_bool: bool) -> SignDomain {
+        if (is_bool && self == SignDomain::Positive && other == SignDomain::Positive)
+            || (self == SignDomain::Zero && other == SignDomain::Zero)
+        {
+            SignDomain::Positive
+        } else if self <= other || other <= self {
+            SignDomain::NonNeg
+        } else {
+            SignDomain::Zero
+        }
+    }
+
+    pub fn logical_and(self, other: SignDomain) -> SignDomain {
+        match (self, other) {
+            (SignDomain::Zero, _) => SignDomain::Zero,
+            (_, SignDomain::Zero) => SignDomain::Zero,
+            (SignDomain::Positive, SignDomain::Positive) => SignDomain::Positive,
+            _ => SignDomain::NonNeg,
+        }
+    }
+
+    pub fn logical_or(self, other: SignDomain) -> SignDomain {
+        match (self, other) {
+            (SignDomain::Positive, _) => SignDomain::Positive,
+            (_, SignDomain::Positive) => SignDomain::Positive,
+            (SignDomain::Zero, SignDomain::Zero) => SignDomain::Zero,
+            _ => SignDomain::NonNeg,
+        }
+    }
+
+    /// Compares the concrete values.
+    pub fn strict_cmp(self, other: SignDomain) -> Option<Ordering> {
+        use sign_tables::*;
+        STRICT_CONCRETE_COMPARISON[index_of(self)][index_of(other)]
+    }
+
+    /// Compares the concrete values.
+    pub fn weak_cmp(self, other: SignDomain) -> Option<Ordering> {
+        use sign_tables::*;
+        WEAK_CONCRETE_COMPARISON[index_of(self)][index_of(other)]
     }
 }
 

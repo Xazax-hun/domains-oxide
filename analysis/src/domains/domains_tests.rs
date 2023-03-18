@@ -69,32 +69,42 @@ fn sign_domain_tests() {
     // Operations
     for (x, y) in (-2..2).cartesian_product(-2..2) {
         // Multiplicative operations are precise
-        assert_eq!(
-            SignDomain::from(x) * SignDomain::from(y),
-            SignDomain::from(x * y)
-        );
-        assert_eq!(-SignDomain::from(x), SignDomain::from(-x));
+        let x_sign = SignDomain::from(x);
+        let y_sign = SignDomain::from(y);
+        assert_eq!(x_sign * y_sign, SignDomain::from(x * y));
+        assert_eq!(-x_sign, SignDomain::from(-x));
 
         // Integer division is not precise, result could be zero.
         if y != 0 {
-            assert!(SignDomain::from(x) / SignDomain::from(y) >= SignDomain::from(x / y));
+            assert!(x_sign / y_sign >= SignDomain::from(x / y));
         }
 
         // Additive operations are over-approximated.
-        assert!(SignDomain::from(x) + SignDomain::from(y) >= SignDomain::from(x + y));
-        assert!(SignDomain::from(x) - SignDomain::from(y) >= SignDomain::from(x - y));
+        assert!(x_sign + y_sign >= SignDomain::from(x + y));
+        assert!(x_sign - y_sign >= SignDomain::from(x - y));
 
-        assert_eq!(
-            SignDomain::from(x) + SignDomain::Zero,
-            SignDomain::from(x + 0)
-        );
-        assert_eq!(
-            SignDomain::from(x) - SignDomain::Zero,
-            SignDomain::from(x - 0)
-        );
+        assert_eq!(x_sign + SignDomain::Zero, SignDomain::from(x + 0));
+        assert_eq!(x_sign - SignDomain::Zero, SignDomain::from(x - 0));
 
-        assert_eq!(SignDomain::from(x) + SignDomain::Bottom, SignDomain::Bottom);
-        assert_eq!(SignDomain::from(x) + SignDomain::Top, SignDomain::Top);
+        assert_eq!(x_sign + SignDomain::Bottom, SignDomain::Bottom);
+        assert_eq!(x_sign + SignDomain::Top, SignDomain::Top);
+        
+        match x_sign.strict_cmp(y_sign) {
+            Some(Ordering::Less) => assert!(x < y),
+            Some(Ordering::Equal) => assert!(x == y),
+            Some(Ordering::Greater) => assert!(x > y),
+            _ => (),
+        };
+
+        match x_sign.weak_cmp(y_sign) {
+            Some(Ordering::Less) => assert!(x <= y),
+            Some(Ordering::Equal) => assert!(x == y),
+            Some(Ordering::Greater) => assert!(x >= y),
+            _ => (),
+        };
+
+        assert!(x_sign.logical_and(y_sign) >= SignDomain::from(i32::from(x != 0 && y != 0)));
+        assert!(x_sign.logical_or(y_sign) >= SignDomain::from(i32::from(x != 0 || y != 0)));
     }
     assert_eq!(Positive - Positive, Top);
 

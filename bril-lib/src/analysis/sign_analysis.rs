@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{cmp::Ordering, collections::HashSet};
 
 use analysis::{
     cfg::{CfgBlock, ControlFlowGraph, OpPos},
@@ -28,9 +28,10 @@ impl SignAnalysis {
                 lhs,
                 rhs,
             } => {
+                let op_type = lhs.ty;
                 let lhs = *pre_state.get(&lhs.id).unwrap_or(&SignDomain::Top);
                 let rhs = *pre_state.get(&rhs.id).unwrap_or(&SignDomain::Top);
-                let result_sign = Self::transfer_binary_op(*token, lhs, rhs);
+                let result_sign = Self::transfer_binary_op(*token, lhs, rhs, op_type);
                 let mut new_state = pre_state.clone();
                 new_state.insert(result.id, result_sign);
                 new_state
@@ -66,20 +67,40 @@ impl SignAnalysis {
         }
     }
 
-    fn transfer_binary_op(token: Token, lhs: SignDomain, rhs: SignDomain) -> SignDomain {
+    fn transfer_binary_op(
+        token: Token,
+        lhs: SignDomain,
+        rhs: SignDomain,
+        op_type: Type,
+    ) -> SignDomain {
         match token.value {
             TokenValue::Add => lhs + rhs,
             TokenValue::Mul => lhs * rhs,
             TokenValue::Sub => lhs - rhs,
             TokenValue::Div => lhs / rhs,
-            // TODO: more precision for logical ops.
-            TokenValue::Equal => SignDomain::NonNeg,
-            TokenValue::LessThan => SignDomain::NonNeg,
-            TokenValue::GreaterThan => SignDomain::NonNeg,
-            TokenValue::LessThanOrEq => SignDomain::NonNeg,
-            TokenValue::GreaterThanOrEq => SignDomain::NonNeg,
-            TokenValue::And => SignDomain::NonNeg,
-            TokenValue::Or => SignDomain::NonNeg,
+            TokenValue::Equal => lhs.logical_eq(rhs, op_type == Type::Bool),
+            TokenValue::And => lhs.logical_and(rhs),
+            TokenValue::Or => lhs.logical_or(rhs),
+            TokenValue::LessThan => match lhs.strict_cmp(rhs) {
+                Some(Ordering::Less) => SignDomain::Positive,
+                Some(_) => SignDomain::Zero,
+                _ => SignDomain::NonNeg,
+            },
+            TokenValue::GreaterThan => match lhs.strict_cmp(rhs) {
+                Some(Ordering::Greater) => SignDomain::Positive,
+                Some(_) => SignDomain::Zero,
+                _ => SignDomain::NonNeg,
+            },
+            TokenValue::LessThanOrEq => match lhs.weak_cmp(rhs) {
+                Some(Ordering::Less) => SignDomain::Positive,
+                Some(_) => SignDomain::Zero,
+                _ => SignDomain::NonNeg,
+            },
+            TokenValue::GreaterThanOrEq => match lhs.weak_cmp(rhs) {
+                Some(Ordering::Greater) => SignDomain::Positive,
+                Some(_) => SignDomain::Zero,
+                _ => SignDomain::NonNeg,
+            },
             _ => {
                 panic!("Unexpected binary operator.")
             }
