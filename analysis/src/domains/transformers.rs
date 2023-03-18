@@ -15,10 +15,6 @@ use paste::paste;
 //   does join instead of widen in the first couple of iterations
 //   but does widen later on.
 
-// TODO:
-// Add more general building blocks for finite domains and
-// port SignDomain to those facilities.
-
 /// A lattice with a height of 3, where all non-equal elements have top
 /// and bottom as their least upper bound and greatest lower bound
 /// respectively. It is often used to implement constant propagation.
