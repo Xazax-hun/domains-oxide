@@ -104,6 +104,7 @@ impl Analysis for SignAnalysis {
         let states = solver.transfer_operations(cfg, &ctx, &mut SignAnalysis::transfer);
         let mut anns = Annotations::default();
         // TODO: collect annotations for each operation?
+        //       should annotations for operations be incremental? (Only emit changed values.)
         for (block_id, state) in states.iter().enumerate() {
             let block = &cfg.blocks()[block_id];
             let pos = OpPos {

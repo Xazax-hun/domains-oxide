@@ -36,8 +36,18 @@ pub struct Opt {
     pub filename: String,
 
     /// Arguments to the main function.
-    // TODO: support boolean arguments.
-    pub arguments: Vec<i32>,
+    #[arg(value_parser = parse_value)]
+    pub arguments: Vec<Value>,
+}
+
+fn parse_value(arg: &str) -> Result<Value, std::num::ParseIntError> {
+    if arg == "true" {
+        return Ok(Value::B(true));
+    }
+    if arg == "false" {
+        return Ok(Value::B(false));
+    }
+    Ok(Value::I(arg.parse()?))
 }
 
 pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Option<()> {
@@ -60,9 +70,8 @@ pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Op
     }
 
     let mut interp = Interpreter::new(&unit, diag);
-    let args: Vec<_> = opts.arguments.iter().map(|&i| Value::I(i)).collect();
     // TODO: Handle failures in eval.
-    if let Some(result) = interp.eval_main(&args) {
+    if let Some(result) = interp.eval_main(&opts.arguments) {
         diag.out_ln(&format!("Return value: {result}"));
     }
 

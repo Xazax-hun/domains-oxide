@@ -21,6 +21,19 @@ fn simple_execution() {
 }
 
 #[test]
+fn parse_main_arguments() {
+    let source = r"@main(x: int, b: bool) {
+  print x;
+  print b;
+  ret;
+}";
+    let expected = "5\ntrue\n";
+    let opts = Opt::parse_from(vec!["bril-driver", "source", "5", "true"].iter());
+    let output = run_driver(source, opts).unwrap();
+    assert_eq!(output, expected);
+}
+
+#[test]
 fn cfg_dump() {
     let source = r"@main {
   v: int = const 5;
@@ -41,7 +54,6 @@ fn cfg_dump() {
     let output = run_driver(source, opts).unwrap();
     assert_eq!(output, expected);
 }
-
 
 #[test]
 fn analyze() {
