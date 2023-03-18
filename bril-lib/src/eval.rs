@@ -125,7 +125,6 @@ impl<'u> Interpreter<'u> {
         self.eval_func(main)
     }
 
-    // TODO: differentiate between failed execution vs function returning void.
     pub fn eval_func(&mut self, cfg: &Cfg) -> Option<Value> {
         for formal in cfg.get_formals() {
             if !self.env.locals.contains_key(&formal.id) {

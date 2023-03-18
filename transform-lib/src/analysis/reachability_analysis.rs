@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use analysis::domains::{PowerSetDomain, PowerSetTop};
+use analysis::domains::{JoinSemiLattice, PowerSetDomain, PowerSetTop};
 use analysis::solvers::SolveMonotone;
 
 use crate::analysis::annotations_from_backward_analysis_results;
@@ -52,7 +52,8 @@ pub struct PastOperations;
 impl PastOperations {
     pub fn get_results(cfg: &Cfg) -> Vec<OperationKindsDomain> {
         let solver = SolveMonotone::default();
-        solver.transfer_operations(cfg, &*LAT_CTX, &mut collect_operation_kind)
+        let seed = OperationKindsDomain::bottom(&*LAT_CTX);
+        solver.transfer_operations(cfg, seed, &*LAT_CTX, &mut collect_operation_kind)
     }
 }
 
@@ -82,7 +83,8 @@ impl FutureOperations {
 
     fn get_results_impl(cfg: &Cfg) -> Vec<OperationKindsDomain> {
         let solver = SolveMonotone::default();
-        solver.transfer_operations(cfg, &*LAT_CTX, &mut collect_operation_kind)
+        let seed = OperationKindsDomain::bottom(&*LAT_CTX);
+        solver.transfer_operations(cfg, seed, &*LAT_CTX, &mut collect_operation_kind)
     }
 }
 

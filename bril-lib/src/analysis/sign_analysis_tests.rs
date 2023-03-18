@@ -41,20 +41,20 @@ fn factorial() {
     let expected = r"@main(x: int): int {
   res: int = const 1;
   i: int = const 0;
-  jmp .test; /* i: Zero, res: Positive */
+  jmp .test; /* i: Zero, res: Positive, x: Top */
 
 .test:
   cond: bool = lt i x;
-  br cond .loop .done; /* cond: NonNeg, i: NonNeg, res: Positive */
+  br cond .loop .done; /* cond: NonNeg, i: NonNeg, res: Positive, x: Top */
 
 .loop:
   one: int = const 1;
   i: int = add i one;
   res: int = mul res i;
-  jmp .test; /* cond: NonNeg, i: Positive, one: Positive, res: Positive */
+  jmp .test; /* cond: NonNeg, i: Positive, one: Positive, res: Positive, x: Top */
 
 .done:
-  ret res; /* cond: NonNeg, i: NonNeg, res: Positive */
+  ret res; /* cond: NonNeg, i: NonNeg, res: Positive, x: Top */
 }
 ";
     check_expected_results(SignAnalysis, source, expected)

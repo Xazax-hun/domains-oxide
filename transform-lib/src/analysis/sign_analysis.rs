@@ -1,4 +1,4 @@
-use analysis::domains::{SignDomain, Vec2Domain};
+use analysis::domains::{JoinSemiLattice, SignDomain, Vec2Domain};
 use analysis::solvers::SolveMonotone;
 
 use utils::Vec2;
@@ -19,7 +19,8 @@ pub struct SignAnalysis;
 impl SignAnalysis {
     pub fn get_results(cfg: &Cfg) -> Vec<Vec2Sign> {
         let solver = SolveMonotone::default();
-        solver.transfer_operations(cfg, &(), &mut SignAnalysis::transfer)
+        let seed = Vec2Sign::bottom(&());
+        solver.transfer_operations(cfg, seed, &(), &mut SignAnalysis::transfer)
     }
 
     pub fn transfer(&op: &Operation, cfg: &Cfg, _: &(), pre_state: &Vec2Sign) -> Vec2Sign {

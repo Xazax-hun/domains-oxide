@@ -2,12 +2,12 @@ use std::collections::HashSet;
 
 use analysis::{
     cfg::{CfgBlock, ControlFlowGraph, OpPos},
-    domains::{Map, MapCtx, SignDomain},
+    domains::{JoinSemiLattice, Map, MapCtx, SignDomain},
     solvers::SolveMonotone,
 };
 
 use crate::{
-    ir::{Annotations, Cfg, Operation, Unit},
+    ir::{Annotations, Cfg, Operation, Type, Unit, Variable},
     lexer::{Identifier, Token, TokenValue},
 };
 
@@ -100,8 +100,21 @@ impl SignAnalysis {
 impl Analysis for SignAnalysis {
     fn analyze(&self, cfg: &Cfg, unit: &Unit) -> Annotations {
         let solver = SolveMonotone::default();
+
         let ctx = MapCtx(HashSet::new(), ());
-        let states = solver.transfer_operations(cfg, &ctx, &mut SignAnalysis::transfer);
+        let mut seed = SignEnv::bottom(&ctx);
+        // Values for the formal args.
+        for Variable { id, ty } in cfg.get_formals() {
+            seed.insert(
+                *id,
+                match ty {
+                    Type::Bool => SignDomain::NonNeg,
+                    _ => SignDomain::Top,
+                },
+            );
+        }
+
+        let states = solver.transfer_operations(cfg, seed, &ctx, &mut SignAnalysis::transfer);
         let mut anns = Annotations::default();
         // TODO: collect annotations for each operation?
         //       should annotations for operations be incremental? (Only emit changed values.)

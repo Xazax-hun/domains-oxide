@@ -1,4 +1,4 @@
-use analysis::domains::{self, IntervalDomain, Lattice, Vec2Domain};
+use analysis::domains::{self, IntervalDomain, JoinSemiLattice, Lattice, Vec2Domain};
 use analysis::solvers::SolveMonotone;
 
 use utils::Vec2;
@@ -18,7 +18,8 @@ pub struct IntervalAnalysis;
 impl IntervalAnalysis {
     pub fn get_results(cfg: &Cfg) -> Vec<Vec2Interval> {
         let solver = SolveMonotone::default();
-        solver.transfer_operations(cfg, &(), &mut Self::transfer)
+        let seed = Vec2Interval::bottom(&());
+        solver.transfer_operations(cfg, seed, &(), &mut Self::transfer)
     }
 
     pub fn transfer(

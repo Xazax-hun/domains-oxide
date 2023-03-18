@@ -98,11 +98,14 @@ impl SolveMonotone {
     ///
     /// # Arguments
     ///
+    /// * `seed` - The initial program state for the start node. This often has
+    ///            the initial abstract values for the formal parameters of a function.
     /// * `post_states` - The analysis state after each CFG block.
     /// * `transfer` - Function to apply the effects of a block to the state.
     pub fn transfer_blocks<Cfg, D, F>(
         self,
         cfg: &Cfg,
+        seed: D,
         lat_ctx: &D::LatticeContext,
         transfer: &mut F,
     ) -> Vec<D>
@@ -112,6 +115,7 @@ impl SolveMonotone {
         F: FnMut(usize, &Cfg, &D::LatticeContext, &D) -> D,
     {
         let mut post_states = vec![D::bottom(lat_ctx); cfg.blocks().len()];
+        post_states[0] = seed;
         self.transfer_blocks_in_place(cfg, lat_ctx, &mut post_states, transfer);
         post_states
     }
@@ -163,11 +167,14 @@ impl SolveMonotone {
     ///
     /// # Arguments
     ///
+    /// * `seed` - The initial program state for the start node. This often has
+    ///            the initial abstract values for the formal parameters of a function.
     /// * `post_states` - The analysis state after each CFG block.
     /// * `transfer` - Function to apply the effects of an operation to the state.
     pub fn transfer_operations<Cfg, D, F>(
         self,
         cfg: &Cfg,
+        seed: D,
         lat_ctx: &D::LatticeContext,
         transfer: &mut F,
     ) -> Vec<D>
@@ -181,7 +188,7 @@ impl SolveMonotone {
             &D,
         ) -> D,
     {
-        self.transfer_blocks(cfg, lat_ctx, &mut |current, cfg, lat_ctx, dom: &D| {
+        self.transfer_blocks(cfg, seed, lat_ctx, &mut |current, cfg, lat_ctx, dom: &D| {
             let mut post_state = dom.clone();
             for op in cfg.blocks()[current].operations() {
                 post_state = transfer(op, cfg, lat_ctx, &post_state);
