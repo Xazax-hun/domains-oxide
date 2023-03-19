@@ -116,6 +116,27 @@ impl SignAnalysis {
             }
         }
     }
+
+    pub fn transfer_edge(
+        from: usize,
+        to: usize,
+        cfg: &Cfg,
+        _: &SignCtx,
+        pre_state: &SignEnv,
+    ) -> Option<SignEnv> {
+        let is_true_branch = *cfg.blocks()[from].successors().first().unwrap() == to;
+        let last_op = cfg.blocks()[from].operations().last().unwrap();
+        match last_op {
+            Operation::Branch { cond, .. } => {
+                match *pre_state.get(&cond.id).unwrap_or(&SignDomain::Top) {
+                    SignDomain::Zero if is_true_branch => None,
+                    SignDomain::Positive if !is_true_branch => None,
+                    _ => Some(pre_state.clone()),
+                }
+            }
+            _ => Some(pre_state.clone()),
+        }
+    }
 }
 
 impl Analysis for SignAnalysis {
@@ -124,7 +145,7 @@ impl Analysis for SignAnalysis {
 
         let ctx = MapCtx(HashSet::new(), ());
         let mut seed = SignEnv::bottom(&ctx);
-        // Values for the formal args.
+        // Values for the formal parameters.
         for Variable { id, ty } in cfg.get_formals() {
             seed.insert(
                 *id,
@@ -135,7 +156,13 @@ impl Analysis for SignAnalysis {
             );
         }
 
-        let states = solver.transfer_operations(cfg, seed, &ctx, &mut SignAnalysis::transfer);
+        let states = solver.transfer_operations_and_edges(
+            cfg,
+            seed,
+            &ctx,
+            &mut SignAnalysis::transfer,
+            &mut SignAnalysis::transfer_edge,
+        );
         let mut anns = Annotations::default();
         // TODO: collect annotations for each operation?
         //       should annotations for operations be incremental? (Only emit changed values.)

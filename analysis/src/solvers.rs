@@ -31,17 +31,20 @@ impl SolveMonotone {
     /// # Arguments
     ///
     /// * `post_states` - The analysis state after each CFG block.
-    /// * `transfer` - Function to apply the effects of a block to the state.
-    pub fn transfer_blocks_in_place<Cfg, D, F>(
+    /// * `transfer_block` - Function to apply the effects of a block to the state.
+    /// * `transfer_edge` - Function to apply the effects of conditional jumps.
+    pub fn transfer_in_place<Cfg, D, F, G>(
         self,
         cfg: &Cfg,
         lat_ctx: &D::LatticeContext,
         post_states: &mut Vec<D>,
-        transfer: &mut F,
+        transfer_block: &mut F,
+        transfer_edge: &mut G,
     ) where
         Cfg: ControlFlowGraph,
         D: JoinSemiLattice,
         F: FnMut(usize, &Cfg, &D::LatticeContext, &D) -> D,
+        G: FnMut(usize, usize, &Cfg, &D::LatticeContext, &D) -> Option<D>,
     {
         // Loop header dominates the whole loop, every back edge should point to a
         // loop header.
@@ -53,7 +56,7 @@ impl SolveMonotone {
         // Process first node. It is hoisted, so the input state can be other than
         // the bottom value.
         let first_state = post_states[0].clone();
-        post_states[0] = transfer(0, cfg, lat_ctx, &first_state);
+        post_states[0] = transfer_block(0, cfg, lat_ctx, &first_state);
 
         let node_num = cfg.blocks().len();
         let mut visited = vec![false; node_num];
@@ -71,10 +74,14 @@ impl SolveMonotone {
             }
 
             let mut pre_state = D::bottom(lat_ctx);
-            for pred in cfg.blocks()[current].predecessors() {
-                pre_state = pre_state.join(&post_states[*pred], lat_ctx);
+            for &pred in cfg.blocks()[current].predecessors() {
+                if let Some(transferred) =
+                    transfer_edge(pred, current, cfg, lat_ctx, &post_states[pred])
+                {
+                    pre_state = pre_state.join(&transferred, lat_ctx);
+                }
             }
-            let mut post_state = transfer(current, cfg, lat_ctx, &pre_state);
+            let mut post_state = transfer_block(current, cfg, lat_ctx, &pre_state);
 
             if loop_heads.contains(&current) {
                 post_state =
@@ -114,9 +121,39 @@ impl SolveMonotone {
         D: JoinSemiLattice,
         F: FnMut(usize, &Cfg, &D::LatticeContext, &D) -> D,
     {
+        self.transfer_blocks_and_edges(cfg, seed, lat_ctx, transfer, &mut |_, _, _, _, d| {
+            Some(d.clone())
+        })
+    }
+
+    /// Run the solver on a CFG returning the analysis states at the end of
+    /// each basic block. Returns an empty vector when the analysis did not
+    /// converge.
+    ///
+    /// # Arguments
+    ///
+    /// * `seed` - The initial program state for the start node. This often has
+    ///            the initial abstract values for the formal parameters of a function.
+    /// * `post_states` - The analysis state after each CFG block.
+    /// * `transfer` - Function to apply the effects of a block to the state.
+    /// * `transfer_edge` - Function to apply the effects of conditional jumps.
+    pub fn transfer_blocks_and_edges<Cfg, D, F, G>(
+        self,
+        cfg: &Cfg,
+        seed: D,
+        lat_ctx: &D::LatticeContext,
+        transfer: &mut F,
+        transfer_edge: &mut G,
+    ) -> Vec<D>
+    where
+        Cfg: ControlFlowGraph,
+        D: JoinSemiLattice,
+        F: FnMut(usize, &Cfg, &D::LatticeContext, &D) -> D,
+        G: FnMut(usize, usize, &Cfg, &D::LatticeContext, &D) -> Option<D>,
+    {
         let mut post_states = vec![D::bottom(lat_ctx); cfg.blocks().len()];
         post_states[0] = seed;
-        self.transfer_blocks_in_place(cfg, lat_ctx, &mut post_states, transfer);
+        self.transfer_in_place(cfg, lat_ctx, &mut post_states, transfer, transfer_edge);
         post_states
     }
 
@@ -131,12 +168,14 @@ impl SolveMonotone {
     ///
     /// * `post_states` - The analysis state after each CFG block.
     /// * `transfer` - Function to apply the effects of an operation to the state.
-    pub fn transfer_operations_in_place<Cfg, D, F>(
+    /// * `transfer_edge` - Function to apply the effects of conditional jumps.
+    pub fn transfer_operations_in_place<Cfg, D, F, G>(
         self,
         cfg: &Cfg,
         lat_ctx: &D::LatticeContext,
         post_states: &mut Vec<D>,
         transfer: &mut F,
+        transfer_edge: &mut G,
     ) where
         Cfg: ControlFlowGraph,
         D: JoinSemiLattice,
@@ -146,8 +185,9 @@ impl SolveMonotone {
             &D::LatticeContext,
             &D,
         ) -> D,
+        G: FnMut(usize, usize, &Cfg, &D::LatticeContext, &D) -> Option<D>,
     {
-        self.transfer_blocks_in_place(
+        self.transfer_in_place(
             cfg,
             lat_ctx,
             post_states,
@@ -158,6 +198,7 @@ impl SolveMonotone {
                 }
                 post_state
             },
+            transfer_edge,
         );
     }
 
@@ -195,5 +236,50 @@ impl SolveMonotone {
             }
             post_state
         })
+    }
+
+    /// Run the solver on a CFG returning the analysis states at the end of
+    /// each basic block. Returns an empty vector when the analysis did not
+    /// converge.
+    ///
+    /// # Arguments
+    ///
+    /// * `seed` - The initial program state for the start node. This often has
+    ///            the initial abstract values for the formal parameters of a function.
+    /// * `post_states` - The analysis state after each CFG block.
+    /// * `transfer` - Function to apply the effects of an operation to the state.
+    /// * `transfer_edge` - Function to apply the effects of conditional jumps.
+    pub fn transfer_operations_and_edges<Cfg, D, F, G>(
+        self,
+        cfg: &Cfg,
+        seed: D,
+        lat_ctx: &D::LatticeContext,
+        transfer: &mut F,
+        transfer_edge: &mut G,
+    ) -> Vec<D>
+    where
+        Cfg: ControlFlowGraph,
+        D: JoinSemiLattice,
+        F: FnMut(
+            &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
+            &Cfg,
+            &D::LatticeContext,
+            &D,
+        ) -> D,
+        G: FnMut(usize, usize, &Cfg, &D::LatticeContext, &D) -> Option<D>,
+    {
+        self.transfer_blocks_and_edges(
+            cfg,
+            seed,
+            lat_ctx,
+            &mut |current, cfg, lat_ctx, dom: &D| {
+                let mut post_state = dom.clone();
+                for op in cfg.blocks()[current].operations() {
+                    post_state = transfer(op, cfg, lat_ctx, &post_state);
+                }
+                post_state
+            },
+            transfer_edge,
+        )
     }
 }

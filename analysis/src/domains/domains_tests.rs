@@ -88,7 +88,7 @@ fn sign_domain_tests() {
 
         assert_eq!(x_sign + SignDomain::Bottom, SignDomain::Bottom);
         assert_eq!(x_sign + SignDomain::Top, SignDomain::Top);
-        
+
         match x_sign.strict_cmp(y_sign) {
             Some(Ordering::Less) => assert!(x < y),
             Some(Ordering::Equal) => assert!(x == y),

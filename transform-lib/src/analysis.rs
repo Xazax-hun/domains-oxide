@@ -140,6 +140,7 @@ where
             }
             post_state
         },
+        &mut |_, _, _, _, d| Some(d.clone()),
     );
     anns
 }
@@ -178,6 +179,7 @@ where
             polys.extend(post_state.render().iter().cloned());
             post_state
         },
+        &mut |_, _, _, _, d| Some(d.clone()),
     );
     polys
 }

@@ -47,6 +47,38 @@ fn logical_operators() {
 }
 
 #[test]
+fn branching() {
+    let source = r"@main {
+  pos: int = const 5;
+  neg: int = const -5;
+  greater: bool = gt neg pos;
+  br greater .true .false;
+
+.true:
+  ret;
+
+.false:
+  ret;
+}
+";
+
+    let expected = r"@main {
+  pos: int = const 5;
+  neg: int = const -5;
+  greater: bool = gt neg pos;
+  br greater .true .false; /* greater: Zero, neg: Negative, pos: Positive */
+
+.true:
+  ret; /*  */
+
+.false:
+  ret; /* greater: Zero, neg: Negative, pos: Positive */
+}
+";
+    check_expected_results(SignAnalysis, source, expected)
+}
+
+#[test]
 fn factorial() {
     let source = r"@main(x: int): int {
   res: int = const 1;
