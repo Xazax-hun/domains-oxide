@@ -101,6 +101,7 @@ fn factorial() {
   jmp .test;
 
 .done:
+  i: int = id i;
   ret res;
 }
 ";
@@ -117,10 +118,11 @@ fn factorial() {
 .loop:
   one: int = const 1; /* one: Positive */
   i: int = add i one; /* i: Positive */
-  res: int = mul res i;
+  res: int = mul res i; /* res: Positive */
   jmp .test;
 
 .done:
+  i: int = id i; /* i: NonNeg */
   ret res;
 }
 ";

@@ -99,6 +99,15 @@ impl Operation {
         use Operation::*;
         matches!(self, Branch { .. } | Jump(_, _) | Ret(_, _))
     }
+
+    pub fn get_result(&self) -> Option<Variable> {
+        use Operation::*;
+        match self {
+            BinaryOp { result, .. } | UnaryOp { result, .. } | Const(_, result) => Some(*result),
+            Call { result, .. } => *result,
+            _ => None,
+        }
+    }
 }
 
 /// The last operation is a terminator:

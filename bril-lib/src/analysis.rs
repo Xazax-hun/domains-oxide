@@ -1,13 +1,13 @@
 use std::{collections::HashMap, marker::PhantomData};
 
 use analysis::{
-    cfg::{CfgBlock, ControlFlowGraph, OpPos},
-    domains::{JoinSemiLattice, Map},
+    cfg::OpPos,
+    domains::{JoinSemiLattice, Map, MapCtx},
     solvers::TransferFunction,
 };
 
 use crate::{
-    ir::{AnnotationMap, Annotations, Cfg, Unit},
+    ir::{AnnotationMap, Annotations, Cfg, Operation, Unit},
     lexer::Identifier,
 };
 
@@ -63,14 +63,18 @@ where
     fn operation(
         &mut self,
         pos: OpPos,
-        op: &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
+        op: &Operation,
         cfg: &Cfg,
-        ctx: &<Map<Identifier, D> as JoinSemiLattice>::LatticeContext,
+        ctx: &MapCtx<Identifier, D>,
         pre_state: &Map<Identifier, D>,
     ) -> Map<Identifier, D> {
-        // TODO: somehow print values that are changed during the join for pre states.
         let post_state = self.transfer.operation(pos, op, cfg, ctx, pre_state);
-        let changed_values = post_state.changed_values(pre_state);
+        let mut changed_values = post_state.changed_values(pre_state);
+        if let Some(result) = op.get_result() {
+            if let Some(val) = post_state.get(&result.id) {
+                changed_values.insert(result.id, val.clone());
+            }
+        }
         if !changed_values.is_empty() {
             let printed: Vec<_> = changed_values
                 .iter()
@@ -82,13 +86,13 @@ where
     }
 
     fn edge(
-            &mut self,
-            from: usize,
-            to: usize,
-            cfg: &Cfg,
-            ctx: &<Map<Identifier, D> as JoinSemiLattice>::LatticeContext,
-            pre_state: &Map<Identifier, D>,
-        ) -> Option<Map<Identifier, D>> {
+        &mut self,
+        from: usize,
+        to: usize,
+        cfg: &Cfg,
+        ctx: &MapCtx<Identifier, D>,
+        pre_state: &Map<Identifier, D>,
+    ) -> Option<Map<Identifier, D>> {
         self.transfer.edge(from, to, cfg, ctx, pre_state)
     }
 }
