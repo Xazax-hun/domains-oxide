@@ -1,5 +1,6 @@
+use analysis::cfg::OpPos;
 use analysis::domains::{self, IntervalDomain, JoinSemiLattice, Lattice, Vec2Domain};
-use analysis::solvers::SolveMonotone;
+use analysis::solvers::{SolveMonotone, TransferFunction};
 
 use utils::Vec2;
 
@@ -15,14 +16,10 @@ type Vec2Interval = Vec2Domain<IntervalDomain>;
 #[derive(Debug)]
 pub struct IntervalAnalysis;
 
-impl IntervalAnalysis {
-    pub fn get_results(cfg: &Cfg) -> Vec<Vec2Interval> {
-        let solver = SolveMonotone::default();
-        let seed = Vec2Interval::bottom(&());
-        solver.transfer_operations(cfg, seed, &(), &mut Self::transfer)
-    }
-
-    pub fn transfer(
+impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Interval> for IntervalAnalysis {
+    fn operation(
+        &mut self,
+        _pos: OpPos,
         &op: &Operation,
         cfg: &Cfg,
         lat_ctx: &(),
@@ -148,12 +145,20 @@ impl IntervalAnalysis {
     }
 }
 
+impl IntervalAnalysis {
+    pub fn get_results(cfg: &Cfg) -> Vec<Vec2Interval> {
+        let solver = SolveMonotone::default();
+        let seed = Vec2Interval::bottom(&());
+        solver.solve(cfg, seed, &(), &mut IntervalAnalysis)
+    }
+}
+
 impl Analysis for IntervalAnalysis {
     fn analyze(&self, cfg: &Cfg) -> AnalysisResult {
         let results = Self::get_results(cfg);
         let annotations =
-            annotations_from_forward_analysis_results(cfg, &(), &mut Self::transfer, &results);
-        let covered = covered_area_from_analysis_results(cfg, &(), &mut Self::transfer, &results);
+            annotations_from_forward_analysis_results(cfg, &(), &mut IntervalAnalysis, &results);
+        let covered = covered_area_from_analysis_results(cfg, &(), &mut IntervalAnalysis, &results);
         AnalysisResult {
             annotations,
             covered,

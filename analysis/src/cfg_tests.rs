@@ -307,10 +307,15 @@ fn basic_solver_visit_nodes() {
     let mut visited = Vec::new();
 
     let solver = SolveMonotone::default();
-    let result = solver.transfer_blocks(&cfg, (), &(), &mut |id, _, _, &dom: &()| {
-        visited.push(id);
-        dom
-    });
+    let result = solver.solve(
+        &cfg,
+        (),
+        &(),
+        &mut BlockTransfer::new(|id, _, _, &dom: &()| {
+            visited.push(id);
+            dom
+        }),
+    );
 
     assert_eq!(result.len(), cfg.blocks().len());
     assert_eq!(visited.len(), 5);

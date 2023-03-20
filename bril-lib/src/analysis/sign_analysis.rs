@@ -3,7 +3,7 @@ use std::{cmp::Ordering, collections::HashSet};
 use analysis::{
     cfg::{CfgBlock, ControlFlowGraph, OpPos},
     domains::{JoinSemiLattice, Map, MapCtx, SignDomain},
-    solvers::SolveMonotone,
+    solvers::{SolveMonotone, TransferFunction},
 };
 
 use crate::{
@@ -20,53 +20,6 @@ type SignCtx = MapCtx<Identifier, SignDomain>;
 pub struct SignAnalysis;
 
 impl SignAnalysis {
-    pub fn transfer(op: &Operation, _cfg: &Cfg, _: &SignCtx, pre_state: &SignEnv) -> SignEnv {
-        match op {
-            Operation::BinaryOp {
-                token,
-                result,
-                lhs,
-                rhs,
-            } => {
-                let op_type = lhs.ty;
-                let lhs = *pre_state.get(&lhs.id).unwrap_or(&SignDomain::Top);
-                let rhs = *pre_state.get(&rhs.id).unwrap_or(&SignDomain::Top);
-                let result_sign = Self::transfer_binary_op(*token, lhs, rhs, op_type);
-                let mut new_state = pre_state.clone();
-                new_state.insert(result.id, result_sign);
-                new_state
-            }
-            Operation::UnaryOp {
-                token,
-                result,
-                operand,
-            } => {
-                let operand = *pre_state.get(&operand.id).unwrap_or(&SignDomain::Top);
-                let result_sign = Self::transfer_unary_op(*token, operand);
-                let mut new_state = pre_state.clone();
-                new_state.insert(result.id, result_sign);
-                new_state
-            }
-            Operation::Const(token, result) => {
-                let mut new_state = pre_state.clone();
-                let val = match token.value {
-                    TokenValue::Integer(i) => SignDomain::from(i),
-                    TokenValue::True => SignDomain::Positive,
-                    TokenValue::False => SignDomain::Zero,
-                    _ => panic!("Unexpected token."),
-                };
-                new_state.insert(result.id, val);
-                new_state
-            }
-            Operation::Jump(_, _)
-            | Operation::Branch { .. }
-            | Operation::Call { .. }
-            | Operation::Ret(_, _)
-            | Operation::Print(_, _)
-            | Operation::Nop(_) => pre_state.clone(),
-        }
-    }
-
     fn transfer_binary_op(
         token: Token,
         lhs: SignDomain,
@@ -116,8 +69,65 @@ impl SignAnalysis {
             }
         }
     }
+}
 
-    pub fn transfer_edge(
+impl TransferFunction<Cfg, SignEnv> for SignAnalysis {
+    fn operation(
+        &mut self,
+        _pos: OpPos,
+        op: &Operation,
+        _cfg: &Cfg,
+        _: &SignCtx,
+        pre_state: &SignEnv,
+    ) -> SignEnv {
+        match op {
+            Operation::BinaryOp {
+                token,
+                result,
+                lhs,
+                rhs,
+            } => {
+                let op_type = lhs.ty;
+                let lhs = *pre_state.get(&lhs.id).unwrap_or(&SignDomain::Top);
+                let rhs = *pre_state.get(&rhs.id).unwrap_or(&SignDomain::Top);
+                let result_sign = Self::transfer_binary_op(*token, lhs, rhs, op_type);
+                let mut new_state = pre_state.clone();
+                new_state.insert(result.id, result_sign);
+                new_state
+            }
+            Operation::UnaryOp {
+                token,
+                result,
+                operand,
+            } => {
+                let operand = *pre_state.get(&operand.id).unwrap_or(&SignDomain::Top);
+                let result_sign = Self::transfer_unary_op(*token, operand);
+                let mut new_state = pre_state.clone();
+                new_state.insert(result.id, result_sign);
+                new_state
+            }
+            Operation::Const(token, result) => {
+                let mut new_state = pre_state.clone();
+                let val = match token.value {
+                    TokenValue::Integer(i) => SignDomain::from(i),
+                    TokenValue::True => SignDomain::Positive,
+                    TokenValue::False => SignDomain::Zero,
+                    _ => panic!("Unexpected token."),
+                };
+                new_state.insert(result.id, val);
+                new_state
+            }
+            Operation::Jump(_, _)
+            | Operation::Branch { .. }
+            | Operation::Call { .. }
+            | Operation::Ret(_, _)
+            | Operation::Print(_, _)
+            | Operation::Nop(_) => pre_state.clone(),
+        }
+    }
+
+    fn edge(
+        &mut self,
         from: usize,
         to: usize,
         cfg: &Cfg,
@@ -156,13 +166,7 @@ impl Analysis for SignAnalysis {
             );
         }
 
-        let states = solver.transfer_operations_and_edges(
-            cfg,
-            seed,
-            &ctx,
-            &mut SignAnalysis::transfer,
-            &mut SignAnalysis::transfer_edge,
-        );
+        let states = solver.solve(cfg, seed, &ctx, &mut SignAnalysis);
         let mut anns = Annotations::default();
         // TODO: collect annotations for each operation?
         //       should annotations for operations be incremental? (Only emit changed values.)

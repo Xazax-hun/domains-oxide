@@ -368,6 +368,26 @@ pub struct MapCtx<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice>(
     pub V::LatticeContext,
 );
 
+impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> Default for Map<K, V> {
+    fn default() -> Self {
+        Map(HashMap::default())
+    }
+}
+
+impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> Map<K, V> {
+    pub fn changed_values(&self, previous: &Self) -> Self {
+        let mut result = Map::default();
+        for (k, v) in self.iter() {
+            match previous.get(k) {
+                Some(prev_v) if prev_v != v => result.insert(k.clone(), prev_v.clone()),
+                None => result.insert(k.clone(), v.clone()),
+                _ => continue,
+            };
+        }
+        result
+    }
+}
+
 impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> Deref for Map<K, V> {
     type Target = HashMap<K, V>;
 

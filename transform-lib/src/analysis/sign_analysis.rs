@@ -1,5 +1,6 @@
+use analysis::cfg::OpPos;
 use analysis::domains::{JoinSemiLattice, SignDomain, Vec2Domain};
-use analysis::solvers::SolveMonotone;
+use analysis::solvers::{SolveMonotone, TransferFunction};
 
 use utils::Vec2;
 
@@ -16,14 +17,15 @@ type Vec2Sign = Vec2Domain<SignDomain>;
 #[derive(Debug)]
 pub struct SignAnalysis;
 
-impl SignAnalysis {
-    pub fn get_results(cfg: &Cfg) -> Vec<Vec2Sign> {
-        let solver = SolveMonotone::default();
-        let seed = Vec2Sign::bottom(&());
-        solver.transfer_operations(cfg, seed, &(), &mut SignAnalysis::transfer)
-    }
-
-    pub fn transfer(&op: &Operation, cfg: &Cfg, _: &(), pre_state: &Vec2Sign) -> Vec2Sign {
+impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Sign> for SignAnalysis {
+    fn operation(
+        &mut self,
+        _: OpPos,
+        &op: &Operation,
+        cfg: &Cfg,
+        _: &(),
+        pre_state: &Vec2Sign,
+    ) -> Vec2Sign {
         use SignDomain::*;
         let ctx = cfg.context();
         match ctx.op_to_ref(op) {
@@ -95,6 +97,14 @@ impl SignAnalysis {
     }
 }
 
+impl SignAnalysis {
+    pub fn get_results(cfg: &Cfg) -> Vec<Vec2Sign> {
+        let solver = SolveMonotone::default();
+        let seed = Vec2Sign::bottom(&());
+        solver.solve(cfg, seed, &(), &mut SignAnalysis)
+    }
+}
+
 impl Analysis for SignAnalysis {
     fn analyze(&self, cfg: &Cfg) -> AnalysisResult {
         let results = Self::get_results(cfg);
@@ -102,10 +112,10 @@ impl Analysis for SignAnalysis {
             annotations: annotations_from_forward_analysis_results(
                 cfg,
                 &(),
-                &mut Self::transfer,
+                &mut SignAnalysis,
                 &results,
             ),
-            covered: covered_area_from_analysis_results(cfg, &(), &mut Self::transfer, &results),
+            covered: covered_area_from_analysis_results(cfg, &(), &mut SignAnalysis, &results),
         }
     }
 }

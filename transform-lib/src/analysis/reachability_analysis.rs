@@ -2,8 +2,9 @@
 
 use std::collections::HashSet;
 
+use analysis::cfg::OpPos;
 use analysis::domains::{JoinSemiLattice, PowerSetDomain, PowerSetTop};
-use analysis::solvers::SolveMonotone;
+use analysis::solvers::{OpTransfer, SolveMonotone};
 
 use crate::analysis::annotations_from_backward_analysis_results;
 use crate::analysis::annotations_from_forward_analysis_results;
@@ -32,6 +33,7 @@ lazy_static! {
 }
 
 pub fn collect_operation_kind(
+    _pos: OpPos,
     &op: &Operation,
     _cfg: &Cfg,
     _: &PowerSetTop<OpKind>,
@@ -53,7 +55,12 @@ impl PastOperations {
     pub fn get_results(cfg: &Cfg) -> Vec<OperationKindsDomain> {
         let solver = SolveMonotone::default();
         let seed = OperationKindsDomain::bottom(&*LAT_CTX);
-        solver.transfer_operations(cfg, seed, &*LAT_CTX, &mut collect_operation_kind)
+        solver.solve(
+            cfg,
+            seed,
+            &*LAT_CTX,
+            &mut OpTransfer::new(collect_operation_kind),
+        )
     }
 }
 
@@ -64,7 +71,7 @@ impl Analysis for PastOperations {
             annotations: annotations_from_forward_analysis_results(
                 cfg,
                 &*LAT_CTX,
-                &mut collect_operation_kind,
+                &mut OpTransfer::new(collect_operation_kind),
                 &results,
             ),
             covered: Vec::new(),
@@ -84,7 +91,12 @@ impl FutureOperations {
     fn get_results_impl(cfg: &Cfg) -> Vec<OperationKindsDomain> {
         let solver = SolveMonotone::default();
         let seed = OperationKindsDomain::bottom(&*LAT_CTX);
-        solver.transfer_operations(cfg, seed, &*LAT_CTX, &mut collect_operation_kind)
+        solver.solve(
+            cfg,
+            seed,
+            &*LAT_CTX,
+            &mut OpTransfer::new(collect_operation_kind),
+        )
     }
 }
 
@@ -96,7 +108,7 @@ impl Analysis for FutureOperations {
             annotations: annotations_from_backward_analysis_results(
                 &reversed,
                 &*LAT_CTX,
-                &mut collect_operation_kind,
+                &mut OpTransfer::new(collect_operation_kind),
                 &results,
             ),
             covered: Vec::new(),

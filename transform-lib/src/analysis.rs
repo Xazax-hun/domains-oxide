@@ -3,9 +3,8 @@ pub mod reachability_analysis;
 pub mod sign_analysis;
 
 use analysis::{
-    cfg::{CfgBlock, ControlFlowGraph},
     domains::JoinSemiLattice,
-    solvers::SolveMonotone,
+    solvers::{OpTransfer, SolveMonotone, TransferFunction},
 };
 use utils::Polygon;
 
@@ -60,57 +59,33 @@ pub fn get_analysis_results(analysis: Analyses, cfg: &Cfg) -> AnalysisResult {
     analysis.analyze(cfg)
 }
 
-pub fn annotations_from_forward_analysis_results<D, F>(
-    cfg: &Cfg,
+pub fn annotations_from_forward_analysis_results<'ctx, D: JoinSemiLattice>(
+    cfg: &Cfg<'ctx>,
     lat_ctx: &D::LatticeContext,
-    transfer: &mut F,
+    transfer: &mut impl TransferFunction<Cfg<'ctx>, D>,
     result: &[D],
-) -> Annotations
-where
-    D: JoinSemiLattice,
-    F: FnMut(
-        &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
-        &Cfg,
-        &D::LatticeContext,
-        &D,
-    ) -> D,
-{
+) -> Annotations {
     annotations_from_analysis_results(cfg, lat_ctx, transfer, result, &mut |anns| &mut anns.post)
 }
 
-pub fn annotations_from_backward_analysis_results<D, F>(
-    cfg: &Cfg,
+pub fn annotations_from_backward_analysis_results<'ctx, D: JoinSemiLattice>(
+    cfg: &Cfg<'ctx>,
     lat_ctx: &D::LatticeContext,
-    transfer: &mut F,
+    transfer: &mut impl TransferFunction<Cfg<'ctx>, D>,
     result: &[D],
-) -> Annotations
-where
-    D: JoinSemiLattice,
-    F: FnMut(
-        &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
-        &Cfg,
-        &D::LatticeContext,
-        &D,
-    ) -> D,
-{
+) -> Annotations {
     annotations_from_analysis_results(cfg, lat_ctx, transfer, result, &mut |anns| &mut anns.pre)
 }
 
-fn annotations_from_analysis_results<D, F, G>(
-    cfg: &Cfg,
+fn annotations_from_analysis_results<'ctx, D, G>(
+    cfg: &Cfg<'ctx>,
     lat_ctx: &D::LatticeContext,
-    transfer: &mut F,
+    transfer: &mut impl TransferFunction<Cfg<'ctx>, D>,
     result: &[D],
     selector: &mut G,
 ) -> Annotations
 where
     D: JoinSemiLattice,
-    F: FnMut(
-        &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
-        &Cfg,
-        &D::LatticeContext,
-        &D,
-    ) -> D,
     G: FnMut(&mut Annotations) -> &mut HashMap<Node, Vec<String>>,
 {
     let mut anns = Annotations::new();
@@ -126,12 +101,12 @@ where
     states[0] = D::bottom(lat_ctx);
 
     let solver = SolveMonotone::default();
-    solver.transfer_operations_in_place(
+    solver.solve_in_place(
         cfg,
         lat_ctx,
         &mut states,
-        &mut |op, cfg, lat_ctx, pre_state| {
-            let post_state = transfer(op, cfg, lat_ctx, pre_state);
+        &mut OpTransfer::new(|pos, op, cfg, lat_ctx, pre_state| {
+            let post_state = transfer.operation(pos, op, cfg, lat_ctx, pre_state);
             let entry = selector(&mut anns).entry(Node::Operation(*op)).or_default();
             // The solver visits loop heads twice when used for post-processing, we need the
             // annotations only once.
@@ -139,26 +114,19 @@ where
                 entry.push(format!("{post_state:?}"));
             }
             post_state
-        },
-        &mut |_, _, _, _, d| Some(d.clone()),
+        }),
     );
     anns
 }
 
-pub fn covered_area_from_analysis_results<D, F>(
-    cfg: &Cfg,
+pub fn covered_area_from_analysis_results<'ctx, D>(
+    cfg: &Cfg<'ctx>,
     lat_ctx: &D::LatticeContext,
-    transfer: &mut F,
+    transfer: &mut impl TransferFunction<Cfg<'ctx>, D>,
     result: &[D],
 ) -> Vec<Polygon>
 where
     D: JoinSemiLattice + RenderableDomain,
-    F: FnMut(
-        &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
-        &Cfg,
-        &D::LatticeContext,
-        &D,
-    ) -> D,
 {
     let mut polys = Vec::new();
     let mut states = Vec::from(result);
@@ -170,16 +138,15 @@ where
     states[0] = D::bottom(lat_ctx);
 
     let solver = SolveMonotone::default();
-    solver.transfer_operations_in_place(
+    solver.solve_in_place(
         cfg,
         lat_ctx,
         &mut states,
-        &mut |op, cfg, lat_ctx, pre_state| {
-            let post_state = transfer(op, cfg, lat_ctx, pre_state);
+        &mut OpTransfer::new(|pos, op, cfg, lat_ctx, pre_state| {
+            let post_state = transfer.operation(pos, op, cfg, lat_ctx, pre_state);
             polys.extend(post_state.render().iter().cloned());
             post_state
-        },
-        &mut |_, _, _, _, d| Some(d.clone()),
+        }),
     );
     polys
 }

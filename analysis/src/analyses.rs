@@ -1,3 +1,5 @@
+use crate::solvers::BlockTransfer;
+
 use super::cfg::{reverse, BlockMutableCfg, ControlFlowGraph};
 use super::domains::*;
 use super::solvers::SolveMonotone;
@@ -9,15 +11,15 @@ pub fn calculate_dominators(
     let node_num = cfg.blocks().len();
     let ctx = BitSetTop(node_num);
     let solver = SolveMonotone { node_limit };
-    solver.transfer_blocks(
+    solver.solve(
         cfg,
         Flipped(BitSetDomain::from(&ctx, &[0])),
         &ctx,
-        &mut |id, _cfg, _lat_ctx, preds_merged| {
+        &mut BlockTransfer::new(|id, _cfg, _lat_ctx, preds_merged| {
             let mut result = Flipped(BitSetDomain::from(&ctx, &[id]));
             result = result.meet(preds_merged, &ctx);
             result
-        },
+        }),
     )
 }
 

@@ -248,8 +248,7 @@ impl SignDomain {
 
     pub fn logical_and(self, other: SignDomain) -> SignDomain {
         match (self, other) {
-            (SignDomain::Zero, _) => SignDomain::Zero,
-            (_, SignDomain::Zero) => SignDomain::Zero,
+            (SignDomain::Zero, _) | (_, SignDomain::Zero) => SignDomain::Zero,
             (SignDomain::Positive, SignDomain::Positive) => SignDomain::Positive,
             _ => SignDomain::NonNeg,
         }
@@ -257,8 +256,7 @@ impl SignDomain {
 
     pub fn logical_or(self, other: SignDomain) -> SignDomain {
         match (self, other) {
-            (SignDomain::Positive, _) => SignDomain::Positive,
-            (_, SignDomain::Positive) => SignDomain::Positive,
+            (SignDomain::Positive, _) | (_, SignDomain::Positive) => SignDomain::Positive,
             (SignDomain::Zero, SignDomain::Zero) => SignDomain::Zero,
             _ => SignDomain::NonNeg,
         }

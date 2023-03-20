@@ -1,7 +1,177 @@
 use std::collections::HashSet;
+use std::marker::PhantomData;
 
-use super::cfg::{get_back_edges, CfgBlock, ControlFlowGraph, RPOWorklist};
+use super::cfg::{get_back_edges, CfgBlock, ControlFlowGraph, OpPos, RPOWorklist};
 use super::domains::JoinSemiLattice;
+
+/// Transfer functions need to implement this trait and define either
+/// [`TransferFunction::block`] or [`TransferFunction::operation`].
+/// For the most common cases creating [`OpTransfer`] or [`BlockTransfer`]
+/// from a closure should be sufficient.
+pub trait TransferFunction<Cfg, D>
+where
+    Cfg: ControlFlowGraph,
+    D: JoinSemiLattice,
+{
+    /// Optional function to apply the effects of traversing an edge. The most common
+    /// use case is to implement conditional jumps or statements.
+    fn edge(
+        &mut self,
+        _from: usize,
+        _to: usize,
+        _cfg: &Cfg,
+        _ctx: &D::LatticeContext,
+        pre_state: &D,
+    ) -> Option<D> {
+        Some(pre_state.clone())
+    }
+
+    /// Apply the effects of a block to the analysis state. In case [`TransferFunction::operation`]
+    /// is implemented, the default implementation should be sufficient.
+    fn block(&mut self, block_id: usize, cfg: &Cfg, ctx: &D::LatticeContext, pre_state: &D) -> D {
+        let mut post_state = pre_state.clone();
+        for (op_id, op) in cfg.blocks()[block_id].operations().iter().enumerate() {
+            post_state = self.operation(OpPos { block_id, op_id }, op, cfg, ctx, &post_state);
+        }
+        post_state
+    }
+
+    /// Apply the effects of an operation to the analysis state. In case [`TransferFunction::block`]
+    /// is implemented, the default implementation should be sufficient.
+    fn operation(
+        &mut self,
+        _pos: OpPos,
+        _op: &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
+        _cfg: &Cfg,
+        _ctx: &D::LatticeContext,
+        pre_state: &D,
+    ) -> D {
+        pre_state.clone()
+    }
+}
+
+/// A transfer function that never modifies the analysis state. It can be
+/// useful to use together with other utilities that can wrap/combine/transform
+/// transfer functions.
+pub struct NoOpTransfer;
+
+impl<Cfg, D> TransferFunction<Cfg, D> for NoOpTransfer
+where
+    Cfg: ControlFlowGraph,
+    D: JoinSemiLattice,
+{
+}
+
+/// Small utility so users do not need to create a new struct for every
+/// transfer function for operations.
+pub struct OpTransfer<F, Cfg, D>
+where
+    Cfg: ControlFlowGraph,
+    D: JoinSemiLattice,
+    F: FnMut(
+        OpPos,
+        &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
+        &Cfg,
+        &D::LatticeContext,
+        &D,
+    ) -> D,
+{
+    func: F,
+    cfg: PhantomData<Cfg>,
+    d: PhantomData<D>,
+}
+
+impl<F, Cfg, D> TransferFunction<Cfg, D> for OpTransfer<F, Cfg, D>
+where
+    Cfg: ControlFlowGraph,
+    D: JoinSemiLattice,
+    F: FnMut(
+        OpPos,
+        &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
+        &Cfg,
+        &D::LatticeContext,
+        &D,
+    ) -> D,
+{
+    fn operation(
+        &mut self,
+        pos: OpPos,
+        op: &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
+        cfg: &Cfg,
+        ctx: &<D as JoinSemiLattice>::LatticeContext,
+        pre_state: &D,
+    ) -> D {
+        (self.func)(pos, op, cfg, ctx, pre_state)
+    }
+}
+
+impl<F, Cfg, D> OpTransfer<F, Cfg, D>
+where
+    Cfg: ControlFlowGraph,
+    D: JoinSemiLattice,
+    F: FnMut(
+        OpPos,
+        &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
+        &Cfg,
+        &D::LatticeContext,
+        &D,
+    ) -> D,
+{
+    /// Create a new transfer function for operations from a closure or function.
+    pub fn new(func: F) -> Self {
+        Self {
+            func,
+            cfg: PhantomData,
+            d: PhantomData,
+        }
+    }
+}
+
+/// Small utility so users do not need to create a new struct for every
+/// transfer function for blocks.
+pub struct BlockTransfer<F, Cfg, D>
+where
+    Cfg: ControlFlowGraph,
+    D: JoinSemiLattice,
+    F: FnMut(usize, &Cfg, &D::LatticeContext, &D) -> D,
+{
+    func: F,
+    cfg: PhantomData<Cfg>,
+    d: PhantomData<D>,
+}
+
+impl<F, Cfg, D> TransferFunction<Cfg, D> for BlockTransfer<F, Cfg, D>
+where
+    Cfg: ControlFlowGraph,
+    D: JoinSemiLattice,
+    F: FnMut(usize, &Cfg, &D::LatticeContext, &D) -> D,
+{
+    fn block(
+        &mut self,
+        block_id: usize,
+        cfg: &Cfg,
+        ctx: &<D as JoinSemiLattice>::LatticeContext,
+        pre_state: &D,
+    ) -> D {
+        (self.func)(block_id, cfg, ctx, pre_state)
+    }
+}
+
+impl<F, Cfg, D> BlockTransfer<F, Cfg, D>
+where
+    Cfg: ControlFlowGraph,
+    D: JoinSemiLattice,
+    F: FnMut(usize, &Cfg, &D::LatticeContext, &D) -> D,
+{
+    /// Create a new transfer function for blocks from a closure or function.
+    pub fn new(func: F) -> Self {
+        Self {
+            func,
+            cfg: PhantomData,
+            d: PhantomData,
+        }
+    }
+}
 
 /// A basic solver for monotonic transfer functions. It is also doing
 /// widening on loop heads. The solver is using a worklist that visits
@@ -31,20 +201,17 @@ impl SolveMonotone {
     /// # Arguments
     ///
     /// * `post_states` - The analysis state after each CFG block.
-    /// * `transfer_block` - Function to apply the effects of a block to the state.
-    /// * `transfer_edge` - Function to apply the effects of conditional jumps.
-    pub fn transfer_in_place<Cfg, D, F, G>(
+    /// * `transfer` - Function to apply the effects of blocks, edges, operations.
+    pub fn solve_in_place<Cfg, D, F>(
         self,
         cfg: &Cfg,
         lat_ctx: &D::LatticeContext,
         post_states: &mut Vec<D>,
-        transfer_block: &mut F,
-        transfer_edge: &mut G,
+        transfer: &mut F,
     ) where
         Cfg: ControlFlowGraph,
         D: JoinSemiLattice,
-        F: FnMut(usize, &Cfg, &D::LatticeContext, &D) -> D,
-        G: FnMut(usize, usize, &Cfg, &D::LatticeContext, &D) -> Option<D>,
+        F: TransferFunction<Cfg, D>,
     {
         // Loop header dominates the whole loop, every back edge should point to a
         // loop header.
@@ -56,7 +223,7 @@ impl SolveMonotone {
         // Process first node. It is hoisted, so the input state can be other than
         // the bottom value.
         let first_state = post_states[0].clone();
-        post_states[0] = transfer_block(0, cfg, lat_ctx, &first_state);
+        post_states[0] = transfer.block(0, cfg, lat_ctx, &first_state);
 
         let node_num = cfg.blocks().len();
         let mut visited = vec![false; node_num];
@@ -76,12 +243,12 @@ impl SolveMonotone {
             let mut pre_state = D::bottom(lat_ctx);
             for &pred in cfg.blocks()[current].predecessors() {
                 if let Some(transferred) =
-                    transfer_edge(pred, current, cfg, lat_ctx, &post_states[pred])
+                    transfer.edge(pred, current, cfg, lat_ctx, &post_states[pred])
                 {
                     pre_state = pre_state.join(&transferred, lat_ctx);
                 }
             }
-            let mut post_state = transfer_block(current, cfg, lat_ctx, &pre_state);
+            let mut post_state = transfer.block(current, cfg, lat_ctx, &pre_state);
 
             if loop_heads.contains(&current) {
                 post_state =
@@ -108,8 +275,8 @@ impl SolveMonotone {
     /// * `seed` - The initial program state for the start node. This often has
     ///            the initial abstract values for the formal parameters of a function.
     /// * `post_states` - The analysis state after each CFG block.
-    /// * `transfer` - Function to apply the effects of a block to the state.
-    pub fn transfer_blocks<Cfg, D, F>(
+    /// * `transfer` - Function to apply the effects of blocks, edges, operations.
+    pub fn solve<Cfg, D, F>(
         self,
         cfg: &Cfg,
         seed: D,
@@ -119,167 +286,11 @@ impl SolveMonotone {
     where
         Cfg: ControlFlowGraph,
         D: JoinSemiLattice,
-        F: FnMut(usize, &Cfg, &D::LatticeContext, &D) -> D,
-    {
-        self.transfer_blocks_and_edges(cfg, seed, lat_ctx, transfer, &mut |_, _, _, _, d| {
-            Some(d.clone())
-        })
-    }
-
-    /// Run the solver on a CFG returning the analysis states at the end of
-    /// each basic block. Returns an empty vector when the analysis did not
-    /// converge.
-    ///
-    /// # Arguments
-    ///
-    /// * `seed` - The initial program state for the start node. This often has
-    ///            the initial abstract values for the formal parameters of a function.
-    /// * `post_states` - The analysis state after each CFG block.
-    /// * `transfer` - Function to apply the effects of a block to the state.
-    /// * `transfer_edge` - Function to apply the effects of conditional jumps.
-    pub fn transfer_blocks_and_edges<Cfg, D, F, G>(
-        self,
-        cfg: &Cfg,
-        seed: D,
-        lat_ctx: &D::LatticeContext,
-        transfer: &mut F,
-        transfer_edge: &mut G,
-    ) -> Vec<D>
-    where
-        Cfg: ControlFlowGraph,
-        D: JoinSemiLattice,
-        F: FnMut(usize, &Cfg, &D::LatticeContext, &D) -> D,
-        G: FnMut(usize, usize, &Cfg, &D::LatticeContext, &D) -> Option<D>,
+        F: TransferFunction<Cfg, D>,
     {
         let mut post_states = vec![D::bottom(lat_ctx); cfg.blocks().len()];
         post_states[0] = seed;
-        self.transfer_in_place(cfg, lat_ctx, &mut post_states, transfer, transfer_edge);
+        self.solve_in_place(cfg, lat_ctx, &mut post_states, transfer);
         post_states
-    }
-
-    /// Run the solver on a CFG mutating the analysis states in place. The
-    /// `post_states` vector is cleared when the analysis did not converge.
-    /// This method can be used as a second pass (after the first pass
-    /// converged), to collect per-operation analysis states from the
-    /// per-block states. Alternatively, a second pass can also be used
-    /// to report errors in a program analysis tool.
-    ///
-    /// # Arguments
-    ///
-    /// * `post_states` - The analysis state after each CFG block.
-    /// * `transfer` - Function to apply the effects of an operation to the state.
-    /// * `transfer_edge` - Function to apply the effects of conditional jumps.
-    pub fn transfer_operations_in_place<Cfg, D, F, G>(
-        self,
-        cfg: &Cfg,
-        lat_ctx: &D::LatticeContext,
-        post_states: &mut Vec<D>,
-        transfer: &mut F,
-        transfer_edge: &mut G,
-    ) where
-        Cfg: ControlFlowGraph,
-        D: JoinSemiLattice,
-        F: FnMut(
-            &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
-            &Cfg,
-            &D::LatticeContext,
-            &D,
-        ) -> D,
-        G: FnMut(usize, usize, &Cfg, &D::LatticeContext, &D) -> Option<D>,
-    {
-        self.transfer_in_place(
-            cfg,
-            lat_ctx,
-            post_states,
-            &mut |current, cfg, lat_ctx, dom: &D| {
-                let mut post_state = dom.clone();
-                for op in cfg.blocks()[current].operations() {
-                    post_state = transfer(op, cfg, lat_ctx, &post_state);
-                }
-                post_state
-            },
-            transfer_edge,
-        );
-    }
-
-    /// Run the solver on a CFG returning the analysis states at the end of
-    /// each basic block. Returns an empty vector when the analysis did not
-    /// converge.
-    ///
-    /// # Arguments
-    ///
-    /// * `seed` - The initial program state for the start node. This often has
-    ///            the initial abstract values for the formal parameters of a function.
-    /// * `post_states` - The analysis state after each CFG block.
-    /// * `transfer` - Function to apply the effects of an operation to the state.
-    pub fn transfer_operations<Cfg, D, F>(
-        self,
-        cfg: &Cfg,
-        seed: D,
-        lat_ctx: &D::LatticeContext,
-        transfer: &mut F,
-    ) -> Vec<D>
-    where
-        Cfg: ControlFlowGraph,
-        D: JoinSemiLattice,
-        F: FnMut(
-            &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
-            &Cfg,
-            &D::LatticeContext,
-            &D,
-        ) -> D,
-    {
-        self.transfer_blocks(cfg, seed, lat_ctx, &mut |current, cfg, lat_ctx, dom: &D| {
-            let mut post_state = dom.clone();
-            for op in cfg.blocks()[current].operations() {
-                post_state = transfer(op, cfg, lat_ctx, &post_state);
-            }
-            post_state
-        })
-    }
-
-    /// Run the solver on a CFG returning the analysis states at the end of
-    /// each basic block. Returns an empty vector when the analysis did not
-    /// converge.
-    ///
-    /// # Arguments
-    ///
-    /// * `seed` - The initial program state for the start node. This often has
-    ///            the initial abstract values for the formal parameters of a function.
-    /// * `post_states` - The analysis state after each CFG block.
-    /// * `transfer` - Function to apply the effects of an operation to the state.
-    /// * `transfer_edge` - Function to apply the effects of conditional jumps.
-    pub fn transfer_operations_and_edges<Cfg, D, F, G>(
-        self,
-        cfg: &Cfg,
-        seed: D,
-        lat_ctx: &D::LatticeContext,
-        transfer: &mut F,
-        transfer_edge: &mut G,
-    ) -> Vec<D>
-    where
-        Cfg: ControlFlowGraph,
-        D: JoinSemiLattice,
-        F: FnMut(
-            &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
-            &Cfg,
-            &D::LatticeContext,
-            &D,
-        ) -> D,
-        G: FnMut(usize, usize, &Cfg, &D::LatticeContext, &D) -> Option<D>,
-    {
-        self.transfer_blocks_and_edges(
-            cfg,
-            seed,
-            lat_ctx,
-            &mut |current, cfg, lat_ctx, dom: &D| {
-                let mut post_state = dom.clone();
-                for op in cfg.blocks()[current].operations() {
-                    post_state = transfer(op, cfg, lat_ctx, &post_state);
-                }
-                post_state
-            },
-            transfer_edge,
-        )
     }
 }
