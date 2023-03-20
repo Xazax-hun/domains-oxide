@@ -1,6 +1,15 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, marker::PhantomData};
 
-use crate::ir::{AnnotationMap, Annotations, Cfg, Unit};
+use analysis::{
+    cfg::{CfgBlock, ControlFlowGraph, OpPos},
+    domains::{JoinSemiLattice, Map},
+    solvers::TransferFunction,
+};
+
+use crate::{
+    ir::{AnnotationMap, Annotations, Cfg, Unit},
+    lexer::Identifier,
+};
 
 pub mod sign_analysis;
 
@@ -32,6 +41,75 @@ lazy_static! {
 pub fn get_analysis_results(analysis: Analyses, unit: &Unit) -> AnnotationMap {
     let analysis = ANALYSES.get(&analysis).expect("Unimplemented analysis!");
     analysis.analyze_all(unit)
+}
+
+pub struct TransferLogger<'unit, D, Transfer>
+where
+    D: JoinSemiLattice,
+    Transfer: TransferFunction<Cfg, Map<Identifier, D>>,
+{
+    unit: &'unit Unit,
+    anns: Annotations,
+    transfer: Transfer,
+    d: PhantomData<D>,
+}
+
+impl<'unit, D, Transfer> TransferFunction<Cfg, Map<Identifier, D>>
+    for TransferLogger<'unit, D, Transfer>
+where
+    D: JoinSemiLattice,
+    Transfer: TransferFunction<Cfg, Map<Identifier, D>>,
+{
+    fn operation(
+        &mut self,
+        pos: OpPos,
+        op: &<<Cfg as ControlFlowGraph>::Block as CfgBlock>::Operation,
+        cfg: &Cfg,
+        ctx: &<Map<Identifier, D> as JoinSemiLattice>::LatticeContext,
+        pre_state: &Map<Identifier, D>,
+    ) -> Map<Identifier, D> {
+        // TODO: somehow print values that are changed during the join for pre states.
+        let post_state = self.transfer.operation(pos, op, cfg, ctx, pre_state);
+        let changed_values = post_state.changed_values(pre_state);
+        if !changed_values.is_empty() {
+            let printed: Vec<_> = changed_values
+                .iter()
+                .map(|(id, val)| format!("{}: {:?}", self.unit.identifiers.get_name(*id), val))
+                .collect();
+            self.anns.post.insert(pos, printed);
+        }
+        post_state
+    }
+
+    fn edge(
+            &mut self,
+            from: usize,
+            to: usize,
+            cfg: &Cfg,
+            ctx: &<Map<Identifier, D> as JoinSemiLattice>::LatticeContext,
+            pre_state: &Map<Identifier, D>,
+        ) -> Option<Map<Identifier, D>> {
+        self.transfer.edge(from, to, cfg, ctx, pre_state)
+    }
+}
+
+impl<'unit, D, Transfer> TransferLogger<'unit, D, Transfer>
+where
+    D: JoinSemiLattice,
+    Transfer: TransferFunction<Cfg, Map<Identifier, D>>,
+{
+    pub fn new(unit: &'unit Unit, transfer: Transfer) -> Self {
+        Self {
+            unit,
+            anns: Annotations::default(),
+            transfer,
+            d: PhantomData,
+        }
+    }
+
+    pub fn get_annotations(self) -> Annotations {
+        self.anns
+    }
 }
 
 #[cfg(test)]

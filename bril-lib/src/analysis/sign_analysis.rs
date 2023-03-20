@@ -11,7 +11,7 @@ use crate::{
     lexer::{Identifier, Token, TokenValue},
 };
 
-use super::Analysis;
+use super::{Analysis, TransferLogger};
 
 type SignEnv = Map<Identifier, SignDomain>;
 type SignCtx = MapCtx<Identifier, SignDomain>;
@@ -88,8 +88,8 @@ impl TransferFunction<Cfg, SignEnv> for SignAnalysis {
                 rhs,
             } => {
                 let op_type = lhs.ty;
-                let lhs = *pre_state.get(&lhs.id).unwrap_or(&SignDomain::Top);
-                let rhs = *pre_state.get(&rhs.id).unwrap_or(&SignDomain::Top);
+                let lhs = *pre_state.get(&lhs.id).unwrap_or(&SignDomain::Bottom);
+                let rhs = *pre_state.get(&rhs.id).unwrap_or(&SignDomain::Bottom);
                 let result_sign = Self::transfer_binary_op(*token, lhs, rhs, op_type);
                 let mut new_state = pre_state.clone();
                 new_state.insert(result.id, result_sign);
@@ -100,7 +100,7 @@ impl TransferFunction<Cfg, SignEnv> for SignAnalysis {
                 result,
                 operand,
             } => {
-                let operand = *pre_state.get(&operand.id).unwrap_or(&SignDomain::Top);
+                let operand = *pre_state.get(&operand.id).unwrap_or(&SignDomain::Bottom);
                 let result_sign = Self::transfer_unary_op(*token, operand);
                 let mut new_state = pre_state.clone();
                 new_state.insert(result.id, result_sign);
@@ -166,22 +166,8 @@ impl Analysis for SignAnalysis {
             );
         }
 
-        let states = solver.solve(cfg, seed, &ctx, &mut SignAnalysis);
-        let mut anns = Annotations::default();
-        // TODO: collect annotations for each operation?
-        //       should annotations for operations be incremental? (Only emit changed values.)
-        for (block_id, state) in states.iter().enumerate() {
-            let block = &cfg.blocks()[block_id];
-            let pos = OpPos {
-                block_id,
-                op_id: block.operations().len() - 1,
-            };
-            let printed: Vec<_> = state
-                .iter()
-                .map(|(id, val)| format!("{}: {:?}", unit.identifiers.get_name(*id), val))
-                .collect();
-            anns.post.insert(pos, printed);
-        }
-        anns
+        let mut transfer = TransferLogger::new(unit, SignAnalysis);
+        solver.solve(cfg, seed, &ctx, &mut transfer);
+        transfer.get_annotations()
     }
 }

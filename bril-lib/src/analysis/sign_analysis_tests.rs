@@ -9,8 +9,8 @@ fn basic_test() {
 ";
 
     let expected = r"@main {
-  v: int = const 5;
-  ret; /* v: Positive */
+  v: int = const 5; /* v: Positive */
+  ret;
 }
 ";
     check_expected_results(SignAnalysis, source, expected)
@@ -32,15 +32,15 @@ fn logical_operators() {
 ";
 
     let expected = r"@main {
-  pos: int = const 5;
-  neg: int = const -5;
-  zero: int = const 0;
-  less: bool = lt neg pos;
-  greater: bool = gt zero pos;
-  equal: bool = eq less greater;
-  conj: bool = and equal less;
-  disj: bool = or equal less;
-  ret; /* conj: Zero, disj: Positive, equal: Zero, greater: Zero, less: Positive, neg: Negative, pos: Positive, zero: Zero */
+  pos: int = const 5; /* pos: Positive */
+  neg: int = const -5; /* neg: Negative */
+  zero: int = const 0; /* zero: Zero */
+  less: bool = lt neg pos; /* less: Positive */
+  greater: bool = gt zero pos; /* greater: Zero */
+  equal: bool = eq less greater; /* equal: Zero */
+  conj: bool = and equal less; /* conj: Zero */
+  disj: bool = or equal less; /* disj: Positive */
+  ret;
 }
 ";
     check_expected_results(SignAnalysis, source, expected)
@@ -55,24 +55,29 @@ fn branching() {
   br greater .true .false;
 
 .true:
+  x: bool = id greater;
   ret;
 
 .false:
+  x: bool = id greater;
   ret;
 }
 ";
 
+    // TODO.
     let expected = r"@main {
-  pos: int = const 5;
-  neg: int = const -5;
-  greater: bool = gt neg pos;
-  br greater .true .false; /* greater: Zero, neg: Negative, pos: Positive */
+  pos: int = const 5; /* pos: Positive */
+  neg: int = const -5; /* neg: Negative */
+  greater: bool = gt neg pos; /* greater: Zero */
+  br greater .true .false;
 
 .true:
-  ret; /*  */
+  x: bool = id greater; /* x: Bottom */
+  ret;
 
 .false:
-  ret; /* greater: Zero, neg: Negative, pos: Positive */
+  x: bool = id greater; /* x: Zero */
+  ret;
 }
 ";
     check_expected_results(SignAnalysis, source, expected)
@@ -101,22 +106,22 @@ fn factorial() {
 ";
 
     let expected = r"@main(x: int): int {
-  res: int = const 1;
-  i: int = const 0;
-  jmp .test; /* i: Zero, res: Positive, x: Top */
+  res: int = const 1; /* res: Positive */
+  i: int = const 0; /* i: Zero */
+  jmp .test;
 
 .test:
-  cond: bool = lt i x;
-  br cond .loop .done; /* cond: NonNeg, i: NonNeg, res: Positive, x: Top */
+  cond: bool = lt i x; /* cond: NonNeg */
+  br cond .loop .done;
 
 .loop:
-  one: int = const 1;
-  i: int = add i one;
+  one: int = const 1; /* one: Positive */
+  i: int = add i one; /* i: Positive */
   res: int = mul res i;
-  jmp .test; /* cond: NonNeg, i: Positive, one: Positive, res: Positive, x: Top */
+  jmp .test;
 
 .done:
-  ret res; /* cond: NonNeg, i: NonNeg, res: Positive, x: Top */
+  ret res;
 }
 ";
     check_expected_results(SignAnalysis, source, expected)

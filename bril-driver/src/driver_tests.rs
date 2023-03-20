@@ -64,8 +64,8 @@ fn analyze() {
 ";
 
     let expected = r"@main {
-  v: int = const 5;
-  ret; /* v: Positive */
+  v: int = const 5; /* v: Positive */
+  ret;
 }
 ";
     let opts = Opt {

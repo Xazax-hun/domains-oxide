@@ -326,8 +326,10 @@ pub fn print_operation(pos: OpPos, op: &Operation, unit: &Unit, anns: &Annotatio
     let get_label_name = |&l: &Identifier| unit.identifiers.get_name(l);
     let mut printed = String::new();
     if let Some(mut ann_list) = anns.pre.get(&pos).cloned() {
-        ann_list.sort();
-        printed.push_str(&format!("/* {} */ ", ann_list.join(", ")));
+        if !ann_list.is_empty() {
+            ann_list.sort();
+            printed.push_str(&format!("/* {} */ ", ann_list.join(", ")));
+        }
     }
     match op {
         Operation::BinaryOp {
@@ -397,8 +399,10 @@ pub fn print_operation(pos: OpPos, op: &Operation, unit: &Unit, anns: &Annotatio
         Operation::Ret(_, None) => printed.push_str("ret;"),
     };
     if let Some(mut ann_list) = anns.post.get(&pos).cloned() {
-        ann_list.sort();
-        printed.push_str(&format!(" /* {} */", ann_list.join(", ")));
+        if !ann_list.is_empty() {
+            ann_list.sort();
+            printed.push_str(&format!(" /* {} */", ann_list.join(", ")));
+        }
     }
     printed
 }

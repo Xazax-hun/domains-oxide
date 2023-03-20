@@ -379,7 +379,7 @@ impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> Map<K, V> {
         let mut result = Map::default();
         for (k, v) in self.iter() {
             match previous.get(k) {
-                Some(prev_v) if prev_v != v => result.insert(k.clone(), prev_v.clone()),
+                Some(prev_v) if prev_v != v => result.insert(k.clone(), v.clone()),
                 None => result.insert(k.clone(), v.clone()),
                 _ => continue,
             };
