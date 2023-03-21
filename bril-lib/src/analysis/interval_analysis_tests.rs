@@ -61,4 +61,3 @@ fn factorial() {
 ";
     check_expected_results(IntervalAnalysis, source, expected)
 }
-

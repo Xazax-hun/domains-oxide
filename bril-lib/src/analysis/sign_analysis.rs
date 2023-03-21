@@ -62,7 +62,7 @@ impl SignAnalysis {
 
     fn transfer_unary_op(token: Token, operand: SignDomain) -> SignDomain {
         match token.value {
-            TokenValue::Not => SignDomain::NonNeg, // TODO: more precision.
+            TokenValue::Not => operand.logical_not(),
             TokenValue::Identity => operand,
             _ => {
                 panic!("Unexpected unary operator.");

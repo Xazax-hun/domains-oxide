@@ -262,6 +262,15 @@ impl SignDomain {
         }
     }
 
+    pub fn logical_not(self) -> SignDomain {
+        match self {
+            SignDomain::NonNeg => SignDomain::NonNeg,
+            SignDomain::Positive => SignDomain::Zero,
+            SignDomain::Zero => SignDomain::Positive,
+            _ => panic!("Unexpected value"),
+        }
+    }
+
     /// Compares the concrete values.
     pub fn strict_cmp(self, other: SignDomain) -> Option<Ordering> {
         use sign_tables::*;

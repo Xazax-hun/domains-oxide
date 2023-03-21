@@ -27,6 +27,7 @@ fn logical_operators() {
   equal: bool = eq less greater;
   conj: bool = and equal less;
   disj: bool = or equal less;
+  n: bool = not disj;
   ret;
 }
 ";
@@ -40,6 +41,7 @@ fn logical_operators() {
   equal: bool = eq less greater; /* equal: Zero */
   conj: bool = and equal less; /* conj: Zero */
   disj: bool = or equal less; /* disj: Positive */
+  n: bool = not disj; /* n: Zero */
   ret;
 }
 ";
