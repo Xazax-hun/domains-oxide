@@ -11,6 +11,7 @@ use crate::{
     lexer::Identifier,
 };
 
+pub mod interval_analysis;
 pub mod sign_analysis;
 
 pub trait Analysis: Sync {
@@ -28,12 +29,17 @@ pub trait Analysis: Sync {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Analyses {
     Sign,
+    Interval,
 }
 
 lazy_static! {
     static ref ANALYSES: HashMap<Analyses, Box<dyn Analysis>> = {
         let mut m = HashMap::<Analyses, Box<dyn Analysis>>::new();
         m.insert(Analyses::Sign, Box::new(sign_analysis::SignAnalysis));
+        m.insert(
+            Analyses::Interval,
+            Box::new(interval_analysis::IntervalAnalysis),
+        );
         m
     };
 }
@@ -118,6 +124,9 @@ where
 
 #[cfg(test)]
 mod sign_analysis_tests;
+
+#[cfg(test)]
+mod interval_analysis_tests;
 
 #[cfg(test)]
 mod test_utils {

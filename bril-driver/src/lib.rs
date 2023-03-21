@@ -11,12 +11,14 @@ use utils::DiagnosticEmitter;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, ValueEnum)]
 pub enum CLIAnalyses {
     Sign,
+    Interval,
 }
 
 impl From<CLIAnalyses> for Analyses {
     fn from(value: CLIAnalyses) -> Self {
         match value {
             CLIAnalyses::Sign => Analyses::Sign,
+            CLIAnalyses::Interval => Analyses::Interval,
         }
     }
 }

@@ -16,7 +16,7 @@ use super::{Analysis, TransferLogger};
 type SignEnv = Map<Identifier, SignDomain>;
 type SignCtx = MapCtx<Identifier, SignDomain>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SignAnalysis;
 
 impl SignAnalysis {
