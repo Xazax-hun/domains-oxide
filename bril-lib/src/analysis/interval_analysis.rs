@@ -1,11 +1,13 @@
-use std::collections::HashSet;
+use std::{cmp::Ordering, collections::HashSet};
 
 use crate::{
     ir::{Annotations, Cfg, Operation, Type, Unit, Variable},
     lexer::{Identifier, Token, TokenValue},
 };
 use analysis::{
-    domains::{IntervalDomain, JoinSemiLattice, Lattice, Map, MapCtx},
+    domains::{
+        IntervalDomain, JoinSemiLattice, Lattice, Map, MapCtx, BOOL_RANGE, FALSE_RANGE, TRUE_RANGE,
+    },
     solvers::{SolveMonotone, TransferFunction},
 };
 
@@ -13,8 +15,6 @@ use super::{Analysis, TransferLogger};
 
 type IntervalEnv = Map<Identifier, IntervalDomain>;
 type IntervalCtx = MapCtx<Identifier, IntervalDomain>;
-
-static BOOL_RANGE: IntervalDomain = IntervalDomain { min: 0, max: 1 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct IntervalAnalysis;
@@ -30,14 +30,29 @@ impl IntervalAnalysis {
             TokenValue::Mul => lhs * rhs,
             TokenValue::Sub => lhs - rhs,
             TokenValue::Div => IntervalDomain::top(&()),
-            // TODO: more precise handling of logic operators.
-            TokenValue::Equal => BOOL_RANGE,
-            TokenValue::And => BOOL_RANGE,
-            TokenValue::Or => BOOL_RANGE,
-            TokenValue::LessThan => BOOL_RANGE,
-            TokenValue::GreaterThan => BOOL_RANGE,
-            TokenValue::LessThanOrEq => BOOL_RANGE,
-            TokenValue::GreaterThanOrEq => BOOL_RANGE,
+            TokenValue::Equal => lhs.equals(rhs),
+            TokenValue::And => lhs.logical_and(rhs),
+            TokenValue::Or => lhs.logical_or(rhs),
+            TokenValue::LessThan => match lhs.strict_cmp(rhs) {
+                Some(Ordering::Less) => TRUE_RANGE,
+                Some(_) => FALSE_RANGE,
+                _ => BOOL_RANGE,
+            },
+            TokenValue::GreaterThan => match lhs.strict_cmp(rhs) {
+                Some(Ordering::Greater) => TRUE_RANGE,
+                Some(_) => FALSE_RANGE,
+                _ => BOOL_RANGE,
+            },
+            TokenValue::LessThanOrEq => match lhs.strict_cmp(rhs) {
+                Some(Ordering::Greater) => FALSE_RANGE,
+                Some(_) => TRUE_RANGE,
+                _ => BOOL_RANGE,
+            },
+            TokenValue::GreaterThanOrEq => match lhs.strict_cmp(rhs) {
+                Some(Ordering::Less) => FALSE_RANGE,
+                Some(_) => TRUE_RANGE,
+                _ => BOOL_RANGE,
+            },
             _ => {
                 panic!("Unexpected binary operator.")
             }
@@ -46,7 +61,7 @@ impl IntervalAnalysis {
 
     fn transfer_unary_op(token: Token, operand: IntervalDomain) -> IntervalDomain {
         match token.value {
-            TokenValue::Not => BOOL_RANGE, // TODO: more precision.
+            TokenValue::Not => operand.logical_not(),
             TokenValue::Identity => operand,
             _ => {
                 panic!("Unexpected unary operator.");

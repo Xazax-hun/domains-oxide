@@ -321,6 +321,10 @@ pub struct IntervalDomain {
     pub max: i64,
 }
 
+pub static BOOL_RANGE: IntervalDomain = IntervalDomain { min: 0, max: 1 };
+pub static TRUE_RANGE: IntervalDomain = IntervalDomain { min: 1, max: 1 };
+pub static FALSE_RANGE: IntervalDomain = IntervalDomain { min: 0, max: 0 };
+
 impl IntervalDomain {
     /// Returns [n, inf].
     pub fn greater(n: i64) -> Self {
@@ -332,6 +336,65 @@ impl IntervalDomain {
         Self {
             min: NEG_INF,
             max: n,
+        }
+    }
+
+    pub fn singleton(&self) -> Option<i64> {
+        if self.min == self.max {
+            Some(self.min)
+        } else {
+            None
+        }
+    }
+
+    pub fn logical_and(self, other: IntervalDomain) -> Self {
+        match (self.singleton(), other.singleton()) {
+            (Some(0), _) | (_, Some(0)) => FALSE_RANGE,
+            (Some(1), Some(1)) => TRUE_RANGE,
+            _ => BOOL_RANGE,
+        }
+    }
+
+    pub fn logical_or(self, other: IntervalDomain) -> Self {
+        match (self.singleton(), other.singleton()) {
+            (Some(1), _) | (_, Some(1)) => TRUE_RANGE,
+            (Some(0), Some(0)) => FALSE_RANGE,
+            _ => BOOL_RANGE,
+        }
+    }
+
+    pub fn logical_not(self) -> Self {
+        match self.singleton() {
+            Some(1) => FALSE_RANGE,
+            Some(0) => TRUE_RANGE,
+            _ => BOOL_RANGE,
+        }
+    }
+
+    pub fn strict_cmp(self, other: IntervalDomain) -> Option<Ordering> {
+        if self == IntervalDomain::bottom(&()) || other == IntervalDomain::bottom(&()) {
+            return None;
+        }
+
+        if self.max < other.min {
+            return Some(Ordering::Less);
+        }
+
+        if self.min > other.max {
+            return Some(Ordering::Greater);
+        }
+
+        match (self.singleton(), other.singleton()) {
+            (Some(x), Some(y)) if x == y => Some(Ordering::Equal),
+            _ => None,
+        }
+    }
+
+    pub fn equals(self, other: IntervalDomain) -> IntervalDomain {
+        match self.strict_cmp(other) {
+            Some(Ordering::Less) | Some(Ordering::Greater) => FALSE_RANGE,
+            Some(Ordering::Equal) => TRUE_RANGE,
+            _ => BOOL_RANGE,
         }
     }
 }
