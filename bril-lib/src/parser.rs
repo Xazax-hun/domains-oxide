@@ -283,6 +283,7 @@ impl<'src> Parser<'src> {
             Mul,
             Sub,
             Div,
+            Mod,
             Equal,
             LessThan,
             GreaterThan,
@@ -443,7 +444,7 @@ impl<'src> Parser<'src> {
                         lhs,
                         rhs,
                     } => match token.value {
-                        Add | Mul | Div | Sub => {
+                        Add | Mul | Div | Sub | Mod => {
                             self.expect_type(token, result.ty, Type::Int)?;
                             self.expect_type(token, lhs.ty, Type::Int)?;
                             self.expect_type(token, rhs.ty, Type::Int)?;

@@ -55,10 +55,14 @@ fn eval_basic_operations() -> Result<(), String> {
   t: bool = const true;
   b: bool = or b t;
   print b;
+  x: int = const 5;
+  y: int = const 3;
+  x: int = mod x y;
+  print x;
   ret x;
 }";
     let (_, out) = eval_string(source, &[])?;
-    assert_eq!(out, "10\n50\n45\n9\nfalse\ntrue\nfalse\ntrue\n");
+    assert_eq!(out, "10\n50\n45\n9\nfalse\ntrue\nfalse\ntrue\n2\n");
 
     Ok(())
 }

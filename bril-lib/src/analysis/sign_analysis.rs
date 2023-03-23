@@ -31,6 +31,7 @@ impl SignAnalysis {
             TokenValue::Mul => lhs * rhs,
             TokenValue::Sub => lhs - rhs,
             TokenValue::Div => lhs / rhs,
+            TokenValue::Mod => lhs % rhs,
             TokenValue::Equal => lhs.logical_eq(rhs, op_type == Type::Bool),
             TokenValue::And => lhs.logical_and(rhs),
             TokenValue::Or => lhs.logical_or(rhs),

@@ -226,6 +226,19 @@ impl Div for SignDomain {
     }
 }
 
+impl Rem for SignDomain {
+    type Output = Self;
+    fn rem(self, _rhs: Self) -> Self::Output {
+        match self {
+            SignDomain::NonNeg | SignDomain::Positive => SignDomain::NonNeg,
+            SignDomain::NonPos | SignDomain::Negative => SignDomain::NonPos,
+            SignDomain::Zero => SignDomain::Zero,
+            SignDomain::Bottom => SignDomain::Bottom,
+            _ => SignDomain::Top,
+        }
+    }
+}
+
 impl PartialOrd for SignDomain {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         use sign_tables::*;

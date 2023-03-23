@@ -30,6 +30,7 @@ impl IntervalAnalysis {
             TokenValue::Mul => lhs * rhs,
             TokenValue::Sub => lhs - rhs,
             TokenValue::Div => IntervalDomain::top(&()),
+            TokenValue::Mod => IntervalDomain::top(&()),
             TokenValue::Equal => lhs.equals(rhs),
             TokenValue::And => lhs.logical_and(rhs),
             TokenValue::Or => lhs.logical_or(rhs),

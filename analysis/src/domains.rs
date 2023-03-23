@@ -1,7 +1,7 @@
 use core::cmp::Ordering;
 use core::fmt::Debug;
 use core::hash::Hash;
-use core::ops::{Add, Deref, DerefMut, Div, Mul, Neg, Sub};
+use core::ops::{Add, Deref, DerefMut, Div, Mul, Neg, Rem, Sub};
 use std::collections::HashSet;
 
 use fixedbitset::FixedBitSet;

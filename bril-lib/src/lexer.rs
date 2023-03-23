@@ -19,6 +19,7 @@ pub enum TokenValue {
     Mul,
     Sub,
     Div,
+    Mod,
 
     // Logic
     True,
@@ -89,6 +90,7 @@ impl core::fmt::Display for TokenValue {
             Mul => write!(f, "mul"),
             Sub => write!(f, "sub"),
             Div => write!(f, "div"),
+            Mod => write!(f, "mod"),
 
             True => write!(f, "true"),
             False => write!(f, "false"),
@@ -131,7 +133,7 @@ impl core::fmt::Display for TokenValue {
 lazy_static! {
     static ref KEYWORDS: HashMap<String, TokenValue> = {
         let mut m = HashMap::new();
-        for kw in [Add, Mul, Div, Sub] {
+        for kw in [Add, Mul, Div, Sub, Mod] {
             m.insert(kw.to_string(), kw);
         }
 

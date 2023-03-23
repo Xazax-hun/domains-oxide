@@ -41,7 +41,7 @@ fn test_empty_input() {
 #[test]
 fn test_all_tokens() {
     let LexTestResult { output, result } = lex_string(
-        r"ident @global ident .label 50 -50 add mul sub div eq lt gt le ge not and or
+        r"ident @global ident .label 50 -50 add mul sub div mod eq lt gt le ge not and or
               jmp br call ret = (){} ;:, const print nop id int bool true false",
     );
     let expected = vec![
@@ -55,6 +55,7 @@ fn test_all_tokens() {
         Mul,
         Sub,
         Div,
+        Mod,
         Equal,
         LessThan,
         GreaterThan,

@@ -259,6 +259,14 @@ impl<'u> Interpreter<'u> {
                 }
                 Some(Value::I(lhs_val.as_int(token, self.diag)? / rhs_val))
             }
+            TokenValue::Mod => {
+                let rhs_val = rhs_val.as_int(token, self.diag)?;
+                if rhs_val == 0 {
+                    token.error(self.diag, "Division by zero.");
+                    return None;
+                }
+                Some(Value::I(lhs_val.as_int(token, self.diag)? % rhs_val))
+            }
             TokenValue::Equal => match lhs_val {
                 Value::I(lhs_val) => Some(Value::B(lhs_val == rhs_val.as_int(token, self.diag)?)),
                 Value::B(lhs_val) => Some(Value::B(lhs_val == rhs_val.as_bool(token, self.diag)?)),
