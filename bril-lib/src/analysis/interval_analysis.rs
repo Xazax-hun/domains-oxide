@@ -5,6 +5,7 @@ use crate::{
     lexer::{Identifier, Token, TokenValue},
 };
 use analysis::{
+    cfg::{CfgBlock, ControlFlowGraph},
     domains::{
         IntervalDomain, JoinSemiLattice, Lattice, Map, MapCtx, BOOL_RANGE, FALSE_RANGE, TRUE_RANGE,
     },
@@ -128,6 +129,33 @@ impl TransferFunction<Cfg, IntervalEnv> for IntervalAnalysis {
             | Operation::Ret(_, _)
             | Operation::Print(_, _)
             | Operation::Nop(_) => pre_state.clone(),
+        }
+    }
+
+    fn edge(
+        &mut self,
+        from: usize,
+        to: usize,
+        cfg: &Cfg,
+        ctx: &IntervalCtx,
+        pre_state: &IntervalEnv,
+    ) -> Option<IntervalEnv> {
+        let is_true_branch = *cfg.blocks()[from].successors().first().unwrap() == to;
+        let last_op = cfg.blocks()[from].operations().last().unwrap();
+        match last_op {
+            Operation::Branch { cond, .. } => {
+                let cond_range = *pre_state
+                    .get(&cond.id)
+                    .unwrap_or(&IntervalDomain::top(&ctx.1));
+                if cond_range == FALSE_RANGE && is_true_branch {
+                    return None;
+                }
+                if cond_range == TRUE_RANGE && !is_true_branch {
+                    return None;
+                }
+                Some(pre_state.clone())
+            }
+            _ => Some(pre_state.clone()),
         }
     }
 }

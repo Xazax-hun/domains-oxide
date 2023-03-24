@@ -66,7 +66,6 @@ fn branching() {
 }
 ";
 
-    // TODO.
     let expected = r"@main {
   pos: int = const 5; /* pos: Positive */
   neg: int = const -5; /* neg: Negative */
