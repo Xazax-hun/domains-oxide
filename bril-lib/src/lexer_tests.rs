@@ -8,11 +8,11 @@ struct LexTestResult {
 }
 
 fn lex_string(source: &str) -> LexTestResult {
-    let mut diag = DiagnosticEmitter::new(Box::new(Vec::new()), Box::new(Vec::new()));
+    let mut diag = DiagnosticEmitter::log_to_buffer();
     let lexer = Lexer::new(source, &mut diag);
     let tokens = lexer.lex_all();
     LexTestResult {
-        output: diag.out_buffer().to_string() + diag.err_buffer(),
+        output: diag.out_buffer().unwrap() + &diag.err_buffer().unwrap(),
         result: tokens,
     }
 }

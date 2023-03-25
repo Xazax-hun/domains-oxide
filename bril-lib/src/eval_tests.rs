@@ -4,23 +4,23 @@ use super::parser::*;
 use utils::DiagnosticEmitter;
 
 fn eval_string(source: &str, args: &[Value]) -> Result<(Value, String), String> {
-    let mut diag = DiagnosticEmitter::new(Box::new(Vec::new()), Box::new(Vec::new()));
+    let mut diag = DiagnosticEmitter::log_to_buffer();
     let lexer = Lexer::new(source, &mut diag);
     let tokens = lexer.lex_all();
     if tokens.tokens.is_empty() {
-        return Err(diag.out_buffer().to_string() + diag.err_buffer());
+        return Err(diag.out_buffer().unwrap() + &diag.err_buffer().unwrap());
     }
     let parser = Parser::new(tokens, &mut diag);
     let Some(unit) = parser.parse()
     else {
-        return Err(diag.out_buffer().to_string() + diag.err_buffer());
+        return Err(diag.out_buffer().unwrap() + &diag.err_buffer().unwrap());
     };
     let mut interp = Interpreter::new(&unit, &mut diag);
     let Some(result) = interp.eval_main(args)
     else {
-        return Err(diag.out_buffer().to_string() + diag.err_buffer());
+        return Err(diag.out_buffer().unwrap() + &diag.err_buffer().unwrap());
     };
-    Ok((result, diag.out_buffer().to_string()))
+    Ok((result, diag.out_buffer().unwrap()))
 }
 
 #[test]

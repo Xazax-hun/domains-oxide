@@ -1,17 +1,67 @@
 use core::fmt::Display;
 use std::io::BufWriter;
+use std::io::Cursor;
 use std::io::Write;
 
+enum LogOrWrite {
+    Log(Cursor<Vec<u8>>),
+    Write(BufWriter<Box<dyn Write>>),
+}
+
+impl Write for LogOrWrite {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        match self {
+            LogOrWrite::Log(inner) => inner.write(buf),
+            LogOrWrite::Write(inner) => inner.write(buf),
+        }
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        match self {
+            LogOrWrite::Log(_) => Ok(()),
+            LogOrWrite::Write(inner) => inner.flush(),
+        }
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> std::io::Result<()> {
+        match self {
+            LogOrWrite::Log(inner) => inner.write_all(buf),
+            LogOrWrite::Write(inner) => inner.write_all(buf),
+        }
+    }
+
+    fn write_fmt(&mut self, fmt: std::fmt::Arguments<'_>) -> std::io::Result<()> {
+        match self {
+            LogOrWrite::Log(inner) => inner.write_fmt(fmt),
+            LogOrWrite::Write(inner) => inner.write_fmt(fmt),
+        }
+    }
+
+    fn write_vectored(&mut self, bufs: &[std::io::IoSlice<'_>]) -> std::io::Result<usize> {
+        match self {
+            LogOrWrite::Log(inner) => inner.write_vectored(bufs),
+            LogOrWrite::Write(inner) => inner.write_vectored(bufs),
+        }
+    }
+}
+
 pub struct DiagnosticEmitter {
-    out: BufWriter<Box<dyn Write>>,
-    err: BufWriter<Box<dyn Write>>,
+    out: LogOrWrite,
+    err: LogOrWrite,
 }
 
 impl DiagnosticEmitter {
     pub fn new(out: Box<dyn Write>, err: Box<dyn Write>) -> Self {
         Self {
-            out: BufWriter::new(out),
-            err: BufWriter::new(err),
+            out: LogOrWrite::Write(BufWriter::new(out)),
+            err: LogOrWrite::Write(BufWriter::new(err)),
+        }
+    }
+
+    pub fn log_to_buffer() -> Self {
+        Self {
+            out: LogOrWrite::Log(Cursor::new(Vec::new())),
+            err: LogOrWrite::Log(Cursor::new(Vec::new())),
         }
     }
 
@@ -37,12 +87,26 @@ impl DiagnosticEmitter {
         self.err("\n");
     }
 
-    pub fn out_buffer(&self) -> &str {
-        core::str::from_utf8(self.out.buffer()).expect("Failed to create string from bytes.")
+    pub fn out_buffer(&self) -> Option<String> {
+        if let LogOrWrite::Log(inner) = &self.out {
+            return Some(
+                core::str::from_utf8(inner.get_ref())
+                    .expect("Failed to convert bytes to utf-8 string")
+                    .to_owned(),
+            );
+        }
+        None
     }
 
-    pub fn err_buffer(&self) -> &str {
-        core::str::from_utf8(self.err.buffer()).expect("Failed to create string from bytes.")
+    pub fn err_buffer(&self) -> Option<String> {
+        if let LogOrWrite::Log(inner) = &self.err {
+            return Some(
+                core::str::from_utf8(inner.get_ref())
+                    .expect("Failed to convert bytes to utf-8 string")
+                    .to_owned(),
+            );
+        }
+        None
     }
 
     pub fn error(&mut self, line: u32, message: &str) {

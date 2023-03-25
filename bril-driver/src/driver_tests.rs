@@ -1,11 +1,9 @@
 use crate::*;
 
 fn run_driver(source: &str, opts: Opt) -> Option<String> {
-    let errors: Box<Vec<u8>> = Box::default();
-    let regular: Box<Vec<u8>> = Box::default();
-    let mut diag = DiagnosticEmitter::new(regular, errors);
+    let mut diag = DiagnosticEmitter::log_to_buffer();
     process_source(source, &mut diag, &opts)?;
-    Some(diag.out_buffer().to_string() + diag.err_buffer())
+    Some(diag.out_buffer().unwrap() + &diag.err_buffer().unwrap())
 }
 
 #[test]
