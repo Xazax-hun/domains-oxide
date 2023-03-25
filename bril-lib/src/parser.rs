@@ -31,8 +31,8 @@ impl<'src> Parser<'src> {
 
     pub fn parse(mut self) -> Option<Unit> {
         while !self.is_at_end() {
-            let cfg = self.parse_function()?;
-            self.analyze(&cfg)?;
+            let mut cfg = self.parse_function()?;
+            self.analyze(&mut cfg)?;
             self.unit.functions.push(cfg);
         }
         Some(self.unit)
@@ -426,16 +426,21 @@ impl<'src> Parser<'src> {
         None
     }
 
-    fn analyze(&mut self, cfg: &Cfg) -> Option<()> {
-        for block in cfg.blocks() {
+    fn analyze(&mut self, cfg: &mut Cfg) -> Option<()> {
+        let mut implicit_return_blocks = Vec::new();
+        for (block_id, block) in cfg.blocks().iter().enumerate() {
             let op = block.operations().last()?;
             if !op.is_terminator() {
-                op.get_token().error(
-                    self.diag,
-                    "Block terminator expected to be jump, br, or ret.",
-                );
-                return None;
-            };
+                if cfg.get_type(&self.unit).ret != Type::Void {
+                    op.get_token().error(
+                        self.diag,
+                        "Block terminator expected to be jump, br, or ret.",
+                    );
+                    return None;
+                } else {
+                    implicit_return_blocks.push(block_id);
+                }
+            }
             for op in block.operations() {
                 match op.clone() {
                     Operation::BinaryOp {
@@ -552,6 +557,11 @@ impl<'src> Parser<'src> {
                     _ => continue,
                 }
             }
+        }
+        // Insert implicit return for void function.
+        for block in implicit_return_blocks {
+            let phantom_token = cfg.blocks()[block].operations().last()?.get_token();
+            cfg.extend_block(block, [Operation::Ret(phantom_token, None)].iter());
         }
         Some(())
     }

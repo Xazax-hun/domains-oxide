@@ -28,23 +28,27 @@ fn parse_empty() {
 
 #[test]
 fn parse_single_function() -> Result<(), String> {
-    // TODO: Should we allow implicit ret in void functions?
     let source = r"@main {
+  v: int = const 5;
+  print v;
+}
+";
+    let expected_printed = r"@main {
   v: int = const 5;
   print v;
   ret;
 }
 ";
-    let expected = r#"digraph "@main" {
+    let expected_dot = r#"digraph "@main" {
   Node_0[label="v: int = const 5;\nprint v;\nret;"]
 
 }
 "#;
     let unit = parse_string(source)?;
     let printed = print(&unit, &AnnotationMap::default());
-    assert_eq!(printed, source);
+    assert_eq!(printed, expected_printed);
     let printed_dot = print_dot(&unit);
-    assert_eq!(printed_dot, expected);
+    assert_eq!(printed_dot, expected_dot);
 
     Ok(())
 }
@@ -413,12 +417,12 @@ fn parse_type_errors() {
 #[test]
 fn parse_misc_errors() {
     let source = r"
-@main {
+@main(x: int): int {
   v: int = const 5;
 .then:
-  ret;
+  ret x;
 .else:
-  ret;
+  ret x;
 }";
     let err = parse_string(source).expect_err("");
     assert_eq!(
