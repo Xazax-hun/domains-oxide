@@ -11,7 +11,7 @@ use fixedbitset::FixedBitSet;
 ///   Systems (TOPLAS), Volume 11, Issue 1, Jan. 1989, pages 115-146.
 /// ```
 #[derive(Debug, Clone)]
-pub struct FiniteDomainCtx<T: Clone + Eq, const N: usize> {
+pub struct FiniteCtx<T: Clone + Eq, const N: usize> {
     elements: [T; N],
     smaller_matrix: [FixedBitSet; N],
     greater_matrix: [FixedBitSet; N],
@@ -28,8 +28,8 @@ pub enum FiniteDomainError {
     NonExistentEdge,
 }
 
-impl<T: Clone + Debug + Eq, const N: usize> FiniteDomainCtx<T, N> {
-    /// Similar to [`FiniteDomainCtx::new`], but edges are defined by indices into the first parameter.
+impl<T: Clone + Debug + Eq, const N: usize> FiniteCtx<T, N> {
+    /// Similar to [`FiniteCtx::new`], but edges are defined by indices into the first parameter.
     pub fn new_idx(elements: &[T; N], less: &[(usize, usize)]) -> Result<Self, FiniteDomainError> {
         // TODO: in most cases the lattice is known at compile time,
         //       look into making the generation of the context a compile-time
@@ -67,11 +67,11 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteDomainCtx<T, N> {
             if let Some(err) = result.is_lattice() {
                 return Err(err);
             }
-            if result.smaller_matrix[0] != FiniteDomain::<T, N>::top(&result).smaller_than {
+            if result.smaller_matrix[0] != Finite::<T, N>::top(&result).smaller_than {
                 return Err(FiniteDomainError::TopNotFirst);
             }
             if *result.smaller_matrix.last().unwrap()
-                != FiniteDomain::<T, N>::bottom(&result).smaller_than
+                != Finite::<T, N>::bottom(&result).smaller_than
             {
                 return Err(FiniteDomainError::BottomNotLast);
             }
@@ -92,11 +92,11 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteDomainCtx<T, N> {
     ///
     /// Would be encoded as:
     /// ```
-    /// use analysis::domains::FiniteDomainCtx;
+    /// use analysis::domains::FiniteCtx;
     /// #[derive(Debug, Clone, PartialEq, Eq)]
     /// enum E { A, B, C, D }
     /// use E::*;
-    /// let ctx = FiniteDomainCtx::new(
+    /// let ctx = FiniteCtx::new(
     ///   &[A, B, C, D],
     ///   &[(B, A), (C, A), (D, B), (D, C)]).unwrap();
     /// ```
@@ -105,7 +105,7 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteDomainCtx<T, N> {
     ///
     /// Returns None when the input diagram is not a Lattice.
     ///
-    /// Use [`FiniteDomainCtx::new_idx`] if the lattice elements are expensive
+    /// Use [`FiniteCtx::new_idx`] if the lattice elements are expensive
     /// to copy, or the number of edges is large.
     ///
     /// # Parameters
@@ -132,36 +132,36 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteDomainCtx<T, N> {
         Self::new_idx(elements, &less_indices)
     }
 
-    pub fn decode(&self, element: &FiniteDomain<T, N>) -> &T {
+    pub fn decode(&self, element: &Finite<T, N>) -> &T {
         let pos = self.get_row_index(element);
         &self.elements[pos]
     }
 
-    pub fn encode(&self, element: &T) -> Option<FiniteDomain<T, N>> {
+    pub fn encode(&self, element: &T) -> Option<Finite<T, N>> {
         let pos = self.elements.iter().position(|e| e == element)?;
-        Some(FiniteDomain {
+        Some(Finite {
             smaller_than: self.smaller_matrix[pos].clone(),
             phantom: PhantomData,
         })
     }
 
-    pub fn meet(&self, lhs: &FiniteDomain<T, N>, rhs: &FiniteDomain<T, N>) -> FiniteDomain<T, N> {
+    pub fn meet(&self, lhs: &Finite<T, N>, rhs: &Finite<T, N>) -> Finite<T, N> {
         let (lhs_idx, rhs_idx) = (self.get_row_index(lhs), self.get_row_index(rhs));
         let lhs_greater = &self.greater_matrix[lhs_idx];
         let rhs_greater = &self.greater_matrix[rhs_idx];
         let mut column = lhs_greater.clone();
         column.intersect_with(rhs_greater);
-        let column_idx = self.get_column_index(&FiniteDomain {
+        let column_idx = self.get_column_index(&Finite {
             smaller_than: column,
             phantom: PhantomData,
         });
-        FiniteDomain {
+        Finite {
             smaller_than: self.smaller_matrix[column_idx].clone(),
             phantom: PhantomData,
         }
     }
 
-    fn get_row_index(&self, element: &FiniteDomain<T, N>) -> usize {
+    fn get_row_index(&self, element: &Finite<T, N>) -> usize {
         // TODO: make this more efficient by relabeling + leading zeros.
         self.smaller_matrix
             .iter()
@@ -169,7 +169,7 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteDomainCtx<T, N> {
             .expect("Missing element!")
     }
 
-    fn get_column_index(&self, element: &FiniteDomain<T, N>) -> usize {
+    fn get_column_index(&self, element: &Finite<T, N>) -> usize {
         // TODO: make this more efficient by relabeling + leading zeros.
         self.greater_matrix
             .iter()
@@ -196,18 +196,18 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteDomainCtx<T, N> {
     }
 }
 
-/// Use [`FiniteDomainCtx`] to generate the encoded lattice elements
-/// and [`FiniteDomainCtx::decode`] to get the actual element. The
+/// Use [`FiniteCtx`] to generate the encoded lattice elements
+/// and [`FiniteCtx::decode`] to get the actual element. The
 /// algorithms are running on the encoded representation, the result needs
 /// to be decoded. The encoding is really efficient up to 64 elements,
 /// the join operation is cheaper than meet.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FiniteDomain<T: Clone + Eq, const N: usize> {
+pub struct Finite<T: Clone + Eq, const N: usize> {
     smaller_than: FixedBitSet,
     phantom: PhantomData<T>,
 }
 
-impl<T: Clone + Eq, const N: usize> PartialOrd for FiniteDomain<T, N> {
+impl<T: Clone + Eq, const N: usize> PartialOrd for Finite<T, N> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         if self == other {
             return Some(Ordering::Equal);
@@ -223,8 +223,8 @@ impl<T: Clone + Eq, const N: usize> PartialOrd for FiniteDomain<T, N> {
     }
 }
 
-impl<T: Clone + Debug + Eq, const N: usize> JoinSemiLattice for FiniteDomain<T, N> {
-    type LatticeContext = FiniteDomainCtx<T, N>;
+impl<T: Clone + Debug + Eq, const N: usize> JoinSemiLattice for Finite<T, N> {
+    type LatticeContext = FiniteCtx<T, N>;
 
     fn bottom(_: &Self::LatticeContext) -> Self {
         let mut smaller_than = FixedBitSet::with_capacity(N);
@@ -245,7 +245,7 @@ impl<T: Clone + Debug + Eq, const N: usize> JoinSemiLattice for FiniteDomain<T, 
     }
 }
 
-impl<T: Clone + Debug + Eq, const N: usize> Lattice for FiniteDomain<T, N> {
+impl<T: Clone + Debug + Eq, const N: usize> Lattice for Finite<T, N> {
     fn top(_: &Self::LatticeContext) -> Self {
         let mut smaller_than = FixedBitSet::with_capacity(N);
         smaller_than.toggle(0);

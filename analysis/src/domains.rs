@@ -167,9 +167,9 @@ impl JoinSemiLattice for u64 {
 /// a mapping between the natural numbers and the elements of the
 /// set.
 #[derive(PartialEq, Eq, Clone)]
-pub struct PowerSetDomain<T: Eq + Hash>(pub HashSet<T>);
+pub struct PowerSet<T: Eq + Hash>(pub HashSet<T>);
 
-impl<T: Eq + Hash> Deref for PowerSetDomain<T> {
+impl<T: Eq + Hash> Deref for PowerSet<T> {
     type Target = HashSet<T>;
 
     fn deref(&self) -> &Self::Target {
@@ -177,16 +177,16 @@ impl<T: Eq + Hash> Deref for PowerSetDomain<T> {
     }
 }
 
-impl<T: Eq + Hash> DerefMut for PowerSetDomain<T> {
+impl<T: Eq + Hash> DerefMut for PowerSet<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
-pub struct PowerSetTop<T: Eq + Hash>(pub PowerSetDomain<T>);
+pub struct PowerSetTop<T: Eq + Hash>(pub PowerSet<T>);
 
-impl<T: Eq + Hash> PartialOrd for PowerSetDomain<T> {
+impl<T: Eq + Hash> PartialOrd for PowerSet<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self.is_superset(other), other.is_superset(self)) {
             (true, true) => Some(Ordering::Equal),
@@ -197,7 +197,7 @@ impl<T: Eq + Hash> PartialOrd for PowerSetDomain<T> {
     }
 }
 
-impl<T: Eq + Hash + Debug> Debug for PowerSetDomain<T> {
+impl<T: Eq + Hash + Debug> Debug for PowerSet<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let mut elements = self
             .iter()
@@ -208,7 +208,7 @@ impl<T: Eq + Hash + Debug> Debug for PowerSetDomain<T> {
     }
 }
 
-impl<T: Eq + Hash + Debug + Clone> JoinSemiLattice for PowerSetDomain<T> {
+impl<T: Eq + Hash + Debug + Clone> JoinSemiLattice for PowerSet<T> {
     type LatticeContext = PowerSetTop<T>;
 
     fn bottom(_: &Self::LatticeContext) -> Self {
@@ -220,7 +220,7 @@ impl<T: Eq + Hash + Debug + Clone> JoinSemiLattice for PowerSetDomain<T> {
     }
 }
 
-impl<T: Eq + Hash + Debug + Clone> Lattice for PowerSetDomain<T> {
+impl<T: Eq + Hash + Debug + Clone> Lattice for PowerSet<T> {
     // TODO: some impls want to return a value, some want to
     //       return a reference. Try to make the trait flexible,
     //       e.g.: https://stackoverflow.com/questions/43323250/trait-method-that-can-be-implemented-to-either-return-a-reference-or-an-owned-va
@@ -236,9 +236,9 @@ impl<T: Eq + Hash + Debug + Clone> Lattice for PowerSetDomain<T> {
 /// An efficient implementation of a power set lattice. Use this over
 /// the [`PowerSetDomain`] whenever possible.
 #[derive(PartialEq, Eq, Clone)]
-pub struct BitSetDomain(pub FixedBitSet);
+pub struct BitSet(pub FixedBitSet);
 
-impl Deref for BitSetDomain {
+impl Deref for BitSet {
     type Target = FixedBitSet;
 
     fn deref(&self) -> &Self::Target {
@@ -246,7 +246,7 @@ impl Deref for BitSetDomain {
     }
 }
 
-impl DerefMut for BitSetDomain {
+impl DerefMut for BitSet {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
@@ -255,7 +255,7 @@ impl DerefMut for BitSetDomain {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BitSetTop(pub usize);
 
-impl BitSetDomain {
+impl BitSet {
     pub fn from(ctx: &BitSetTop, values: &[usize]) -> Self {
         let mut inner = FixedBitSet::with_capacity(ctx.0);
         for &v in values {
@@ -265,7 +265,7 @@ impl BitSetDomain {
     }
 }
 
-impl PartialOrd for BitSetDomain {
+impl PartialOrd for BitSet {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self.is_superset(other), other.is_superset(self)) {
             (true, true) => Some(Ordering::Equal),
@@ -276,7 +276,7 @@ impl PartialOrd for BitSetDomain {
     }
 }
 
-impl Debug for BitSetDomain {
+impl Debug for BitSet {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
@@ -289,7 +289,7 @@ impl Debug for BitSetDomain {
     }
 }
 
-impl JoinSemiLattice for BitSetDomain {
+impl JoinSemiLattice for BitSet {
     type LatticeContext = BitSetTop;
 
     fn bottom(ctx: &Self::LatticeContext) -> Self {
@@ -303,7 +303,7 @@ impl JoinSemiLattice for BitSetDomain {
     }
 }
 
-impl Lattice for BitSetDomain {
+impl Lattice for BitSet {
     fn top(ctx: &Self::LatticeContext) -> Self {
         let mut result = FixedBitSet::with_capacity(ctx.0);
         result.toggle_range(..);

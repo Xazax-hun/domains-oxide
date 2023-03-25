@@ -1,5 +1,5 @@
 use analysis::cfg::OpPos;
-use analysis::domains::{JoinSemiLattice, SignDomain, Vec2Domain};
+use analysis::domains::{JoinSemiLattice, Sign, Vec2Domain};
 use analysis::solvers::{SolveMonotone, TransferFunction};
 
 use utils::Vec2;
@@ -12,7 +12,7 @@ use crate::cfg::Cfg;
 
 use super::Analysis;
 
-type Vec2Sign = Vec2Domain<SignDomain>;
+type Vec2Sign = Vec2Domain<Sign>;
 
 #[derive(Debug)]
 pub struct SignAnalysis;
@@ -26,7 +26,7 @@ impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Sign> for SignAnalysis {
         _: &(),
         pre_state: &Vec2Sign,
     ) -> Vec2Sign {
-        use SignDomain::*;
+        use Sign::*;
         let ctx = cfg.context();
         match ctx.op_to_ref(op) {
             NodeRef::Init(init) => {
@@ -58,8 +58,8 @@ impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Sign> for SignAnalysis {
                 }
             }
             NodeRef::Translation(trans) => Vec2Domain {
-                x: pre_state.x + SignDomain::from(trans.vector.x.value.to_num()),
-                y: pre_state.y + SignDomain::from(trans.vector.y.value.to_num()),
+                x: pre_state.x + Sign::from(trans.vector.x.value.to_num()),
+                y: pre_state.y + Sign::from(trans.vector.y.value.to_num()),
             },
             NodeRef::Rotation(rot) => {
                 let deg = rot.deg.value.to_num() % 360;

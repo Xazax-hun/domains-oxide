@@ -2,7 +2,7 @@ use std::{cmp::Ordering, collections::HashSet};
 
 use analysis::{
     cfg::{CfgBlock, ControlFlowGraph, OpPos},
-    domains::{JoinSemiLattice, Map, MapCtx, SignDomain},
+    domains::{JoinSemiLattice, Map, MapCtx, Sign},
     solvers::{SolveMonotone, TransferFunction},
 };
 
@@ -13,19 +13,14 @@ use crate::{
 
 use super::{Analysis, TransferLogger};
 
-type SignEnv = Map<Identifier, SignDomain>;
-type SignCtx = MapCtx<Identifier, SignDomain>;
+type SignEnv = Map<Identifier, Sign>;
+type SignCtx = MapCtx<Identifier, Sign>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SignAnalysis;
 
 impl SignAnalysis {
-    fn transfer_binary_op(
-        token: Token,
-        lhs: SignDomain,
-        rhs: SignDomain,
-        op_type: Type,
-    ) -> SignDomain {
+    fn transfer_binary_op(token: Token, lhs: Sign, rhs: Sign, op_type: Type) -> Sign {
         match token.value {
             TokenValue::Add => lhs + rhs,
             TokenValue::Mul => lhs * rhs,
@@ -36,24 +31,24 @@ impl SignAnalysis {
             TokenValue::And => lhs.logical_and(rhs),
             TokenValue::Or => lhs.logical_or(rhs),
             TokenValue::LessThan => match lhs.strict_cmp(rhs) {
-                Some(Ordering::Less) => SignDomain::Positive,
-                Some(_) => SignDomain::Zero,
-                _ => SignDomain::NonNeg,
+                Some(Ordering::Less) => Sign::Positive,
+                Some(_) => Sign::Zero,
+                _ => Sign::NonNeg,
             },
             TokenValue::GreaterThan => match lhs.strict_cmp(rhs) {
-                Some(Ordering::Greater) => SignDomain::Positive,
-                Some(_) => SignDomain::Zero,
-                _ => SignDomain::NonNeg,
+                Some(Ordering::Greater) => Sign::Positive,
+                Some(_) => Sign::Zero,
+                _ => Sign::NonNeg,
             },
             TokenValue::LessThanOrEq => match lhs.weak_cmp(rhs) {
-                Some(Ordering::Less) => SignDomain::Positive,
-                Some(_) => SignDomain::Zero,
-                _ => SignDomain::NonNeg,
+                Some(Ordering::Less) => Sign::Positive,
+                Some(_) => Sign::Zero,
+                _ => Sign::NonNeg,
             },
             TokenValue::GreaterThanOrEq => match lhs.weak_cmp(rhs) {
-                Some(Ordering::Greater) => SignDomain::Positive,
-                Some(_) => SignDomain::Zero,
-                _ => SignDomain::NonNeg,
+                Some(Ordering::Greater) => Sign::Positive,
+                Some(_) => Sign::Zero,
+                _ => Sign::NonNeg,
             },
             _ => {
                 panic!("Unexpected binary operator.")
@@ -61,7 +56,7 @@ impl SignAnalysis {
         }
     }
 
-    fn transfer_unary_op(token: Token, operand: SignDomain) -> SignDomain {
+    fn transfer_unary_op(token: Token, operand: Sign) -> Sign {
         match token.value {
             TokenValue::Not => operand.logical_not(),
             TokenValue::Identity => operand,
@@ -89,8 +84,8 @@ impl TransferFunction<Cfg, SignEnv> for SignAnalysis {
                 rhs,
             } => {
                 let op_type = lhs.ty;
-                let lhs = *pre_state.get(&lhs.id).unwrap_or(&SignDomain::Bottom);
-                let rhs = *pre_state.get(&rhs.id).unwrap_or(&SignDomain::Bottom);
+                let lhs = *pre_state.get(&lhs.id).unwrap_or(&Sign::Bottom);
+                let rhs = *pre_state.get(&rhs.id).unwrap_or(&Sign::Bottom);
                 let result_sign = Self::transfer_binary_op(*token, lhs, rhs, op_type);
                 let mut new_state = pre_state.clone();
                 new_state.insert(result.id, result_sign);
@@ -101,7 +96,7 @@ impl TransferFunction<Cfg, SignEnv> for SignAnalysis {
                 result,
                 operand,
             } => {
-                let operand = *pre_state.get(&operand.id).unwrap_or(&SignDomain::Bottom);
+                let operand = *pre_state.get(&operand.id).unwrap_or(&Sign::Bottom);
                 let result_sign = Self::transfer_unary_op(*token, operand);
                 let mut new_state = pre_state.clone();
                 new_state.insert(result.id, result_sign);
@@ -110,9 +105,9 @@ impl TransferFunction<Cfg, SignEnv> for SignAnalysis {
             Operation::Const(token, result) => {
                 let mut new_state = pre_state.clone();
                 let val = match token.value {
-                    TokenValue::Integer(i) => SignDomain::from(i),
-                    TokenValue::True => SignDomain::Positive,
-                    TokenValue::False => SignDomain::Zero,
+                    TokenValue::Integer(i) => Sign::from(i),
+                    TokenValue::True => Sign::Positive,
+                    TokenValue::False => Sign::Zero,
                     _ => panic!("Unexpected token."),
                 };
                 new_state.insert(result.id, val);
@@ -139,9 +134,9 @@ impl TransferFunction<Cfg, SignEnv> for SignAnalysis {
         let last_op = cfg.blocks()[from].operations().last().unwrap();
         match last_op {
             Operation::Branch { cond, .. } => {
-                match *pre_state.get(&cond.id).unwrap_or(&SignDomain::Top) {
-                    SignDomain::Zero if is_true_branch => None,
-                    SignDomain::Positive if !is_true_branch => None,
+                match *pre_state.get(&cond.id).unwrap_or(&Sign::Top) {
+                    Sign::Zero if is_true_branch => None,
+                    Sign::Positive if !is_true_branch => None,
                     _ => Some(pre_state.clone()),
                 }
             }
@@ -161,8 +156,8 @@ impl Analysis for SignAnalysis {
             seed.insert(
                 *id,
                 match ty {
-                    Type::Bool => SignDomain::NonNeg,
-                    _ => SignDomain::Top,
+                    Type::Bool => Sign::NonNeg,
+                    _ => Sign::Top,
                 },
             );
         }

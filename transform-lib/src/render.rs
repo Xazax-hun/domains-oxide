@@ -3,7 +3,7 @@ use crate::{
     eval::Walk,
 };
 
-use analysis::domains::{IntervalDomain, JoinSemiLattice, SignDomain, Vec2Domain};
+use analysis::domains::{Interval, JoinSemiLattice, Sign, Vec2Domain};
 use cairo::{Context, SvgSurface};
 use itertools::Itertools;
 use rand::{prelude::ThreadRng, Rng};
@@ -210,16 +210,16 @@ pub trait RenderableDomain: JoinSemiLattice {
     fn render(&self) -> Vec<Polygon>;
 }
 
-impl RenderableDomain for IntervalDomain {
+impl RenderableDomain for Interval {
     fn render(&self) -> Vec<Polygon> {
         vec![vec![Vec2 { x: self.min, y: 0 }, Vec2 { x: self.max, y: 0 }]]
     }
 }
 
-impl RenderableDomain for SignDomain {
+impl RenderableDomain for Sign {
     fn render(&self) -> Vec<Polygon> {
         match *self {
-            SignDomain::NonZero => vec![
+            Sign::NonZero => vec![
                 vec![
                     Vec2 {
                         x: analysis::domains::NEG_INF,
@@ -235,7 +235,7 @@ impl RenderableDomain for SignDomain {
                     },
                 ],
             ],
-            _ => IntervalDomain::from(*self).render(),
+            _ => Interval::from(*self).render(),
         }
     }
 }

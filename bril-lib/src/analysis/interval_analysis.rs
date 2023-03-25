@@ -7,31 +7,27 @@ use crate::{
 use analysis::{
     cfg::{CfgBlock, ControlFlowGraph},
     domains::{
-        IntervalDomain, JoinSemiLattice, Lattice, Map, MapCtx, BOOL_RANGE, FALSE_RANGE, TRUE_RANGE,
+        Interval, JoinSemiLattice, Lattice, Map, MapCtx, BOOL_RANGE, FALSE_RANGE, TRUE_RANGE,
     },
     solvers::{SolveMonotone, TransferFunction},
 };
 
 use super::{Analysis, TransferLogger};
 
-type IntervalEnv = Map<Identifier, IntervalDomain>;
-type IntervalCtx = MapCtx<Identifier, IntervalDomain>;
+type IntervalEnv = Map<Identifier, Interval>;
+type IntervalCtx = MapCtx<Identifier, Interval>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct IntervalAnalysis;
 
 impl IntervalAnalysis {
-    fn transfer_binary_op(
-        token: Token,
-        lhs: IntervalDomain,
-        rhs: IntervalDomain,
-    ) -> IntervalDomain {
+    fn transfer_binary_op(token: Token, lhs: Interval, rhs: Interval) -> Interval {
         match token.value {
             TokenValue::Add => lhs + rhs,
             TokenValue::Mul => lhs * rhs,
             TokenValue::Sub => lhs - rhs,
-            TokenValue::Div => IntervalDomain::top(&()),
-            TokenValue::Mod => IntervalDomain::top(&()),
+            TokenValue::Div => Interval::top(&()),
+            TokenValue::Mod => Interval::top(&()),
             TokenValue::Equal => lhs.equals(rhs),
             TokenValue::And => lhs.logical_and(rhs),
             TokenValue::Or => lhs.logical_or(rhs),
@@ -61,7 +57,7 @@ impl IntervalAnalysis {
         }
     }
 
-    fn transfer_unary_op(token: Token, operand: IntervalDomain) -> IntervalDomain {
+    fn transfer_unary_op(token: Token, operand: Interval) -> Interval {
         match token.value {
             TokenValue::Not => operand.logical_not(),
             TokenValue::Identity => operand,
@@ -88,12 +84,8 @@ impl TransferFunction<Cfg, IntervalEnv> for IntervalAnalysis {
                 lhs,
                 rhs,
             } => {
-                let lhs = *pre_state
-                    .get(&lhs.id)
-                    .unwrap_or(&IntervalDomain::bottom(&ctx.1));
-                let rhs = *pre_state
-                    .get(&rhs.id)
-                    .unwrap_or(&IntervalDomain::bottom(&ctx.1));
+                let lhs = *pre_state.get(&lhs.id).unwrap_or(&Interval::bottom(&ctx.1));
+                let rhs = *pre_state.get(&rhs.id).unwrap_or(&Interval::bottom(&ctx.1));
                 let result_sign = Self::transfer_binary_op(*token, lhs, rhs);
                 let mut new_state = pre_state.clone();
                 new_state.insert(result.id, result_sign);
@@ -106,7 +98,7 @@ impl TransferFunction<Cfg, IntervalEnv> for IntervalAnalysis {
             } => {
                 let operand = *pre_state
                     .get(&operand.id)
-                    .unwrap_or(&IntervalDomain::bottom(&ctx.1));
+                    .unwrap_or(&Interval::bottom(&ctx.1));
                 let result_sign = Self::transfer_unary_op(*token, operand);
                 let mut new_state = pre_state.clone();
                 new_state.insert(result.id, result_sign);
@@ -115,9 +107,9 @@ impl TransferFunction<Cfg, IntervalEnv> for IntervalAnalysis {
             Operation::Const(token, result) => {
                 let mut new_state = pre_state.clone();
                 let val = match token.value {
-                    TokenValue::Integer(i) => IntervalDomain::from(i64::from(i)),
-                    TokenValue::True => IntervalDomain::from(1),
-                    TokenValue::False => IntervalDomain::from(0),
+                    TokenValue::Integer(i) => Interval::from(i64::from(i)),
+                    TokenValue::True => Interval::from(1),
+                    TokenValue::False => Interval::from(0),
                     _ => panic!("Unexpected token."),
                 };
                 new_state.insert(result.id, val);
@@ -144,9 +136,7 @@ impl TransferFunction<Cfg, IntervalEnv> for IntervalAnalysis {
         let last_op = cfg.blocks()[from].operations().last().unwrap();
         match last_op {
             Operation::Branch { cond, .. } => {
-                let cond_range = *pre_state
-                    .get(&cond.id)
-                    .unwrap_or(&IntervalDomain::top(&ctx.1));
+                let cond_range = *pre_state.get(&cond.id).unwrap_or(&Interval::top(&ctx.1));
                 if cond_range == FALSE_RANGE && is_true_branch {
                     return None;
                 }
@@ -172,7 +162,7 @@ impl Analysis for IntervalAnalysis {
                 *id,
                 match ty {
                     Type::Bool => BOOL_RANGE,
-                    _ => IntervalDomain::top(&()),
+                    _ => Interval::top(&()),
                 },
             );
         }

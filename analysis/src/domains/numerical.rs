@@ -14,9 +14,9 @@ use crate::domains::*;
 ///     \  |  /
 ///      Bottom
 /// ```
-/// For more precision, consider using [`IntervalDomain`].
+/// For more precision, consider using [`Interval`].
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
-pub enum SignDomain {
+pub enum Sign {
     Top,
     Bottom,
     Negative,
@@ -27,57 +27,57 @@ pub enum SignDomain {
     NonPos,
 }
 
-impl From<i32> for SignDomain {
+impl From<i32> for Sign {
     fn from(val: i32) -> Self {
         match val.cmp(&0) {
-            Ordering::Less => SignDomain::Negative,
-            Ordering::Equal => SignDomain::Zero,
-            Ordering::Greater => SignDomain::Positive,
+            Ordering::Less => Sign::Negative,
+            Ordering::Equal => Sign::Zero,
+            Ordering::Greater => Sign::Positive,
         }
     }
 }
 
-impl From<IntervalDomain> for SignDomain {
-    fn from(value: IntervalDomain) -> Self {
-        if value == IntervalDomain::bottom(&()) {
-            return SignDomain::Bottom;
+impl From<Interval> for Sign {
+    fn from(value: Interval) -> Self {
+        if value == Interval::bottom(&()) {
+            return Sign::Bottom;
         }
-        if value == IntervalDomain::from(0) {
-            return SignDomain::Zero;
+        if value == Interval::from(0) {
+            return Sign::Zero;
         }
         if value.max < 0 {
-            return SignDomain::Negative;
+            return Sign::Negative;
         }
         if value.max <= 0 {
-            return SignDomain::NonPos;
+            return Sign::NonPos;
         }
         if value.min > 0 {
-            return SignDomain::Positive;
+            return Sign::Positive;
         }
         if value.min >= 0 {
-            return SignDomain::NonNeg;
+            return Sign::NonNeg;
         }
-        SignDomain::Top
+        Sign::Top
     }
 }
 
 mod sign_tables {
-    use super::SignDomain::{self, *};
-    pub fn index_of(s: SignDomain) -> usize {
+    use super::Sign::{self, *};
+    pub fn index_of(s: Sign) -> usize {
         match s {
-            SignDomain::Top => 0,
-            SignDomain::Bottom => 1,
-            SignDomain::Negative => 2,
-            SignDomain::Zero => 3,
-            SignDomain::Positive => 4,
-            SignDomain::NonNeg => 5,
-            SignDomain::NonZero => 6,
-            SignDomain::NonPos => 7,
+            Sign::Top => 0,
+            Sign::Bottom => 1,
+            Sign::Negative => 2,
+            Sign::Zero => 3,
+            Sign::Positive => 4,
+            Sign::NonNeg => 5,
+            Sign::NonZero => 6,
+            Sign::NonPos => 7,
         }
     }
 
     #[rustfmt::skip]
-    pub const JOIN : [[SignDomain; 8]; 8] =
+    pub const JOIN : [[Sign; 8]; 8] =
     [
     // LHS/RHS,      Top, Bottom,   Negative, Zero,   Positive  ~Negative  ~Zero    ~Positive
     /* Top      */ [ Top, Top,      Top,      Top,    Top,      Top,       Top,     Top   ],
@@ -91,7 +91,7 @@ mod sign_tables {
     ];
 
     #[rustfmt::skip]
-    pub const MEET : [[SignDomain; 8]; 8] =
+    pub const MEET : [[Sign; 8]; 8] =
     [
     // LHS/RHS,      Top,      Bottom, Negative, Zero,   Positive  ~Negative ~Zero     ~Positive
     /* Top      */ [ Top,      Bottom, Negative, Zero,   Positive, NonNeg,   NonZero,  NonPos  ],
@@ -105,7 +105,7 @@ mod sign_tables {
     ];
 
     #[rustfmt::skip]
-    pub const ADDITION : [[SignDomain; 8]; 8] =
+    pub const ADDITION : [[Sign; 8]; 8] =
     [
     // LHS/RHS,      Top,    Bottom, Negative, Zero,     Positive  ~Negative  ~Zero    ~Positive
     /* Top      */ [ Top,    Bottom, Top,      Top,      Top ,     Top,       Top,     Top     ],
@@ -119,7 +119,7 @@ mod sign_tables {
     ];
 
     #[rustfmt::skip]
-    pub const MULTIPLICATION : [[SignDomain; 8]; 8] =
+    pub const MULTIPLICATION : [[Sign; 8]; 8] =
     [
     // LHS/RHS,      Top,    Bottom, Negative, Zero,   Positive  ~Negative  ~Zero    ~Positive
     /* Top      */ [ Top,    Bottom, Top,      Zero,   Top,      Top,       Top,     Top   ],
@@ -177,7 +177,7 @@ mod sign_tables {
     ];
 }
 
-impl Add for SignDomain {
+impl Add for Sign {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
         use sign_tables::*;
@@ -185,27 +185,27 @@ impl Add for SignDomain {
     }
 }
 
-impl Neg for SignDomain {
+impl Neg for Sign {
     type Output = Self;
     fn neg(self) -> Self::Output {
         match self {
-            SignDomain::Negative => SignDomain::Positive,
-            SignDomain::Positive => SignDomain::Negative,
-            SignDomain::NonPos => SignDomain::NonNeg,
-            SignDomain::NonNeg => SignDomain::NonPos,
+            Sign::Negative => Sign::Positive,
+            Sign::Positive => Sign::Negative,
+            Sign::NonPos => Sign::NonNeg,
+            Sign::NonNeg => Sign::NonPos,
             _ => self,
         }
     }
 }
 
-impl Sub for SignDomain {
+impl Sub for Sign {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
         self + -rhs
     }
 }
 
-impl Mul for SignDomain {
+impl Mul for Sign {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
         use sign_tables::*;
@@ -213,10 +213,10 @@ impl Mul for SignDomain {
     }
 }
 
-impl Div for SignDomain {
+impl Div for Sign {
     type Output = Self;
     fn div(self, rhs: Self) -> Self::Output {
-        use SignDomain::*;
+        use Sign::*;
         #[allow(clippy::suspicious_arithmetic_impl)]
         match self * rhs {
             Positive => NonNeg,
@@ -226,82 +226,82 @@ impl Div for SignDomain {
     }
 }
 
-impl Rem for SignDomain {
+impl Rem for Sign {
     type Output = Self;
     fn rem(self, _rhs: Self) -> Self::Output {
         match self {
-            SignDomain::NonNeg | SignDomain::Positive => SignDomain::NonNeg,
-            SignDomain::NonPos | SignDomain::Negative => SignDomain::NonPos,
-            SignDomain::Zero => SignDomain::Zero,
-            SignDomain::Bottom => SignDomain::Bottom,
-            _ => SignDomain::Top,
+            Sign::NonNeg | Sign::Positive => Sign::NonNeg,
+            Sign::NonPos | Sign::Negative => Sign::NonPos,
+            Sign::Zero => Sign::Zero,
+            Sign::Bottom => Sign::Bottom,
+            _ => Sign::Top,
         }
     }
 }
 
-impl PartialOrd for SignDomain {
+impl PartialOrd for Sign {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         use sign_tables::*;
         COMPARISON[index_of(*self)][index_of(*other)]
     }
 }
 
-impl SignDomain {
-    pub fn logical_eq(self, other: SignDomain, is_bool: bool) -> SignDomain {
-        if (is_bool && self == SignDomain::Positive && other == SignDomain::Positive)
-            || (self == SignDomain::Zero && other == SignDomain::Zero)
+impl Sign {
+    pub fn logical_eq(self, other: Sign, is_bool: bool) -> Sign {
+        if (is_bool && self == Sign::Positive && other == Sign::Positive)
+            || (self == Sign::Zero && other == Sign::Zero)
         {
-            SignDomain::Positive
+            Sign::Positive
         } else if self <= other || other <= self {
-            SignDomain::NonNeg
+            Sign::NonNeg
         } else {
-            SignDomain::Zero
+            Sign::Zero
         }
     }
 
-    pub fn logical_and(self, other: SignDomain) -> SignDomain {
+    pub fn logical_and(self, other: Sign) -> Sign {
         match (self, other) {
-            (SignDomain::Zero, _) | (_, SignDomain::Zero) => SignDomain::Zero,
-            (SignDomain::Positive, SignDomain::Positive) => SignDomain::Positive,
-            _ => SignDomain::NonNeg,
+            (Sign::Zero, _) | (_, Sign::Zero) => Sign::Zero,
+            (Sign::Positive, Sign::Positive) => Sign::Positive,
+            _ => Sign::NonNeg,
         }
     }
 
-    pub fn logical_or(self, other: SignDomain) -> SignDomain {
+    pub fn logical_or(self, other: Sign) -> Sign {
         match (self, other) {
-            (SignDomain::Positive, _) | (_, SignDomain::Positive) => SignDomain::Positive,
-            (SignDomain::Zero, SignDomain::Zero) => SignDomain::Zero,
-            _ => SignDomain::NonNeg,
+            (Sign::Positive, _) | (_, Sign::Positive) => Sign::Positive,
+            (Sign::Zero, Sign::Zero) => Sign::Zero,
+            _ => Sign::NonNeg,
         }
     }
 
-    pub fn logical_not(self) -> SignDomain {
+    pub fn logical_not(self) -> Sign {
         match self {
-            SignDomain::NonNeg => SignDomain::NonNeg,
-            SignDomain::Positive => SignDomain::Zero,
-            SignDomain::Zero => SignDomain::Positive,
+            Sign::NonNeg => Sign::NonNeg,
+            Sign::Positive => Sign::Zero,
+            Sign::Zero => Sign::Positive,
             _ => panic!("Unexpected value"),
         }
     }
 
     /// Compares the concrete values.
-    pub fn strict_cmp(self, other: SignDomain) -> Option<Ordering> {
+    pub fn strict_cmp(self, other: Sign) -> Option<Ordering> {
         use sign_tables::*;
         STRICT_CONCRETE_COMPARISON[index_of(self)][index_of(other)]
     }
 
     /// Compares the concrete values.
-    pub fn weak_cmp(self, other: SignDomain) -> Option<Ordering> {
+    pub fn weak_cmp(self, other: Sign) -> Option<Ordering> {
         use sign_tables::*;
         WEAK_CONCRETE_COMPARISON[index_of(self)][index_of(other)]
     }
 }
 
-impl JoinSemiLattice for SignDomain {
+impl JoinSemiLattice for Sign {
     type LatticeContext = ();
 
     fn bottom(_: &Self::LatticeContext) -> Self {
-        SignDomain::Bottom
+        Sign::Bottom
     }
 
     fn join(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
@@ -310,9 +310,9 @@ impl JoinSemiLattice for SignDomain {
     }
 }
 
-impl Lattice for SignDomain {
+impl Lattice for Sign {
     fn top(_: &Self::LatticeContext) -> Self {
-        SignDomain::Top
+        Sign::Top
     }
 
     fn meet(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
@@ -324,21 +324,21 @@ impl Lattice for SignDomain {
 pub const INF: i64 = i64::MAX;
 pub const NEG_INF: i64 = i64::MIN;
 
-/// [`IntervalDomain`] is often used to represent a possible range of values.
+/// [`Interval`] is often used to represent a possible range of values.
 /// The lattice is ordered by inclusion and has very long ascending and
 /// descending chains, thus it implements widening. It also implements
 /// some basic arithmetic operations.
 #[derive(PartialEq, Eq, Clone, Copy)]
-pub struct IntervalDomain {
+pub struct Interval {
     pub min: i64,
     pub max: i64,
 }
 
-pub static BOOL_RANGE: IntervalDomain = IntervalDomain { min: 0, max: 1 };
-pub static TRUE_RANGE: IntervalDomain = IntervalDomain { min: 1, max: 1 };
-pub static FALSE_RANGE: IntervalDomain = IntervalDomain { min: 0, max: 0 };
+pub static BOOL_RANGE: Interval = Interval { min: 0, max: 1 };
+pub static TRUE_RANGE: Interval = Interval { min: 1, max: 1 };
+pub static FALSE_RANGE: Interval = Interval { min: 0, max: 0 };
 
-impl IntervalDomain {
+impl Interval {
     /// Returns [n, inf].
     pub fn greater(n: i64) -> Self {
         Self { min: n, max: INF }
@@ -360,7 +360,7 @@ impl IntervalDomain {
         }
     }
 
-    pub fn logical_and(self, other: IntervalDomain) -> Self {
+    pub fn logical_and(self, other: Interval) -> Self {
         match (self.singleton(), other.singleton()) {
             (Some(0), _) | (_, Some(0)) => FALSE_RANGE,
             (Some(1), Some(1)) => TRUE_RANGE,
@@ -368,7 +368,7 @@ impl IntervalDomain {
         }
     }
 
-    pub fn logical_or(self, other: IntervalDomain) -> Self {
+    pub fn logical_or(self, other: Interval) -> Self {
         match (self.singleton(), other.singleton()) {
             (Some(1), _) | (_, Some(1)) => TRUE_RANGE,
             (Some(0), Some(0)) => FALSE_RANGE,
@@ -384,8 +384,8 @@ impl IntervalDomain {
         }
     }
 
-    pub fn strict_cmp(self, other: IntervalDomain) -> Option<Ordering> {
-        if self == IntervalDomain::bottom(&()) || other == IntervalDomain::bottom(&()) {
+    pub fn strict_cmp(self, other: Interval) -> Option<Ordering> {
+        if self == Interval::bottom(&()) || other == Interval::bottom(&()) {
             return None;
         }
 
@@ -403,7 +403,7 @@ impl IntervalDomain {
         }
     }
 
-    pub fn equals(self, other: IntervalDomain) -> IntervalDomain {
+    pub fn equals(self, other: Interval) -> Interval {
         match self.strict_cmp(other) {
             Some(Ordering::Less) | Some(Ordering::Greater) => FALSE_RANGE,
             Some(Ordering::Equal) => TRUE_RANGE,
@@ -412,25 +412,25 @@ impl IntervalDomain {
     }
 }
 
-impl From<i64> for IntervalDomain {
+impl From<i64> for Interval {
     fn from(val: i64) -> Self {
         Self { min: val, max: val }
     }
 }
 
-impl From<SignDomain> for IntervalDomain {
-    fn from(value: SignDomain) -> Self {
+impl From<Sign> for Interval {
+    fn from(value: Sign) -> Self {
         match value {
-            SignDomain::Top | SignDomain::NonZero => IntervalDomain::top(&()),
-            SignDomain::Bottom => IntervalDomain::bottom(&()),
-            SignDomain::Zero => IntervalDomain::from(0),
-            SignDomain::Positive => IntervalDomain { min: 1, max: INF },
-            SignDomain::Negative => IntervalDomain {
+            Sign::Top | Sign::NonZero => Interval::top(&()),
+            Sign::Bottom => Interval::bottom(&()),
+            Sign::Zero => Interval::from(0),
+            Sign::Positive => Interval { min: 1, max: INF },
+            Sign::Negative => Interval {
                 min: NEG_INF,
                 max: -1,
             },
-            SignDomain::NonNeg => IntervalDomain { min: 0, max: INF },
-            SignDomain::NonPos => IntervalDomain {
+            Sign::NonNeg => Interval { min: 0, max: INF },
+            Sign::NonPos => Interval {
                 min: NEG_INF,
                 max: 0,
             },
@@ -438,7 +438,7 @@ impl From<SignDomain> for IntervalDomain {
     }
 }
 
-impl Debug for IntervalDomain {
+impl Debug for Interval {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let to_str = |x: i64| match x {
             INF => "inf".to_owned(),
@@ -449,7 +449,7 @@ impl Debug for IntervalDomain {
     }
 }
 
-impl PartialOrd for IntervalDomain {
+impl PartialOrd for Interval {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         if self == other {
             return Some(Ordering::Equal);
@@ -465,7 +465,7 @@ impl PartialOrd for IntervalDomain {
     }
 }
 
-impl JoinSemiLattice for IntervalDomain {
+impl JoinSemiLattice for Interval {
     type LatticeContext = ();
 
     fn bottom(_: &Self::LatticeContext) -> Self {
@@ -498,7 +498,7 @@ impl JoinSemiLattice for IntervalDomain {
     }
 }
 
-impl Lattice for IntervalDomain {
+impl Lattice for Interval {
     fn top(_: &Self::LatticeContext) -> Self {
         Self {
             min: NEG_INF,
@@ -507,7 +507,7 @@ impl Lattice for IntervalDomain {
     }
 
     fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
-        let result = IntervalDomain {
+        let result = Interval {
             min: self.min.max(other.min),
             max: self.max.min(other.max),
         };
@@ -536,7 +536,7 @@ impl Lattice for IntervalDomain {
     }
 }
 
-impl Add<IntervalDomain> for IntervalDomain {
+impl Add<Interval> for Interval {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
         // Cannot do arithmetic on bottom.
@@ -557,7 +557,7 @@ impl Add<IntervalDomain> for IntervalDomain {
     }
 }
 
-impl Neg for IntervalDomain {
+impl Neg for Interval {
     type Output = Self;
     fn neg(self) -> Self {
         Self {
@@ -567,14 +567,14 @@ impl Neg for IntervalDomain {
     }
 }
 
-impl Sub for IntervalDomain {
+impl Sub for Interval {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
         self + -rhs
     }
 }
 
-impl Mul for IntervalDomain {
+impl Mul for Interval {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
         // Cannot do arithmetic on bottom.
@@ -586,7 +586,7 @@ impl Mul for IntervalDomain {
             self.max.saturating_mul(rhs.min),
             self.max.saturating_mul(rhs.max),
         ];
-        IntervalDomain {
+        Interval {
             min: *candidates.iter().min().unwrap(),
             max: *candidates.iter().max().unwrap(),
         }

@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 
 use analysis::cfg::OpPos;
-use analysis::domains::{JoinSemiLattice, PowerSetDomain, PowerSetTop};
+use analysis::domains::{JoinSemiLattice, PowerSet, PowerSetTop};
 use analysis::solvers::{OpTransfer, SolveMonotone};
 
 use crate::analysis::annotations_from_backward_analysis_results;
@@ -21,15 +21,14 @@ pub enum OpKind {
     Rotation,
 }
 
-type OperationKindsDomain = PowerSetDomain<OpKind>;
+type OperationKindsDomain = PowerSet<OpKind>;
 
 lazy_static! {
-    static ref LAT_CTX: PowerSetTop<OpKind> =
-        PowerSetTop(PowerSetDomain::<OpKind>(HashSet::from([
-            OpKind::Init,
-            OpKind::Translation,
-            OpKind::Rotation,
-        ])));
+    static ref LAT_CTX: PowerSetTop<OpKind> = PowerSetTop(PowerSet::<OpKind>(HashSet::from([
+        OpKind::Init,
+        OpKind::Translation,
+        OpKind::Rotation,
+    ])));
 }
 
 pub fn collect_operation_kind(

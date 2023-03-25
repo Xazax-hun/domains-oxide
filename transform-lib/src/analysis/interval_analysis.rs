@@ -1,5 +1,5 @@
 use analysis::cfg::OpPos;
-use analysis::domains::{self, IntervalDomain, JoinSemiLattice, Lattice, Vec2Domain};
+use analysis::domains::{self, Interval, JoinSemiLattice, Lattice, Vec2Domain};
 use analysis::solvers::{SolveMonotone, TransferFunction};
 
 use utils::Vec2;
@@ -11,7 +11,7 @@ use crate::ast::{NodeRef, Operation};
 use crate::cfg::Cfg;
 use crate::eval::rotate;
 
-type Vec2Interval = Vec2Domain<IntervalDomain>;
+type Vec2Interval = Vec2Domain<Interval>;
 
 #[derive(Debug)]
 pub struct IntervalAnalysis;
@@ -31,19 +31,19 @@ impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Interval> for IntervalAnalysis {
                 let bot_left = Vec2::from(&init.bottom_left);
                 let size = Vec2::from(&init.size);
                 Vec2Domain {
-                    x: IntervalDomain {
+                    x: Interval {
                         min: bot_left.x,
                         max: (bot_left.x + size.x),
                     },
-                    y: IntervalDomain {
+                    y: Interval {
                         min: bot_left.y,
                         max: (bot_left.y + size.y),
                     },
                 }
             }
             NodeRef::Translation(trans) => Vec2Domain {
-                x: pre_state.x + IntervalDomain::from(i64::from(trans.vector.x.value.to_num())),
-                y: pre_state.y + IntervalDomain::from(i64::from(trans.vector.y.value.to_num())),
+                x: pre_state.x + Interval::from(i64::from(trans.vector.x.value.to_num())),
+                y: pre_state.y + Interval::from(i64::from(trans.vector.y.value.to_num())),
             },
             NodeRef::Rotation(rot) => {
                 let degree = rot.deg.value.to_num() % 360;
@@ -58,25 +58,25 @@ impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Interval> for IntervalAnalysis {
                 // Then undo the translation.
                 let origin = Vec2::from(&rot.origin);
                 let to_rotate = Vec2Domain {
-                    x: pre_state.x + IntervalDomain::from(-origin.x),
-                    y: pre_state.y + IntervalDomain::from(-origin.y),
+                    x: pre_state.x + Interval::from(-origin.x),
+                    y: pre_state.y + Interval::from(-origin.y),
                 };
                 if degree == 270 {
                     return Vec2Domain {
-                        x: to_rotate.y + IntervalDomain::from(origin.x),
-                        y: -to_rotate.x + IntervalDomain::from(origin.y),
+                        x: to_rotate.y + Interval::from(origin.x),
+                        y: -to_rotate.x + Interval::from(origin.y),
                     };
                 }
                 if degree == 180 {
                     return Vec2Domain {
-                        x: -to_rotate.x + IntervalDomain::from(origin.x),
-                        y: -to_rotate.y + IntervalDomain::from(origin.y),
+                        x: -to_rotate.x + Interval::from(origin.x),
+                        y: -to_rotate.y + Interval::from(origin.y),
                     };
                 }
                 if degree == 90 {
                     return Vec2Domain {
-                        x: -to_rotate.y + IntervalDomain::from(origin.x),
-                        y: to_rotate.x + IntervalDomain::from(origin.y),
+                        x: -to_rotate.y + Interval::from(origin.x),
+                        y: to_rotate.x + Interval::from(origin.y),
                     };
                 }
 
@@ -130,11 +130,11 @@ impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Interval> for IntervalAnalysis {
                 }
 
                 Vec2Domain {
-                    x: IntervalDomain {
+                    x: Interval {
                         min: corners.iter().min_by_key(|&x| x.x).unwrap().x,
                         max: corners.iter().max_by_key(|&x| x.x).unwrap().x,
                     },
-                    y: IntervalDomain {
+                    y: Interval {
                         min: corners.iter().min_by_key(|&x| x.y).unwrap().y,
                         max: corners.iter().max_by_key(|&x| x.y).unwrap().y,
                     },
