@@ -87,6 +87,8 @@ impl DiagnosticEmitter {
         self.err("\n");
     }
 
+    /// Will return the contents of the output buffer when created using
+    /// [`DiagnosticEmitter::log_to_buffer`].
     pub fn out_buffer(&self) -> Option<String> {
         if let LogOrWrite::Log(inner) = &self.out {
             return Some(
@@ -98,6 +100,8 @@ impl DiagnosticEmitter {
         None
     }
 
+    /// Will return the contents of the error buffer when created using
+    /// [`DiagnosticEmitter::log_to_buffer`].
     pub fn err_buffer(&self) -> Option<String> {
         if let LogOrWrite::Log(inner) = &self.err {
             return Some(
