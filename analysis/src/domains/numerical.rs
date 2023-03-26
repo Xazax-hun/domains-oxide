@@ -638,6 +638,55 @@ impl Congruence {
         }
         self
     }
+
+    pub fn singleton(self) -> Option<i64> {
+        if self.modulus == 0 {
+            return Some(self.constant);
+        }
+        None
+    }
+
+    pub fn equals(self, other: Congruence) -> Congruence {
+        if self.disjoint(other) {
+            return Congruence::from(0, 0);
+        }
+
+        match (self.singleton(), other.singleton()) {
+            (Some(x), Some(y)) if y == x => Congruence::from(1, 0),
+            _ => Congruence::top(&()),
+        }
+    }
+
+    pub fn logical_and(self, other: Congruence) -> Congruence {
+        match (self.singleton(), other.singleton()) {
+            (Some(0), _) | (_, Some(0)) => Congruence::from(0, 0),
+            (Some(1), Some(1)) => Congruence::from(1, 0),
+            _ => Congruence::top(&()),
+        }
+    }
+
+    pub fn logical_or(self, other: Congruence) -> Congruence {
+        match (self.singleton(), other.singleton()) {
+            (Some(1), _) | (_, Some(1)) => Congruence::from(1, 0),
+            (Some(0), Some(0)) => Congruence::from(0, 0),
+            _ => Congruence::top(&()),
+        }
+    }
+
+    pub fn logical_not(self) -> Congruence {
+        match self.singleton() {
+            Some(1) => Congruence::from(0, 0),
+            Some(0) => Congruence::from(1, 0),
+            _ => Congruence::top(&()),
+        }
+    }
+
+    pub fn strict_cmp(self, other: Congruence) -> Option<Ordering> {
+        match (self.singleton(), other.singleton()) {
+            (Some(x), Some(y)) => Some(x.cmp(&y)),
+            _ => None,
+        }
+    }
 }
 
 impl Debug for Congruence {
@@ -692,7 +741,13 @@ impl JoinSemiLattice for Congruence {
         }
     }
 
-    fn join(&self, other: &Self, _ctx: &()) -> Self {
+    fn join(&self, other: &Self, ctx: &()) -> Self {
+        if *self == Congruence::bottom(ctx) {
+            return *other;
+        }
+        if *other == Congruence::bottom(ctx) {
+            return *self;
+        }
         let new_modulus = self
             .modulus
             .gcd(&other.modulus)
@@ -773,6 +828,9 @@ impl Add for Congruence {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
+        if self == Congruence::bottom(&()) && rhs == Congruence::bottom(&()) {
+            return Congruence::bottom(&());
+        }
         let new_modulus = self.modulus.gcd(&rhs.modulus);
         Self {
             constant: self.constant + rhs.constant,
@@ -794,6 +852,9 @@ impl Mul for Congruence {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
+        if self == Congruence::bottom(&()) && rhs == Congruence::bottom(&()) {
+            return Congruence::bottom(&());
+        }
         let new_modulus = (self.modulus * rhs.modulus)
             .gcd(&(self.modulus * rhs.constant))
             .gcd(&(rhs.modulus * self.constant));

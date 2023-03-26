@@ -89,7 +89,10 @@ fn test_all_tokens() {
     ];
 
     assert_eq!(to_token_values(result.tokens), expected);
-    assert_eq!(result.identifiers.0, vec!["ident", "@global", ".label", "a_32"]);
+    assert_eq!(
+        result.identifiers.0,
+        vec!["ident", "@global", ".label", "a_32"]
+    );
     assert_eq!(output, "");
 }
 

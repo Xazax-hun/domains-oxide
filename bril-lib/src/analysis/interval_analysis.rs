@@ -86,9 +86,9 @@ impl TransferFunction<Cfg, IntervalEnv> for IntervalAnalysis {
             } => {
                 let lhs = *pre_state.get(&lhs.id).unwrap_or(&Interval::bottom(&ctx.1));
                 let rhs = *pre_state.get(&rhs.id).unwrap_or(&Interval::bottom(&ctx.1));
-                let result_sign = Self::transfer_binary_op(*token, lhs, rhs);
+                let result_range = Self::transfer_binary_op(*token, lhs, rhs);
                 let mut new_state = pre_state.clone();
-                new_state.insert(result.id, result_sign);
+                new_state.insert(result.id, result_range);
                 new_state
             }
             Operation::UnaryOp {
@@ -99,9 +99,9 @@ impl TransferFunction<Cfg, IntervalEnv> for IntervalAnalysis {
                 let operand = *pre_state
                     .get(&operand.id)
                     .unwrap_or(&Interval::bottom(&ctx.1));
-                let result_sign = Self::transfer_unary_op(*token, operand);
+                let result_range = Self::transfer_unary_op(*token, operand);
                 let mut new_state = pre_state.clone();
-                new_state.insert(result.id, result_sign);
+                new_state.insert(result.id, result_range);
                 new_state
             }
             Operation::Const(token, result) => {

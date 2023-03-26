@@ -1,13 +1,14 @@
-use std::collections::HashSet;
+use std::{cmp::Ordering, collections::HashSet};
 
 use analysis::{
+    cfg::{CfgBlock, ControlFlowGraph, OpPos},
     domains::{Congruence, JoinSemiLattice, Lattice, Map, MapCtx},
-    solvers::{SolveMonotone, TransferFunction}, cfg::{OpPos, ControlFlowGraph, CfgBlock},
+    solvers::{SolveMonotone, TransferFunction},
 };
 
 use crate::{
-    ir::{Annotations, Cfg, Unit, Variable, Operation},
-    lexer::{Identifier, TokenValue, Token},
+    ir::{Annotations, Cfg, Operation, Unit, Variable},
+    lexer::{Identifier, Token, TokenValue},
 };
 
 use super::{Analysis, TransferLogger};
@@ -19,20 +20,36 @@ type CongruenceCtx = MapCtx<Identifier, Congruence>;
 pub struct CongruenceAnalysis;
 
 impl CongruenceAnalysis {
-   fn transfer_binary_op(token: Token, lhs: Congruence, rhs: Congruence) -> Congruence {
+    fn transfer_binary_op(token: Token, lhs: Congruence, rhs: Congruence) -> Congruence {
         match token.value {
             TokenValue::Add => lhs + rhs,
             TokenValue::Mul => lhs * rhs,
             TokenValue::Sub => lhs - rhs,
             TokenValue::Div => Congruence::top(&()),
             TokenValue::Mod => Congruence::top(&()),
-            TokenValue::Equal => Congruence::top(&()),
-            TokenValue::And => Congruence::top(&()),
-            TokenValue::Or => Congruence::top(&()),
-            TokenValue::LessThan => Congruence::top(&()),
-            TokenValue::GreaterThan => Congruence::top(&()),
-            TokenValue::LessThanOrEq => Congruence::top(&()),
-            TokenValue::GreaterThanOrEq => Congruence::top(&()),
+            TokenValue::Equal => lhs.equals(rhs),
+            TokenValue::And => lhs.logical_and(rhs),
+            TokenValue::Or => lhs.logical_or(rhs),
+            TokenValue::LessThan => match lhs.strict_cmp(rhs) {
+                Some(Ordering::Less) => Congruence::from(1, 0),
+                Some(_) => Congruence::from(0, 0),
+                _ => Congruence::top(&()),
+            },
+            TokenValue::GreaterThan => match lhs.strict_cmp(rhs) {
+                Some(Ordering::Greater) => Congruence::from(1, 0),
+                Some(_) => Congruence::from(0, 0),
+                _ => Congruence::top(&()),
+            },
+            TokenValue::LessThanOrEq => match lhs.strict_cmp(rhs) {
+                Some(Ordering::Greater) => Congruence::from(0, 0),
+                Some(_) => Congruence::from(1, 0),
+                _ => Congruence::top(&()),
+            },
+            TokenValue::GreaterThanOrEq => match lhs.strict_cmp(rhs) {
+                Some(Ordering::Less) => Congruence::from(0, 0),
+                Some(_) => Congruence::from(1, 0),
+                _ => Congruence::top(&()),
+            },
             _ => {
                 panic!("Unexpected binary operator.")
             }
@@ -41,7 +58,7 @@ impl CongruenceAnalysis {
 
     fn transfer_unary_op(token: Token, operand: Congruence) -> Congruence {
         match token.value {
-            TokenValue::Not => Congruence::top(&()),
+            TokenValue::Not => operand.logical_not(),
             TokenValue::Identity => operand,
             _ => {
                 panic!("Unexpected unary operator.");
@@ -66,11 +83,15 @@ impl TransferFunction<Cfg, CongruenceEnv> for CongruenceAnalysis {
                 lhs,
                 rhs,
             } => {
-                let lhs = *pre_state.get(&lhs.id).unwrap_or(&Congruence::bottom(&ctx.1));
-                let rhs = *pre_state.get(&rhs.id).unwrap_or(&Congruence::bottom(&ctx.1));
-                let result_sign = Self::transfer_binary_op(*token, lhs, rhs);
+                let lhs = *pre_state
+                    .get(&lhs.id)
+                    .unwrap_or(&Congruence::bottom(&ctx.1));
+                let rhs = *pre_state
+                    .get(&rhs.id)
+                    .unwrap_or(&Congruence::bottom(&ctx.1));
+                let result_cong = Self::transfer_binary_op(*token, lhs, rhs);
                 let mut new_state = pre_state.clone();
-                new_state.insert(result.id, result_sign);
+                new_state.insert(result.id, result_cong);
                 new_state
             }
             Operation::UnaryOp {
@@ -81,9 +102,9 @@ impl TransferFunction<Cfg, CongruenceEnv> for CongruenceAnalysis {
                 let operand = *pre_state
                     .get(&operand.id)
                     .unwrap_or(&Congruence::bottom(&ctx.1));
-                let result_sign = Self::transfer_unary_op(*token, operand);
+                let result_cong = Self::transfer_unary_op(*token, operand);
                 let mut new_state = pre_state.clone();
-                new_state.insert(result.id, result_sign);
+                new_state.insert(result.id, result_cong);
                 new_state
             }
             Operation::Const(token, result) => {
@@ -118,11 +139,11 @@ impl TransferFunction<Cfg, CongruenceEnv> for CongruenceAnalysis {
         let last_op = cfg.blocks()[from].operations().last().unwrap();
         match last_op {
             Operation::Branch { cond, .. } => {
-                let cond_range = *pre_state.get(&cond.id).unwrap_or(&Congruence::top(&ctx.1));
-                if cond_range == Congruence::from(0, 0) && is_true_branch {
+                let cond_cong = *pre_state.get(&cond.id).unwrap_or(&Congruence::top(&ctx.1));
+                if cond_cong == Congruence::from(0, 0) && is_true_branch {
                     return None;
                 }
-                if cond_range == Congruence::from(1, 0) && !is_true_branch {
+                if cond_cong == Congruence::from(1, 0) && !is_true_branch {
                     return None;
                 }
                 Some(pre_state.clone())

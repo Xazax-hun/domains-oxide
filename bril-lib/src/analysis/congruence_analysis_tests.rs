@@ -1,4 +1,4 @@
-use super::{test_utils::check_expected_results, congruence_analysis::CongruenceAnalysis};
+use super::{congruence_analysis::CongruenceAnalysis, test_utils::check_expected_results};
 
 #[test]
 fn basic_test() {
@@ -15,6 +15,43 @@ fn basic_test() {
 ";
     check_expected_results(CongruenceAnalysis, source, expected)
 }
+
+#[test]
+fn branching() {
+    let source = r"@main {
+  pos: int = const 5;
+  neg: int = const -5;
+  greater: bool = gt neg pos;
+  br greater .true .false;
+
+.true:
+  x: bool = id greater;
+  ret;
+
+.false:
+  x: bool = id greater;
+  ret;
+}
+";
+
+    let expected = r"@main {
+  pos: int = const 5; /* pos: 5 mod 0 */
+  neg: int = const -5; /* neg: -5 mod 0 */
+  greater: bool = gt neg pos; /* greater: 0 mod 0 */
+  br greater .true .false;
+
+.true:
+  x: bool = id greater; /* x: 1 mod 1 */
+  ret;
+
+.false:
+  x: bool = id greater; /* x: 0 mod 0 */
+  ret;
+}
+";
+    check_expected_results(CongruenceAnalysis, source, expected)
+}
+
 
 
 #[test]
