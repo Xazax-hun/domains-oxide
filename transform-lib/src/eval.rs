@@ -134,13 +134,6 @@ pub fn rotate(mut to_rotate: Vec2, origin: Vec2, deg: i32) -> Vec2 {
 }
 
 pub fn annotate_with_walks(walks: &[Walk]) -> Annotations {
-    let mut collected_steps: HashMap<Operation, Vec<Vec2>> = HashMap::new();
-
-    for walk in walks {
-        walk.iter()
-            .for_each(|step| collected_steps.entry(step.op).or_default().push(step.pos));
-    }
-
     fn print_set(v: &[Vec2]) -> String {
         let mut result = "{".to_owned();
 
@@ -153,6 +146,13 @@ pub fn annotate_with_walks(walks: &[Walk]) -> Annotations {
         result.push('}');
 
         result
+    }
+
+    let mut collected_steps: HashMap<Operation, Vec<Vec2>> = HashMap::new();
+
+    for walk in walks {
+        walk.iter()
+            .for_each(|step| collected_steps.entry(step.op).or_default().push(step.pos));
     }
 
     let mut anns = Annotations::new();

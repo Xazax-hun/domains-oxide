@@ -407,7 +407,7 @@ impl Interval {
 
     pub fn equals(self, other: Interval) -> Interval {
         match self.strict_cmp(other) {
-            Some(Ordering::Less) | Some(Ordering::Greater) => FALSE_RANGE,
+            Some(Ordering::Less | Ordering::Greater) => FALSE_RANGE,
             Some(Ordering::Equal) => TRUE_RANGE,
             _ => BOOL_RANGE,
         }

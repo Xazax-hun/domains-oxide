@@ -52,8 +52,6 @@ fn branching() {
     check_expected_results(CongruenceAnalysis, source, expected)
 }
 
-
-
 #[test]
 fn loop_test() {
     let source = r"@main {
