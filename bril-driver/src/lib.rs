@@ -12,6 +12,7 @@ use utils::DiagnosticEmitter;
 pub enum CLIAnalyses {
     Sign,
     Interval,
+    Congruence,
 }
 
 impl From<CLIAnalyses> for Analyses {
@@ -19,6 +20,7 @@ impl From<CLIAnalyses> for Analyses {
         match value {
             CLIAnalyses::Sign => Analyses::Sign,
             CLIAnalyses::Interval => Analyses::Interval,
+            CLIAnalyses::Congruence => Analyses::Congruence,
         }
     }
 }

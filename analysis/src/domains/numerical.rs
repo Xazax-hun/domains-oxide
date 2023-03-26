@@ -595,14 +595,14 @@ impl Mul for Interval {
     }
 }
 
-/// In this domain, `c[m]` represents values that has `c` as a remainder
+/// In this domain, `c mod m` represents values that has `c` as a remainder
 /// modulo `m`. This can be useful to evaluate certain conditions, to
 /// improve the precision of a range analysis, or to reason about the
 /// alignments of memory allocations.
 ///
 /// This domain is the generalization of the flat domain for constants
-/// and parity. `5[0]` represents the constant `5`, `0[1]` represents
-/// all the integers, `0[2]` represents even numbers, `1[2]` represents
+/// and parity. `5 mod 0` represents the constant `5`, `0 mod 1` represents
+/// all the integers, `0 mod 2` represents even numbers, `1 mod 2` represents
 /// odd numbers.
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub struct Congruence {

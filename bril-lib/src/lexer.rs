@@ -408,7 +408,7 @@ impl<'src> Lexer<'src> {
     }
 
     fn lex_identifier(&mut self) -> &'src str {
-        while self.peek().is_ascii_alphabetic() {
+        while self.peek().is_ascii_alphanumeric() || self.peek() == '_' {
             self.advance();
         }
 

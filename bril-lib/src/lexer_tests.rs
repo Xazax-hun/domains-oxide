@@ -41,7 +41,7 @@ fn test_empty_input() {
 #[test]
 fn test_all_tokens() {
     let LexTestResult { output, result } = lex_string(
-        r"ident @global ident .label 50 -50 add mul sub div mod eq lt gt le ge not and or
+        r"ident @global ident .label a_32 50 -50 add mul sub div mod eq lt gt le ge not and or
               jmp br call ret = (){} ;:, const print nop id int bool true false",
     );
     let expected = vec![
@@ -49,6 +49,7 @@ fn test_all_tokens() {
         Global(Identifier(1)),
         Local(Identifier(0)),
         Label(Identifier(2)),
+        Local(Identifier(3)),
         Integer(50),
         Integer(-50),
         Add,
@@ -88,7 +89,7 @@ fn test_all_tokens() {
     ];
 
     assert_eq!(to_token_values(result.tokens), expected);
-    assert_eq!(result.identifiers.0, vec!["ident", "@global", ".label"]);
+    assert_eq!(result.identifiers.0, vec!["ident", "@global", ".label", "a_32"]);
     assert_eq!(output, "");
 }
 

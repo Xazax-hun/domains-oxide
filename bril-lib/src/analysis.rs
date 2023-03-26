@@ -11,6 +11,7 @@ use crate::{
     lexer::Identifier,
 };
 
+pub mod congruence_analysis;
 pub mod interval_analysis;
 pub mod sign_analysis;
 
@@ -30,6 +31,7 @@ pub trait Analysis: Sync {
 pub enum Analyses {
     Sign,
     Interval,
+    Congruence,
 }
 
 lazy_static! {
@@ -39,6 +41,10 @@ lazy_static! {
         m.insert(
             Analyses::Interval,
             Box::new(interval_analysis::IntervalAnalysis),
+        );
+        m.insert(
+            Analyses::Congruence,
+            Box::new(congruence_analysis::CongruenceAnalysis),
         );
         m
     };
@@ -127,6 +133,9 @@ mod sign_analysis_tests;
 
 #[cfg(test)]
 mod interval_analysis_tests;
+
+#[cfg(test)]
+mod congruence_analysis_tests;
 
 #[cfg(test)]
 mod test_utils {
