@@ -1,3 +1,5 @@
+use number_theory::NumberTheory;
+
 use crate::domains::*;
 
 /// A small lattice that lends itself to a fast, efficient analysis.
@@ -593,7 +595,218 @@ impl Mul for Interval {
     }
 }
 
+/// In this domain, `c[m]` represents values that has `c` as a remainder
+/// modulo `m`. This can be useful to evaluate certain conditions, to
+/// improve the precision of a range analysis, or to reason about the
+/// alignments of memory allocations.
+///
+/// This domain is the generalization of the flat domain for constants
+/// and parity. `5[0]` represents the constant `5`, `0[1]` represents
+/// all the integers, `0[2]` represents even numbers, `1[2]` represents
+/// odd numbers.
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub struct Congruence {
+    pub constant: i64,
+    pub modulus: i64,
+}
+
+impl Congruence {
+    pub fn from(constant: i64, modulus: i64) -> Self {
+        Self { constant, modulus }
+    }
+
+    pub fn disjoint(self, other: Congruence) -> bool {
+        if self.modulus == 0 && other.modulus == 0 {
+            return self.constant != other.constant;
+        }
+        if self.modulus == 0 {
+            return (self.constant % other.modulus) != other.constant;
+        }
+        if other.modulus == 0 {
+            return (other.constant % self.modulus) != self.constant;
+        }
+        let modulus = self.modulus.gcd(&other.modulus);
+        (self.constant - other.constant) % modulus != 0
+    }
+
+    fn normalize(self) -> Self {
+        if self.modulus != 0 {
+            return Self {
+                constant: self.constant % self.modulus,
+                modulus: self.modulus,
+            };
+        }
+        self
+    }
+}
+
+impl Debug for Congruence {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{} mod {}", self.constant, self.modulus)
+    }
+}
+
+impl PartialOrd for Congruence {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if self == other {
+            return Some(Ordering::Equal);
+        }
+
+        if *self == Congruence::bottom(&()) {
+            return Some(Ordering::Less);
+        }
+
+        if *other == Congruence::bottom(&()) {
+            return Some(Ordering::Greater);
+        }
+
+        if other.modulus != 0
+            && self.modulus % other.modulus == 0
+            && (self.constant % other.modulus) == other.constant
+        {
+            return Some(Ordering::Less);
+        }
+
+        if self.modulus != 0
+            && other.modulus % self.modulus == 0
+            && (other.constant % self.modulus) == self.constant
+        {
+            return Some(Ordering::Greater);
+        }
+
+        None
+    }
+}
+
+impl JoinSemiLattice for Congruence {
+    type LatticeContext = ();
+
+    fn bottom(_ctx: &()) -> Self {
+        // In the representation when modulus is non-zero,
+        // constant needs to be less than modulus. Using
+        // an specific value where this invariant does not hold
+        // as bottom. TODO: should we have an enum instead?
+        Self {
+            constant: 1,
+            modulus: 1,
+        }
+    }
+
+    fn join(&self, other: &Self, _ctx: &()) -> Self {
+        let new_modulus = self
+            .modulus
+            .gcd(&other.modulus)
+            .gcd(&(self.constant - other.constant).abs());
+        Self {
+            constant: self.constant,
+            modulus: new_modulus,
+        }
+        .normalize()
+    }
+
+    // No need for widening, there are no infinite ascending chains.
+}
+
+impl Lattice for Congruence {
+    fn top(_ctx: &()) -> Self {
+        Congruence {
+            constant: 0,
+            modulus: 1,
+        }
+    }
+
+    fn meet(&self, other: &Self, ctx: &()) -> Self {
+        if *self == Self::bottom(ctx) || *other == Self::bottom(ctx) {
+            return Self::bottom(ctx);
+        }
+        if self.modulus == 0 {
+            return if self.disjoint(*other) {
+                Self::bottom(ctx)
+            } else {
+                *self
+            };
+        }
+        if other.modulus == 0 {
+            return if self.disjoint(*other) {
+                Self::bottom(ctx)
+            } else {
+                *other
+            };
+        }
+        let modulus = self.modulus.gcd(&other.modulus);
+        if (self.constant - other.constant).abs() % modulus == 0 {
+            let new_modulus = self.modulus.lcm(&other.modulus);
+            let new_constant = self.constant % new_modulus;
+            Self {
+                constant: new_constant,
+                modulus: new_modulus,
+            }
+            .normalize()
+        } else {
+            Self::bottom(ctx)
+        }
+    }
+
+    fn narrow(&self, previous: &Self, ctx: &Self::LatticeContext, _iteration: usize) -> Self {
+        if *previous == Self::top(ctx) {
+            return *self;
+        }
+        *previous
+    }
+}
+
+impl Neg for Congruence {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        if self == Self::bottom(&()) {
+            return self;
+        }
+        Self {
+            constant: -self.constant,
+            modulus: self.modulus,
+        }
+    }
+}
+
+impl Add for Congruence {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        let new_modulus = self.modulus.gcd(&rhs.modulus);
+        Self {
+            constant: self.constant + rhs.constant,
+            modulus: new_modulus,
+        }
+        .normalize()
+    }
+}
+
+impl Sub for Congruence {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        self + (-rhs)
+    }
+}
+
+impl Mul for Congruence {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        let new_modulus = (self.modulus * rhs.modulus)
+            .gcd(&(self.modulus * rhs.constant))
+            .gcd(&(rhs.modulus * self.constant));
+        Self {
+            constant: self.constant * rhs.constant,
+            modulus: new_modulus,
+        }
+        .normalize()
+    }
+}
+
+// TODO: div for congruence domain.
+
 // TODO: Optimistic division for intervals.
 
-// TODO: add congruence domain.
 // TODO: add relational domains like octagons and polyhedra.

@@ -314,6 +314,67 @@ fn interval_domain_tests() {
 }
 
 #[test]
+fn congruence_domain_test() {
+    let top = Congruence::top(&());
+    let one = Congruence::from(1, 0);
+    let two = Congruence::from(2, 0);
+    let c1mod2 = Congruence::from(1, 2);
+    let c1mod3 = Congruence::from(1, 3);
+    let c1mod4 = Congruence::from(1, 4);
+    let c1mod5 = Congruence::from(1, 5);
+    let c2mod3 = Congruence::from(2, 3);
+    let c1mod6 = Congruence::from(1, 6);
+    let bot = Congruence::bottom(&());
+
+    // Ordering
+    assert!(c1mod2 > bot);
+    assert!(bot < c1mod2);
+    assert!(bot < top);
+    assert!(c1mod2 < top);
+    assert!(c2mod3 < top);
+    assert!(c1mod2 > c1mod6);
+    assert!(c1mod3 > c1mod6);
+    assert!(one < c1mod2);
+    assert!(c1mod2 > one);
+    assert!(!(c2mod3 > c1mod3) && !(c2mod3 < c1mod3));
+    assert!(!(c2mod3 > c1mod6) && !(c2mod3 < c1mod6));
+    assert!(!(c1mod5 > c1mod6) && !(c1mod5 < c1mod6));
+    assert!(!(c2mod3 > one) && !(c2mod3 < one));
+    assert!(!(two > one) && !(two < one));
+
+    // Join
+    assert_eq!(c1mod6.join(&c1mod4, &()), c1mod2);
+    assert_eq!(c1mod4.join(&c1mod6, &()), c1mod2);
+    assert_eq!(c1mod2.join(&c1mod3, &()), top);
+    assert_eq!(c1mod3.join(&c1mod2, &()), top);
+    assert_eq!(c1mod3.join(&one, &()), c1mod3);
+    assert_eq!(one.join(&c1mod3, &()), c1mod3);
+    assert_eq!(one.join(&c2mod3, &()), top);
+    assert_eq!(c2mod3.join(&one, &()), top);
+    assert_eq!(
+        c1mod4.join(&Congruence::from(3, 6), &()),
+        Congruence::from(1, 2)
+    );
+
+    // Meet
+    assert_eq!(
+        Congruence::from(0, 3).meet(&Congruence::from(3, 7), &()),
+        Congruence::from(0, 21)
+    );
+    assert_eq!(Congruence::from(0, 3).meet(&c1mod3, &()), bot);
+    assert_eq!(c1mod4.meet(&c1mod2, &()), c1mod4);
+    assert_eq!(one.meet(&c1mod2, &()), one);
+    assert_eq!(one.meet(&two, &()), bot);
+
+    // Operations
+    assert_eq!(one + two, Congruence::from(3, 0));
+    assert_eq!(c1mod3 + c2mod3, Congruence::from(0, 3));
+    assert_eq!(c1mod3 * two, Congruence::from(2, 6));
+    assert_eq!(c1mod3 * c1mod6, Congruence::from(1, 3));
+    assert!(c1mod4.disjoint(Congruence::from(0, 6)));
+}
+
+#[test]
 fn set_domain_tests() {
     let ctx = PowerSetTop(PowerSet::<i32>(HashSet::from([1, 2, 3, 4, 5])));
     let small_set = PowerSet::<i32>(HashSet::from([1, 2, 3]));
