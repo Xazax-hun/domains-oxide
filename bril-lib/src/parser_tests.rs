@@ -484,4 +484,3 @@ fn print_annotations() -> Result<(), String> {
 }
 
 // TODO: support and test when use is before def lexically.
-// TODO: support any function definition order.
