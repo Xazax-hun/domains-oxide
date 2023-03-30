@@ -136,10 +136,6 @@ impl BasicBlock {
     pub fn new() -> Self {
         Self::default()
     }
-
-    pub fn mut_ops(&mut self) -> &mut [Operation] {
-        &mut self.operations
-    }
 }
 
 impl CfgBlock for BasicBlock {
