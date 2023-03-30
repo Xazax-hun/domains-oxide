@@ -55,26 +55,26 @@ fn parse_single_function() -> Result<(), String> {
 
 #[test]
 fn parse_multiple_functions() -> Result<(), String> {
-    let source = r"@mul(x: int, y: int): int {
-  w: int = mul x y;
-  print w;
-  ret w;
-}
-
-@main(): int {
+    let source = r"@main(): int {
   v: int = const 5;
   u: int = call @mul v v;
   nop;
   ret u;
 }
+
+@mul(x: int, y: int): int {
+  w: int = mul x y;
+  print w;
+  ret w;
+}
 ";
-    let expected = r#"digraph "@mul" {
-  Node_0[label="w: int = mul x y;\nprint w;\nret w;"]
+    let expected = r#"digraph "@main" {
+  Node_0[label="v: int = const 5;\nu: int = call @mul v v;\nnop;\nret u;"]
 
 }
 
-digraph "@main" {
-  Node_0[label="v: int = const 5;\nu: int = call @mul v v;\nnop;\nret u;"]
+digraph "@mul" {
+  Node_0[label="w: int = mul x y;\nprint w;\nret w;"]
 
 }
 "#;

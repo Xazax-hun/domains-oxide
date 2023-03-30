@@ -117,7 +117,7 @@ impl<'u> Interpreter<'u> {
                 Type::Bool => {
                     val.as_bool(main_token, self.diag)?;
                 }
-                Type::Void | Type::Fn(_) => panic!("Unexpected type."),
+                _ => panic!("Unexpected type."),
             };
             self.env.set_local(formal.id, *val);
         }

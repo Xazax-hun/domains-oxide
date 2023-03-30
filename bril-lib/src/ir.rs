@@ -8,6 +8,7 @@ use itertools::Itertools;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Type {
+    Placeholder, // Used before semantic elaboration.
     Int,
     Bool,
     Void,
@@ -26,6 +27,7 @@ impl Type {
 impl Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Type::Placeholder => write!(f, "placeholder"),
             Type::Int => write!(f, "int"),
             Type::Bool => write!(f, "bool"),
             Type::Void => write!(f, "void"),
@@ -44,6 +46,15 @@ pub struct FunctionType {
 pub struct Variable {
     pub id: Identifier,
     pub ty: Type,
+}
+
+impl Variable {
+    pub fn placeholder(id: Identifier) -> Self {
+        Self {
+            id,
+            ty: Type::Placeholder,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -124,6 +135,10 @@ pub struct BasicBlock {
 impl BasicBlock {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn mut_ops(&mut self) -> &mut [Operation] {
+        &mut self.operations
     }
 }
 

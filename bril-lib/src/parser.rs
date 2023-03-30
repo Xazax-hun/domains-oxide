@@ -30,11 +30,19 @@ impl<'src> Parser<'src> {
     }
 
     pub fn parse(mut self) -> Option<Unit> {
+        let mut functions = Vec::new();
         while !self.is_at_end() {
-            let mut cfg = self.parse_function()?;
-            self.analyze(&mut cfg)?;
-            self.unit.functions.push(cfg);
+            let cfg = self.parse_function()?;
+            functions.push(cfg);
         }
+        let mut sema = Sema {
+            unit: &self.unit,
+            diag: self.diag,
+        };
+        for cfg in &mut functions {
+            sema.analyze(cfg)?;
+        }
+        self.unit.functions = functions;
         Some(self.unit)
     }
 
@@ -65,15 +73,11 @@ impl<'src> Parser<'src> {
             func_ty,
         )?;
 
-        let mut symbols = SymbolTable::default();
         let mut jumps = LabelsToBlocks::default();
-        for Variable { id, ty } in &formals {
-            symbols.insert(self.diag, &self.unit.identifiers, func.line_num, *id, *ty)?;
-        }
         let mut cfg = Cfg::new(func, func_ty, formals);
         self.current_block = cfg.new_block();
         self.consume(LeftBrace, "")?;
-        self.parse_function_body(&mut cfg, &mut symbols, &mut jumps)?;
+        self.parse_function_body(&mut cfg, &mut jumps)?;
 
         // Add edges to the Cfg.
         let mut edges = Vec::new();
@@ -128,16 +132,11 @@ impl<'src> Parser<'src> {
         None
     }
 
-    fn parse_function_body(
-        &mut self,
-        cfg: &mut Cfg,
-        symbols: &mut SymbolTable,
-        jumps: &mut LabelsToBlocks,
-    ) -> Option<()> {
+    fn parse_function_body(&mut self, cfg: &mut Cfg, jumps: &mut LabelsToBlocks) -> Option<()> {
         let mut ops = Vec::new();
         while !self.check(RightBrace) {
             let prev = self.current_block;
-            let op = self.parse_instruction(cfg, symbols, jumps, ops.len())?;
+            let op = self.parse_instruction(cfg, jumps, ops.len())?;
             if prev != self.current_block {
                 cfg.extend_block(prev, ops.iter());
                 ops.clear();
@@ -159,15 +158,13 @@ impl<'src> Parser<'src> {
     fn parse_instruction(
         &mut self,
         cfg: &mut Cfg,
-        symbols: &mut SymbolTable,
         jumps: &mut LabelsToBlocks,
         num: usize,
     ) -> Option<Operation> {
         if let Some(tok) = self.try_consume(Print) {
             let (_, id) = self.consume_local()?;
             self.consume(Semicolon, "")?;
-            let var = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, id)?;
-            return Some(Operation::Print(tok, var));
+            return Some(Operation::Print(tok, Variable::placeholder(id)));
         }
 
         if let Some(tok) = self.try_consume(Return) {
@@ -176,8 +173,7 @@ impl<'src> Parser<'src> {
             }
             let (_, id) = self.consume_local()?;
             self.consume(Semicolon, "")?;
-            let var = symbols.get(self.diag, &self.unit.identifiers, tok.line_num, id)?;
-            return Some(Operation::Ret(tok, Some(var)));
+            return Some(Operation::Ret(tok, Some(Variable::placeholder(id))));
         }
 
         if let Some(tok) = self.try_consume(Jump) {
@@ -191,10 +187,9 @@ impl<'src> Parser<'src> {
             let (_, then) = self.consume_label(true)?;
             let (_, els) = self.consume_label(true)?;
             self.consume(Semicolon, "")?;
-            let cond = symbols.get(self.diag, &self.unit.identifiers, token.line_num, cond)?;
             return Some(Operation::Branch {
                 token,
-                cond,
+                cond: Variable::placeholder(cond),
                 then,
                 els,
             });
@@ -206,7 +201,7 @@ impl<'src> Parser<'src> {
         }
 
         if self.check(Call) {
-            return self.parse_call(None, symbols);
+            return self.parse_call(None);
         }
 
         if let Some((tok, label)) = self.consume_label(false) {
@@ -227,10 +222,10 @@ impl<'src> Parser<'src> {
             )?;
             // Each block has to have at least one instruction,
             // so we can continue to parsing the next one.
-            return self.parse_instruction(cfg, symbols, jumps, num);
+            return self.parse_instruction(cfg, jumps, num);
         }
 
-        let (tok, res_id) = self.consume_local()?;
+        let (_, res_id) = self.consume_local()?;
         self.consume(Colon, "")?;
         let result_ty = self.parse_type()?;
         self.consume(Define, "")?;
@@ -240,18 +235,8 @@ impl<'src> Parser<'src> {
             ty: result_ty,
         };
 
-        // TODO: avoid copying the symbol table.
-        let prev_symbols = symbols.clone();
-        symbols.insert(
-            self.diag,
-            &self.unit.identifiers,
-            tok.line_num,
-            res_id,
-            result_ty,
-        )?;
-
         if self.check(Call) {
-            return self.parse_call(Some(result), &prev_symbols);
+            return self.parse_call(Some(result));
         }
 
         if let Some(const_tok) = self.try_consume(Const) {
@@ -268,12 +253,10 @@ impl<'src> Parser<'src> {
         if let Some(token) = self.match_tokens(&[Identity, Not]) {
             let (_, arg) = self.consume_local()?;
             self.consume(Semicolon, "")?;
-            let operand =
-                prev_symbols.get(self.diag, &self.unit.identifiers, token.line_num, arg)?;
             return Some(Operation::UnaryOp {
                 token,
                 result,
-                operand,
+                operand: Variable::placeholder(arg),
             });
         }
 
@@ -295,13 +278,11 @@ impl<'src> Parser<'src> {
             let (_, lhs) = self.consume_local()?;
             let (_, rhs) = self.consume_local()?;
             self.consume(Semicolon, "")?;
-            let lhs = prev_symbols.get(self.diag, &self.unit.identifiers, token.line_num, lhs)?;
-            let rhs = prev_symbols.get(self.diag, &self.unit.identifiers, token.line_num, rhs)?;
             return Some(Operation::BinaryOp {
                 token,
                 result,
-                lhs,
-                rhs,
+                lhs: Variable::placeholder(lhs),
+                rhs: Variable::placeholder(rhs),
             });
         }
 
@@ -309,23 +290,18 @@ impl<'src> Parser<'src> {
         None
     }
 
-    fn parse_call(&mut self, result: Option<Variable>, symbols: &SymbolTable) -> Option<Operation> {
+    fn parse_call(&mut self, result: Option<Variable>) -> Option<Operation> {
         let token = self.consume(Call, "")?;
         let (_, id) = self.consume_global()?;
-        let callee =
-            self.unit
-                .globals
-                .get(self.diag, &self.unit.identifiers, token.line_num, id)?;
         let mut args = Vec::new();
         while !self.check(Semicolon) {
             let (_, arg) = self.consume_local()?;
-            let var = symbols.get(self.diag, &self.unit.identifiers, token.line_num, arg)?;
-            args.push(var);
+            args.push(Variable::placeholder(arg));
         }
         self.consume(Semicolon, "")?;
         Some(Operation::Call {
             token,
-            callee,
+            callee: Variable::placeholder(id),
             result,
             args,
         })
@@ -414,157 +390,6 @@ impl<'src> Parser<'src> {
         }
         None
     }
-
-    fn expect_type(&mut self, t: Token, found: Type, expected: Type) -> Option<()> {
-        if found == expected {
-            return Some(());
-        }
-        t.error(
-            self.diag,
-            &format!("'{expected}' type expected; '{found}' found"),
-        );
-        None
-    }
-
-    fn analyze(&mut self, cfg: &mut Cfg) -> Option<()> {
-        let mut implicit_return_blocks = Vec::new();
-        for (block_id, block) in cfg.blocks().iter().enumerate() {
-            let op = block.operations().last()?;
-            if !op.is_terminator() {
-                if cfg.get_type(&self.unit).ret == Type::Void {
-                    implicit_return_blocks.push(block_id);
-                } else {
-                    op.get_token().error(
-                        self.diag,
-                        "Block terminator expected to be jump, br, or ret.",
-                    );
-                    return None;
-                }
-            }
-            for op in block.operations() {
-                match op.clone() {
-                    Operation::BinaryOp {
-                        token,
-                        result,
-                        lhs,
-                        rhs,
-                    } => match token.value {
-                        Add | Mul | Div | Sub | Mod => {
-                            self.expect_type(token, result.ty, Type::Int)?;
-                            self.expect_type(token, lhs.ty, Type::Int)?;
-                            self.expect_type(token, rhs.ty, Type::Int)?;
-                        }
-                        LessThan | GreaterThan | LessThanOrEq | GreaterThanOrEq => {
-                            self.expect_type(token, result.ty, Type::Bool)?;
-                            self.expect_type(token, lhs.ty, Type::Int)?;
-                            self.expect_type(token, rhs.ty, Type::Int)?;
-                        }
-                        And | Or => {
-                            self.expect_type(token, result.ty, Type::Bool)?;
-                            self.expect_type(token, lhs.ty, Type::Bool)?;
-                            self.expect_type(token, rhs.ty, Type::Bool)?;
-                        }
-                        Equal => {
-                            self.expect_type(token, rhs.ty, lhs.ty)?;
-                            self.expect_type(token, result.ty, Type::Bool)?;
-                        }
-                        _ => panic!("Unexpected binary operator."),
-                    },
-                    Operation::UnaryOp {
-                        token,
-                        result,
-                        operand,
-                    } => match token.value {
-                        Identity => {
-                            self.expect_type(token, operand.ty, result.ty)?;
-                        }
-                        Not => {
-                            self.expect_type(token, result.ty, Type::Bool)?;
-                            self.expect_type(token, operand.ty, Type::Bool)?;
-                        }
-                        _ => continue,
-                    },
-                    Operation::Call {
-                        token,
-                        callee,
-                        result,
-                        args,
-                    } => {
-                        let fn_ty = callee.ty.get_function_type(&self.unit)?.clone();
-
-                        match result {
-                            Some(ret) => {
-                                if fn_ty.ret == Type::Void {
-                                    token.error(self.diag, "Void functions cannot return a value.");
-                                    return None;
-                                }
-                                self.expect_type(token, ret.ty, fn_ty.ret)?;
-                            }
-                            None => {
-                                if fn_ty.ret != Type::Void {
-                                    token.error(
-                                        self.diag,
-                                        "Non-void functions must return a value.",
-                                    );
-                                    return None;
-                                }
-                            }
-                        }
-
-                        if fn_ty.formals.len() != args.len() {
-                            token.error(
-                                self.diag,
-                                &format!(
-                                    "{} arguments expected, got {}",
-                                    fn_ty.formals.len(),
-                                    args.len()
-                                ),
-                            );
-                            return None;
-                        }
-
-                        for (formal, arg) in fn_ty.formals.iter().zip(args.iter()) {
-                            self.expect_type(token, arg.ty, *formal)?;
-                        }
-                    }
-                    Operation::Const(token, result) => match token.value {
-                        Integer(_) => self.expect_type(token, Type::Int, result.ty)?,
-                        True | False => self.expect_type(token, Type::Bool, result.ty)?,
-                        _ => panic!("Unexpected constant type"),
-                    },
-                    Operation::Ret(token, ret) => {
-                        let ret_ty = cfg.get_type(&self.unit).ret;
-                        match ret {
-                            Some(var) => {
-                                if ret_ty == Type::Void {
-                                    token.error(self.diag, "Void functions cannot return a value.");
-                                    return None;
-                                }
-
-                                self.expect_type(token, var.ty, ret_ty)?;
-                            }
-                            None => {
-                                if ret_ty != Type::Void {
-                                    token.error(
-                                        self.diag,
-                                        "Non-void functions must return a value.",
-                                    );
-                                    return None;
-                                }
-                            }
-                        }
-                    }
-                    _ => continue,
-                }
-            }
-        }
-        // Insert implicit return for void function.
-        for block in implicit_return_blocks {
-            let phantom_token = cfg.blocks()[block].operations().last()?.get_token();
-            cfg.extend_block(block, std::iter::once(&Operation::Ret(phantom_token, None)));
-        }
-        Some(())
-    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -612,5 +437,280 @@ impl LabelsToBlocks {
             }
             res => res,
         }
+    }
+}
+
+struct Sema<'unit, 'src> {
+    unit: &'unit Unit,
+    diag: &'src mut DiagnosticEmitter,
+}
+
+impl<'unit, 'src> Sema<'unit, 'src> {
+    fn expect_type(&mut self, t: Token, found: Type, expected: Type) -> Option<()> {
+        if found == expected {
+            return Some(());
+        }
+        t.error(
+            self.diag,
+            &format!("'{expected}' type expected; '{found}' found"),
+        );
+        None
+    }
+
+    fn analyze_bin_op(
+        &mut self,
+        token: Token,
+        result: Variable,
+        lhs: Variable,
+        rhs: Variable,
+        syms: &mut SymbolTable,
+    ) -> Option<Operation> {
+        // Operand types need to be looked up before the result type is inserted into the symbol table.
+        let lhs = syms.get(self.diag, &self.unit.identifiers, token.line_num, lhs.id)?;
+        let rhs = syms.get(self.diag, &self.unit.identifiers, token.line_num, rhs.id)?;
+        syms.insert(
+            self.diag,
+            &self.unit.identifiers,
+            token.line_num,
+            result.id,
+            result.ty,
+        )?;
+        match token.value {
+            Add | Mul | Div | Sub | Mod => {
+                self.expect_type(token, result.ty, Type::Int)?;
+                self.expect_type(token, lhs.ty, Type::Int)?;
+                self.expect_type(token, rhs.ty, Type::Int)?;
+            }
+            LessThan | GreaterThan | LessThanOrEq | GreaterThanOrEq => {
+                self.expect_type(token, result.ty, Type::Bool)?;
+                self.expect_type(token, lhs.ty, Type::Int)?;
+                self.expect_type(token, rhs.ty, Type::Int)?;
+            }
+            And | Or => {
+                self.expect_type(token, result.ty, Type::Bool)?;
+                self.expect_type(token, lhs.ty, Type::Bool)?;
+                self.expect_type(token, rhs.ty, Type::Bool)?;
+            }
+            Equal => {
+                self.expect_type(token, rhs.ty, lhs.ty)?;
+                self.expect_type(token, result.ty, Type::Bool)?;
+            }
+            _ => panic!("Unexpected binary operator."),
+        }
+        Some(Operation::BinaryOp {
+            token,
+            result,
+            lhs,
+            rhs,
+        })
+    }
+
+    fn analyze_unary_op(
+        &mut self,
+        token: Token,
+        result: Variable,
+        operand: Variable,
+        syms: &mut SymbolTable,
+    ) -> Option<Operation> {
+        // Operand type need to be looked up before the result type is inserted into the symbol table.
+        let operand = syms.get(
+            self.diag,
+            &self.unit.identifiers,
+            token.line_num,
+            operand.id,
+        )?;
+        syms.insert(
+            self.diag,
+            &self.unit.identifiers,
+            token.line_num,
+            result.id,
+            result.ty,
+        )?;
+        match token.value {
+            Identity => {
+                self.expect_type(token, operand.ty, result.ty)?;
+            }
+            Not => {
+                self.expect_type(token, result.ty, Type::Bool)?;
+                self.expect_type(token, operand.ty, Type::Bool)?;
+            }
+            _ => (),
+        };
+        Some(Operation::UnaryOp {
+            token,
+            result,
+            operand,
+        })
+    }
+
+    fn analyze_call(
+        &mut self,
+        token: Token,
+        callee: Variable,
+        result: Option<Variable>,
+        args: Vec<Variable>,
+        syms: &mut SymbolTable,
+    ) -> Option<Operation> {
+        let callee =
+            self.unit
+                .globals
+                .get(self.diag, &self.unit.identifiers, token.line_num, callee.id)?;
+        let fn_ty = callee.ty.get_function_type(self.unit)?.clone();
+
+        match result {
+            Some(ret) => {
+                if fn_ty.ret == Type::Void {
+                    token.error(self.diag, "Void functions cannot return a value.");
+                    return None;
+                }
+                self.expect_type(token, ret.ty, fn_ty.ret)?;
+                syms.insert(
+                    self.diag,
+                    &self.unit.identifiers,
+                    token.line_num,
+                    ret.id,
+                    ret.ty,
+                )?;
+            }
+            None => {
+                if fn_ty.ret != Type::Void {
+                    token.error(self.diag, "Non-void functions must return a value.");
+                    return None;
+                }
+            }
+        }
+
+        if fn_ty.formals.len() != args.len() {
+            token.error(
+                self.diag,
+                &format!(
+                    "{} arguments expected, got {}",
+                    fn_ty.formals.len(),
+                    args.len()
+                ),
+            );
+            return None;
+        }
+
+        let mut elaborated_args = Vec::new();
+        for arg in args {
+            elaborated_args.push(syms.get(
+                self.diag,
+                &self.unit.identifiers,
+                token.line_num,
+                arg.id,
+            )?);
+        }
+
+        for (formal, arg) in fn_ty.formals.iter().zip(elaborated_args.iter()) {
+            self.expect_type(token, arg.ty, *formal)?;
+        }
+        Some(Operation::Call {
+            token,
+            callee,
+            result,
+            args: elaborated_args,
+        })
+    }
+
+    fn analyze_op(
+        &mut self,
+        op: Operation,
+        syms: &mut SymbolTable,
+        func_ty: &FunctionType,
+    ) -> Option<Operation> {
+        match op {
+            Operation::BinaryOp {
+                token,
+                result,
+                lhs,
+                rhs,
+            } => self.analyze_bin_op(token, result, lhs, rhs, syms),
+            Operation::UnaryOp {
+                token,
+                result,
+                operand,
+            } => self.analyze_unary_op(token, result, operand, syms),
+            Operation::Call {
+                token,
+                callee,
+                result,
+                args,
+            } => self.analyze_call(token, callee, result, args, syms),
+            Operation::Const(token, result) => {
+                match token.value {
+                    Integer(_) => self.expect_type(token, Type::Int, result.ty)?,
+                    True | False => self.expect_type(token, Type::Bool, result.ty)?,
+                    _ => panic!("Unexpected constant type"),
+                }
+                syms.insert(
+                    self.diag,
+                    &self.unit.identifiers,
+                    token.line_num,
+                    result.id,
+                    result.ty,
+                )?;
+                Some(op)
+            }
+            Operation::Ret(token, ret) => {
+                let ret_ty = func_ty.ret;
+                match ret {
+                    Some(var) => {
+                        let var =
+                            syms.get(self.diag, &self.unit.identifiers, token.line_num, var.id)?;
+                        if ret_ty == Type::Void {
+                            token.error(self.diag, "Void functions cannot return a value.");
+                            return None;
+                        }
+
+                        self.expect_type(token, var.ty, ret_ty)?;
+                    }
+                    None => {
+                        if ret_ty != Type::Void {
+                            token.error(self.diag, "Non-void functions must return a value.");
+                            return None;
+                        }
+                    }
+                }
+                Some(op)
+            }
+            _ => Some(op),
+        }
+    }
+
+    fn analyze(&mut self, cfg: &mut Cfg) -> Option<()> {
+        let mut symbols = SymbolTable::default();
+        for Variable { id, ty } in cfg.get_formals() {
+            symbols.insert(
+                self.diag,
+                &self.unit.identifiers,
+                cfg.get_function_token().line_num,
+                *id,
+                *ty,
+            )?;
+        }
+
+        for block_id in 0..cfg.blocks().len() {
+            let mut elaborated_ops = Vec::new();
+            for op in cfg.remove_ops(block_id) {
+                elaborated_ops.push(self.analyze_op(op, &mut symbols, cfg.get_type(self.unit))?);
+            }
+            let last_op = elaborated_ops.last()?;
+            if !last_op.is_terminator() {
+                if cfg.get_type(self.unit).ret == Type::Void {
+                    // Insert implicit return for void function.
+                    let phantom_token = last_op.get_token();
+                    elaborated_ops.push(Operation::Ret(phantom_token, None));
+                } else {
+                    last_op.get_token().error(
+                        self.diag,
+                        "Block terminator expected to be jump, br, or ret.",
+                    );
+                    return None;
+                }
+            }
+            cfg.extend_block(block_id, elaborated_ops.iter());
+        }
+        Some(())
     }
 }
