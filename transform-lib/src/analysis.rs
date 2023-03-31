@@ -8,6 +8,7 @@ use analysis::{
 };
 use utils::Polygon;
 
+use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
 use crate::{
@@ -22,7 +23,7 @@ pub struct AnalysisResult {
     pub covered: Vec<Polygon>,
 }
 
-pub trait Analysis: Sync {
+pub trait Analysis: Send + Sync {
     fn analyze(&self, cfg: &Cfg) -> AnalysisResult;
 }
 
@@ -34,25 +35,23 @@ pub enum Analyses {
     FutureOperations,
 }
 
-lazy_static! {
-    static ref ANALYSES: HashMap<Analyses, Box<dyn Analysis>> = {
-        let mut m = HashMap::<Analyses, Box<dyn Analysis>>::new();
-        m.insert(Analyses::Sign, Box::new(sign_analysis::SignAnalysis));
-        m.insert(
-            Analyses::Interval,
-            Box::new(interval_analysis::IntervalAnalysis),
-        );
-        m.insert(
-            Analyses::PastOperations,
-            Box::new(reachability_analysis::PastOperations),
-        );
-        m.insert(
-            Analyses::FutureOperations,
-            Box::new(reachability_analysis::FutureOperations),
-        );
-        m
-    };
-}
+static ANALYSES: Lazy<HashMap<Analyses, Box<dyn Analysis>>> = Lazy::new(|| {
+    let mut m = HashMap::<Analyses, Box<dyn Analysis>>::new();
+    m.insert(Analyses::Sign, Box::new(sign_analysis::SignAnalysis));
+    m.insert(
+        Analyses::Interval,
+        Box::new(interval_analysis::IntervalAnalysis),
+    );
+    m.insert(
+        Analyses::PastOperations,
+        Box::new(reachability_analysis::PastOperations),
+    );
+    m.insert(
+        Analyses::FutureOperations,
+        Box::new(reachability_analysis::FutureOperations),
+    );
+    m
+});
 
 pub fn get_analysis_results(analysis: Analyses, cfg: &Cfg) -> AnalysisResult {
     let analysis = ANALYSES.get(&analysis).expect("Unimplemented analysis!");

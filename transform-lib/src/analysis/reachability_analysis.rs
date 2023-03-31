@@ -1,5 +1,6 @@
 #![allow(clippy::explicit_auto_deref)] // False positive with LAT_CTX
 
+use once_cell::sync::Lazy;
 use std::collections::HashSet;
 
 use analysis::cfg::OpPos;
@@ -23,13 +24,13 @@ pub enum OpKind {
 
 type OperationKindsDomain = PowerSet<OpKind>;
 
-lazy_static! {
-    static ref LAT_CTX: PowerSetTop<OpKind> = PowerSetTop(PowerSet::<OpKind>(HashSet::from([
+static LAT_CTX: Lazy<PowerSetTop<OpKind>> = Lazy::new(|| {
+    PowerSetTop(PowerSet::<OpKind>(HashSet::from([
         OpKind::Init,
         OpKind::Translation,
         OpKind::Rotation,
-    ])));
-}
+    ])))
+});
 
 pub fn collect_operation_kind(
     _pos: OpPos,
@@ -53,11 +54,11 @@ pub struct PastOperations;
 impl PastOperations {
     pub fn get_results(cfg: &Cfg) -> Vec<OperationKindsDomain> {
         let solver = SolveMonotone::default();
-        let seed = OperationKindsDomain::bottom(&*LAT_CTX);
+        let seed = OperationKindsDomain::bottom(&LAT_CTX);
         solver.solve(
             cfg,
             seed,
-            &*LAT_CTX,
+            &LAT_CTX,
             &mut OpTransfer::new(collect_operation_kind),
         )
     }
@@ -89,11 +90,11 @@ impl FutureOperations {
 
     fn get_results_impl(cfg: &Cfg) -> Vec<OperationKindsDomain> {
         let solver = SolveMonotone::default();
-        let seed = OperationKindsDomain::bottom(&*LAT_CTX);
+        let seed = OperationKindsDomain::bottom(&LAT_CTX);
         solver.solve(
             cfg,
             seed,
-            &*LAT_CTX,
+            &LAT_CTX,
             &mut OpTransfer::new(collect_operation_kind),
         )
     }

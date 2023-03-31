@@ -1,3 +1,4 @@
+use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use utils::DiagnosticEmitter;
 
@@ -67,15 +68,13 @@ impl core::fmt::Display for TokenValue {
     }
 }
 
-lazy_static! {
-    static ref KEYWORDS: HashMap<String, TokenValue> = {
-        let mut m = HashMap::new();
-        for kw in [Init, Or, Translation, Rotation, Iter] {
-            m.insert(kw.to_string(), kw);
-        }
-        m
-    };
-}
+static KEYWORDS: Lazy<HashMap<String, TokenValue>> = Lazy::new(|| {
+    let mut m = HashMap::new();
+    for kw in [Init, Or, Translation, Rotation, Iter] {
+        m.insert(kw.to_string(), kw);
+    }
+    m
+});
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Token {

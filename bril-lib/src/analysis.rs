@@ -1,3 +1,4 @@
+use once_cell::sync::Lazy;
 use std::{collections::HashMap, marker::PhantomData};
 
 use analysis::{
@@ -15,7 +16,7 @@ pub mod congruence_analysis;
 pub mod interval_analysis;
 pub mod sign_analysis;
 
-pub trait Analysis: Sync {
+pub trait Analysis: Send + Sync {
     fn analyze(&self, cfg: &Cfg, unit: &Unit) -> Annotations;
     fn analyze_all(&self, unit: &Unit) -> AnnotationMap {
         let mut result = HashMap::new();
@@ -34,21 +35,19 @@ pub enum Analyses {
     Congruence,
 }
 
-lazy_static! {
-    static ref ANALYSES: HashMap<Analyses, Box<dyn Analysis>> = {
-        let mut m = HashMap::<Analyses, Box<dyn Analysis>>::new();
-        m.insert(Analyses::Sign, Box::new(sign_analysis::SignAnalysis));
-        m.insert(
-            Analyses::Interval,
-            Box::new(interval_analysis::IntervalAnalysis),
-        );
-        m.insert(
-            Analyses::Congruence,
-            Box::new(congruence_analysis::CongruenceAnalysis),
-        );
-        m
-    };
-}
+static ANALYSES: Lazy<HashMap<Analyses, Box<dyn Analysis>>> = Lazy::new(|| {
+    let mut m = HashMap::<Analyses, Box<dyn Analysis>>::new();
+    m.insert(Analyses::Sign, Box::new(sign_analysis::SignAnalysis));
+    m.insert(
+        Analyses::Interval,
+        Box::new(interval_analysis::IntervalAnalysis),
+    );
+    m.insert(
+        Analyses::Congruence,
+        Box::new(congruence_analysis::CongruenceAnalysis),
+    );
+    m
+});
 
 pub fn get_analysis_results(analysis: Analyses, unit: &Unit) -> AnnotationMap {
     let analysis = ANALYSES.get(&analysis).expect("Unimplemented analysis!");

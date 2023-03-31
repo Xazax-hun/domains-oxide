@@ -1,3 +1,4 @@
+use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use utils::DiagnosticEmitter;
 
@@ -130,42 +131,40 @@ impl core::fmt::Display for TokenValue {
     }
 }
 
-lazy_static! {
-    static ref KEYWORDS: HashMap<String, TokenValue> = {
-        let mut m = HashMap::new();
-        for kw in [Add, Mul, Div, Sub, Mod] {
-            m.insert(kw.to_string(), kw);
-        }
+static KEYWORDS: Lazy<HashMap<String, TokenValue>> = Lazy::new(|| {
+    let mut m = HashMap::new();
+    for kw in [Add, Mul, Div, Sub, Mod] {
+        m.insert(kw.to_string(), kw);
+    }
 
-        for kw in [
-            True,
-            False,
-            Equal,
-            LessThan,
-            GreaterThan,
-            LessThanOrEq,
-            GreaterThanOrEq,
-            Not,
-            And,
-            Or,
-        ] {
-            m.insert(kw.to_string(), kw);
-        }
+    for kw in [
+        True,
+        False,
+        Equal,
+        LessThan,
+        GreaterThan,
+        LessThanOrEq,
+        GreaterThanOrEq,
+        Not,
+        And,
+        Or,
+    ] {
+        m.insert(kw.to_string(), kw);
+    }
 
-        for kw in [Jump, Branch, Call, Return] {
-            m.insert(kw.to_string(), kw);
-        }
+    for kw in [Jump, Branch, Call, Return] {
+        m.insert(kw.to_string(), kw);
+    }
 
-        for kw in [Const, Print, Nop, Identity] {
-            m.insert(kw.to_string(), kw);
-        }
+    for kw in [Const, Print, Nop, Identity] {
+        m.insert(kw.to_string(), kw);
+    }
 
-        for kw in [Int, Bool] {
-            m.insert(kw.to_string(), kw);
-        }
-        m
-    };
-}
+    for kw in [Int, Bool] {
+        m.insert(kw.to_string(), kw);
+    }
+    m
+});
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Token {
