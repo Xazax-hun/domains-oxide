@@ -499,5 +499,3 @@ fn print_annotations() -> Result<(), String> {
 
     Ok(())
 }
-
-// TODO: support and test when use is before def lexically.
