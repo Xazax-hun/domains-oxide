@@ -27,7 +27,7 @@ impl IntervalAnalysis {
             TokenValue::Mul => lhs * rhs,
             TokenValue::Sub => lhs - rhs,
             TokenValue::Div => Interval::top(&()),
-            TokenValue::Mod => Interval::top(&()),
+            TokenValue::Mod => lhs % rhs,
             TokenValue::Equal => lhs.equals(rhs),
             TokenValue::And => lhs.logical_and(rhs),
             TokenValue::Or => lhs.logical_or(rhs),
@@ -41,12 +41,12 @@ impl IntervalAnalysis {
                 Some(_) => FALSE_RANGE,
                 _ => BOOL_RANGE,
             },
-            TokenValue::LessThanOrEq => match lhs.strict_cmp(rhs) {
+            TokenValue::LessThanOrEq => match lhs.weak_cmp(rhs) {
                 Some(Ordering::Greater) => FALSE_RANGE,
                 Some(_) => TRUE_RANGE,
                 _ => BOOL_RANGE,
             },
-            TokenValue::GreaterThanOrEq => match lhs.strict_cmp(rhs) {
+            TokenValue::GreaterThanOrEq => match lhs.weak_cmp(rhs) {
                 Some(Ordering::Less) => FALSE_RANGE,
                 Some(_) => TRUE_RANGE,
                 _ => BOOL_RANGE,

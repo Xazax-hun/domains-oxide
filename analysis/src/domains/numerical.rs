@@ -405,6 +405,25 @@ impl Interval {
         }
     }
 
+    pub fn weak_cmp(self, other: Interval) -> Option<Ordering> {
+        if self == Interval::bottom(&()) || other == Interval::bottom(&()) {
+            return None;
+        }
+
+        if self.max <= other.min {
+            return Some(Ordering::Less);
+        }
+
+        if self.min >= other.max {
+            return Some(Ordering::Greater);
+        }
+
+        match (self.singleton(), other.singleton()) {
+            (Some(x), Some(y)) if x == y => Some(Ordering::Equal),
+            _ => None,
+        }
+    }
+
     pub fn equals(self, other: Interval) -> Interval {
         match self.strict_cmp(other) {
             Some(Ordering::Less | Ordering::Greater) => FALSE_RANGE,
@@ -541,9 +560,10 @@ impl Lattice for Interval {
 impl Add<Interval> for Interval {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
-        // Cannot do arithmetic on bottom.
-        assert!(self.min != INF && rhs.min != INF);
-        assert!(self.max != NEG_INF && rhs.max != NEG_INF);
+        let bot = Interval::bottom(&());
+        if self == bot || rhs == bot {
+            return bot;
+        }
         Self {
             min: if self.min == NEG_INF || rhs.min == NEG_INF {
                 NEG_INF
@@ -562,6 +582,9 @@ impl Add<Interval> for Interval {
 impl Neg for Interval {
     type Output = Self;
     fn neg(self) -> Self {
+        if self == Interval::bottom(&()) {
+            return Interval::bottom(&());
+        }
         Self {
             min: if self.max == INF { NEG_INF } else { -self.max },
             max: if self.min == NEG_INF { INF } else { -self.min },
@@ -579,9 +602,10 @@ impl Sub for Interval {
 impl Mul for Interval {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
-        // Cannot do arithmetic on bottom.
-        assert!(self.min != INF && rhs.min != INF);
-        assert!(self.max != NEG_INF && rhs.max != NEG_INF);
+        let bot = Interval::bottom(&());
+        if self == bot || rhs == bot {
+            return bot;
+        }
         let candidates = [
             self.min.saturating_mul(rhs.min),
             self.min.saturating_mul(rhs.max),
@@ -591,6 +615,36 @@ impl Mul for Interval {
         Interval {
             min: *candidates.iter().min().unwrap(),
             max: *candidates.iter().max().unwrap(),
+        }
+    }
+}
+
+impl Rem for Interval {
+    type Output = Self;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        let bot = Interval::bottom(&());
+        if self == bot || rhs == bot || rhs == Interval::from(0) {
+            return bot;
+        }
+        if let (Some(x), Some(y)) = (self.singleton(), rhs.singleton()) {
+            return Interval::from(x % y);
+        }
+        let largest_mod = rhs.min.abs().max(rhs.max.abs());
+        match self.weak_cmp(Interval::from(0)) {
+            Some(Ordering::Greater) => Self {
+                min: 0,
+                max: largest_mod - 1,
+            },
+            Some(Ordering::Equal) => Interval::from(0),
+            Some(Ordering::Less) => Self {
+                min: -largest_mod + 1,
+                max: 0,
+            },
+            None => Self {
+                min: -largest_mod + 1,
+                max: largest_mod - 1,
+            },
         }
     }
 }
@@ -772,22 +826,15 @@ impl Lattice for Congruence {
     }
 
     fn meet(&self, other: &Self, ctx: &()) -> Self {
-        if *self == Self::bottom(ctx) || *other == Self::bottom(ctx) {
-            return Self::bottom(ctx);
+        let bot = Self::bottom(ctx);
+        if *self == bot || *other == bot {
+            return bot;
         }
         if self.modulus == 0 {
-            return if self.disjoint(*other) {
-                Self::bottom(ctx)
-            } else {
-                *self
-            };
+            return if self.disjoint(*other) { bot } else { *self };
         }
         if other.modulus == 0 {
-            return if self.disjoint(*other) {
-                Self::bottom(ctx)
-            } else {
-                *other
-            };
+            return if self.disjoint(*other) { bot } else { *other };
         }
         let modulus = self.modulus.gcd(&other.modulus);
         if (self.constant - other.constant).abs() % modulus == 0 {
@@ -799,7 +846,7 @@ impl Lattice for Congruence {
             }
             .normalize()
         } else {
-            Self::bottom(ctx)
+            bot
         }
     }
 

@@ -200,17 +200,11 @@ fn interval_domain_tests() {
     let bottom = Interval::bottom(&());
     let top = Interval::top(&());
     let singleton = Interval::from(5);
-    let small_range_a = Interval {
-        min: 0.into(),
-        max: 10.into(),
-    };
-    let small_range_b = Interval {
-        min: 11.into(),
-        max: 20.into(),
-    };
+    let small_range_a = Interval { min: 0, max: 10 };
+    let small_range_b = Interval { min: 11, max: 20 };
     let large_range = Interval {
-        min: (-100).into(),
-        max: 100.into(),
+        min: -100,
+        max: 100,
     };
 
     // Ordering
@@ -230,10 +224,7 @@ fn interval_domain_tests() {
     assert_eq!(bottom.join(&singleton, &()), singleton);
     assert_eq!(bottom.join(&small_range_a, &()), small_range_a);
     assert_eq!(small_range_a.join(&bottom, &()), small_range_a);
-    let merged_smalls = Interval {
-        min: 0.into(),
-        max: 20.into(),
-    };
+    let merged_smalls = Interval { min: 0, max: 20 };
     assert_eq!(small_range_a.join(&small_range_b, &()), merged_smalls);
     assert_eq!(large_range.join(&top, &()), top);
     assert_eq!(top.join(&large_range, &()), top);
@@ -305,6 +296,11 @@ fn interval_domain_tests() {
     assert_eq!(small_range_b * neg_range, mul_expected2);
     let mul_expected3 = Interval { min: 4, max: 100 };
     assert_eq!(neg_range * neg_range, mul_expected3);
+    assert_eq!(small_range_a % singleton, Interval { min: 0, max: 4 });
+    assert_eq!(-small_range_a % singleton, Interval { min: -4, max: 0 });
+    assert_eq!(large_range % singleton, Interval { min: -4, max: 4 });
+    assert_eq!(large_range % small_range_a, Interval { min: -9, max: 9 });
+    assert_eq!(singleton % singleton, Interval::from(0));
 
     // Printing
     assert_eq!(format!("{singleton:?}"), "[5, 5]");
