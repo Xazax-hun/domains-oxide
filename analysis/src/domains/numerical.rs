@@ -446,6 +446,8 @@ impl Interval {
         .normalize()
     }
 
+    // TODO: add function to restrict values for not equal.
+
     /// Returns a pair of subintervals for the inputs where the less then relation may
     /// hold (and cannot hold outside).
     pub fn maybe_less_when(self, other: Interval) -> (Interval, Interval) {
@@ -606,8 +608,8 @@ impl Lattice for Interval {
 
     /// Improve infinite bounds.
     fn narrow(&self, prev: &Self, ctx: &Self::LatticeContext, _: usize) -> Self {
-        if *prev == Self::bottom(ctx) {
-            return *self;
+        if *prev == Self::bottom(ctx) || *self == Self::bottom(ctx) {
+            return Self::bottom(ctx);
         }
         Self {
             min: if prev.min == NEG_INF {
@@ -620,7 +622,7 @@ impl Lattice for Interval {
     }
 }
 
-impl Add<Interval> for Interval {
+impl Add for Interval {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
         let bot = Interval::bottom(&());
@@ -994,8 +996,6 @@ impl Div for Congruence {
         Congruence::top(&())
     }
 }
-
-// TODO: div for congruence domain.
 
 // TODO: Optimistic division for intervals.
 
