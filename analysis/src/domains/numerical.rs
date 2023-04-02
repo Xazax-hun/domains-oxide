@@ -431,6 +431,69 @@ impl Interval {
             _ => BOOL_RANGE,
         }
     }
+
+    /// Returns a subinterval for the inputs where the equality may hold
+    /// (and cannot hold outside).
+    pub fn may_equal_when(self, other: Interval) -> Interval {
+        let bot = Interval::bottom(&());
+        if self == bot || other == bot {
+            return bot;
+        }
+        Self {
+            min: self.min.max(other.min),
+            max: self.max.min(other.max),
+        }
+        .normalize()
+    }
+
+    /// Returns a pair of subintervals for the inputs where the less then relation may
+    /// hold (and cannot hold outside).
+    pub fn maybe_less_when(self, other: Interval) -> (Interval, Interval) {
+        let bot = Interval::bottom(&());
+        if self == bot || other == bot || self.min > other.max {
+            return (bot, bot);
+        }
+        (
+            Self {
+                min: self.min,
+                max: self.max.min(other.max - 1),
+            }
+            .normalize(),
+            Self {
+                min: (self.min + 1).max(other.min),
+                max: other.max,
+            }
+            .normalize(),
+        )
+    }
+
+    /// Returns a pair of subintervals for the inputs where the less then or equal
+    /// relation may hold (and cannot hold outside).
+    pub fn maybe_le_when(self, other: Interval) -> (Interval, Interval) {
+        let bot = Interval::bottom(&());
+        if self == bot || other == bot || self.min > other.max {
+            return (bot, bot);
+        }
+        (
+            Self {
+                min: self.min,
+                max: self.max.min(other.max),
+            }
+            .normalize(),
+            Self {
+                min: self.min.max(other.min),
+                max: other.max,
+            }
+            .normalize(),
+        )
+    }
+
+    fn normalize(self) -> Interval {
+        if self.min > self.max {
+            return Interval::bottom(&());
+        }
+        self
+    }
 }
 
 impl From<i64> for Interval {

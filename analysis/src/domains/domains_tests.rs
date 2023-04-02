@@ -302,6 +302,26 @@ fn interval_domain_tests() {
     assert_eq!(large_range % small_range_a, Interval { min: -9, max: 9 });
     assert_eq!(singleton % singleton, Interval::from(0));
 
+    // Comparisons
+    assert_eq!(small_range_a.may_equal_when(small_range_b), bottom);
+    assert_eq!(large_range.may_equal_when(small_range_b), small_range_b);
+    assert_eq!(
+        Interval { min: 5, max: 15 }.may_equal_when(small_range_b),
+        Interval { min: 11, max: 15 }
+    );
+    assert_eq!(
+        small_range_a.maybe_less_when(small_range_b),
+        (small_range_a, small_range_b)
+    );
+    assert_eq!(
+        small_range_b.maybe_less_when(small_range_a),
+        (bottom, bottom)
+    );
+    assert_eq!(
+        large_range.maybe_less_when(small_range_a),
+        (Interval { min: -100, max: 9 }, small_range_a)
+    );
+
     // Printing
     assert_eq!(format!("{singleton:?}"), "[5, 5]");
     assert_eq!(format!("{small_range_a:?}"), "[0, 10]");
