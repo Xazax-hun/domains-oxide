@@ -1,6 +1,6 @@
 use std::collections::{hash_map::Entry, HashMap};
 
-use analysis::cfg::{BlockMutableCfg, CfgBlock, ControlFlowGraph, MutableCfg};
+use analysis::cfg::{BlockMutableCfg, CfgBlock, ControlFlowGraph, MutableCfg, RPOWorklist};
 use utils::DiagnosticEmitter;
 
 use crate::{
@@ -690,7 +690,14 @@ impl<'unit, 'src> Sema<'unit, 'src> {
             )?;
         }
 
-        for block_id in 0..cfg.blocks().len() {
+        let mut w = RPOWorklist::new(cfg);
+        (0..cfg.blocks().len()).for_each(|block| {
+            w.push(block);
+        });
+
+        // Processing the Cfg in RPO order ensures that we see definitions of the
+        // values before their use.
+        while let Some(block_id) = w.pop() {
             let mut elaborated_ops = Vec::new();
             for op in cfg.remove_ops(block_id) {
                 elaborated_ops.push(self.analyze_op(op, &mut symbols, cfg.get_type(self.unit))?);

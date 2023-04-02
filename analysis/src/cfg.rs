@@ -1,6 +1,6 @@
 use core::fmt::Write;
 use priority_queue::PriorityQueue;
-use std::collections::HashSet;
+use std::{collections::HashSet, marker::PhantomData};
 
 /// Trait for an immutable basic block of a control flow graph.
 pub trait CfgBlock {
@@ -200,13 +200,13 @@ pub fn get_back_edges(cfg: &impl ControlFlowGraph) -> HashSet<(usize, usize)> {
 /// reverse post-order. The worklist can contain each node
 /// at most once at a given time.
 #[derive(Clone, Debug)]
-pub struct RPOWorklist<'cfg, Cfg: ControlFlowGraph> {
+pub struct RPOWorklist<Cfg: ControlFlowGraph> {
     queue: PriorityQueue<usize, usize>,
     rpo_order: Vec<usize>,
-    cfg: &'cfg Cfg,
+    phantom: PhantomData<Cfg>,
 }
 
-impl<'cfg, Cfg: ControlFlowGraph> RPOWorklist<'cfg, Cfg> {
+impl<'cfg, Cfg: ControlFlowGraph> RPOWorklist<Cfg> {
     /// Creates a new [`RPOWorklist`] by computing the reverse-post order.
     /// It is more efficient to clear a [`RPOWorklist`] and reuse it for
     /// another traversal than creating it from scratch.
@@ -218,7 +218,7 @@ impl<'cfg, Cfg: ControlFlowGraph> RPOWorklist<'cfg, Cfg> {
         let mut worklist = Self {
             queue: PriorityQueue::<usize, usize>::new(),
             rpo_order: vec![0; cfg.blocks().len()],
-            cfg,
+            phantom: PhantomData,
         };
 
         processing.push(0_usize);
@@ -255,8 +255,8 @@ impl<'cfg, Cfg: ControlFlowGraph> RPOWorklist<'cfg, Cfg> {
     }
 
     /// Push all the successors of a node into the worklist.
-    pub fn push_successors(&mut self, block: usize) {
-        for succ in self.cfg.blocks()[block].successors() {
+    pub fn push_successors(&mut self, block: usize, cfg: &Cfg) {
+        for succ in cfg.blocks()[block].successors() {
             self.push(*succ);
         }
     }

@@ -230,7 +230,7 @@ impl SolveMonotone {
         visited[0] = true;
 
         let mut worklist = RPOWorklist::new(cfg);
-        worklist.push_successors(0);
+        worklist.push_successors(0, cfg);
 
         let limit = self.node_limit * node_num;
         let mut processed_nodes = 1_usize;
@@ -262,7 +262,7 @@ impl SolveMonotone {
 
             visited[current] = true;
             post_states[current] = post_state;
-            worklist.push_successors(current);
+            worklist.push_successors(current, cfg);
         }
     }
 

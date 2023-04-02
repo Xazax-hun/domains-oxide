@@ -122,6 +122,23 @@ fn parse_multiple_blocks() -> Result<(), String> {
 }
 
 #[test]
+fn use_before_def_in_lexical_order() -> Result<(), String> {
+    let source = r"@main {
+  jmp .def;
+
+.use:
+  print x;
+
+.def:
+  x: int = const 5;
+  jmp .use;
+}
+";
+    parse_string(source)?;
+    Ok(())
+}
+
+#[test]
 fn parse_starting_label() -> Result<(), String> {
     let source = r"
 @main {
