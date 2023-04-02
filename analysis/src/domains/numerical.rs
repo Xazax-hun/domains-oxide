@@ -612,6 +612,7 @@ pub struct Congruence {
 
 impl Congruence {
     pub fn from(constant: i64, modulus: i64) -> Self {
+        debug_assert!(modulus == 0 || constant < modulus);
         Self { constant, modulus }
     }
 
@@ -828,8 +829,9 @@ impl Add for Congruence {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        if self == Congruence::bottom(&()) && rhs == Congruence::bottom(&()) {
-            return Congruence::bottom(&());
+        let bot = Congruence::bottom(&());
+        if self == bot || rhs == bot {
+            return bot;
         }
         let new_modulus = self.modulus.gcd(&rhs.modulus);
         Self {
@@ -852,8 +854,9 @@ impl Mul for Congruence {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        if self == Congruence::bottom(&()) && rhs == Congruence::bottom(&()) {
-            return Congruence::bottom(&());
+        let bot = Congruence::bottom(&());
+        if self == bot || rhs == bot {
+            return bot;
         }
         let new_modulus = (self.modulus * rhs.modulus)
             .gcd(&(self.modulus * rhs.constant))
@@ -863,6 +866,22 @@ impl Mul for Congruence {
             modulus: new_modulus,
         }
         .normalize()
+    }
+}
+
+impl Div for Congruence {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        let bot = Congruence::bottom(&());
+        if self == bot || rhs == bot || rhs == Congruence::from(0, 0) {
+            return bot;
+        }
+        if rhs.modulus == 0 && self.constant % rhs.constant == 0 && self.modulus % rhs.constant == 0
+        {
+            return Congruence::from(self.constant / rhs.constant, self.modulus / rhs.constant);
+        }
+        Congruence::top(&())
     }
 }
 

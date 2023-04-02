@@ -372,6 +372,10 @@ fn congruence_domain_test() {
     assert_eq!(c1mod3 * two, Congruence::from(2, 6));
     assert_eq!(c1mod3 * c1mod6, Congruence::from(1, 3));
     assert!(c1mod4.disjoint(Congruence::from(0, 6)));
+    assert_eq!(
+        Congruence::from(2, 4) / Congruence::from(2, 0),
+        Congruence::from(1, 2)
+    );
 }
 
 #[test]

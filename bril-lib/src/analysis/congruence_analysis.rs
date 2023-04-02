@@ -25,7 +25,7 @@ impl CongruenceAnalysis {
             TokenValue::Add => lhs + rhs,
             TokenValue::Mul => lhs * rhs,
             TokenValue::Sub => lhs - rhs,
-            TokenValue::Div => Congruence::top(&()),
+            TokenValue::Div => lhs / rhs,
             TokenValue::Mod => Congruence::top(&()),
             TokenValue::Equal => lhs.equals(rhs),
             TokenValue::And => lhs.logical_and(rhs),
