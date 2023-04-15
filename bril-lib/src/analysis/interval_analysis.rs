@@ -7,7 +7,8 @@ use crate::{
 use analysis::{
     cfg::{CfgBlock, ControlFlowGraph},
     domains::{
-        Interval, JoinSemiLattice, Lattice, Map, MapCtx, BOOL_RANGE, FALSE_RANGE, TRUE_RANGE,
+        Interval, JoinSemiLattice, Lattice, Map, MapCtx, UnrollWiden, BOOL_RANGE, FALSE_RANGE,
+        TRUE_RANGE,
     },
     solvers::{SolveMonotone, TransferFunction},
 };
@@ -168,6 +169,58 @@ impl Analysis for IntervalAnalysis {
         }
 
         let mut transfer = TransferLogger::new(unit, IntervalAnalysis);
+        solver.solve(cfg, seed, &ctx, &mut transfer);
+        transfer.get_annotations()
+    }
+}
+
+type UnrolledIntervalEnv = UnrollWiden<Map<Identifier, Interval>>;
+type UnrolledIntervalCtx = (usize, MapCtx<Identifier, Interval>);
+pub struct UnrolledIntervalAnalysis(pub usize);
+impl TransferFunction<Cfg, UnrolledIntervalEnv> for UnrolledIntervalAnalysis {
+    fn operation(
+        &mut self,
+        pos: analysis::cfg::OpPos,
+        op: &Operation,
+        cfg: &Cfg,
+        ctx: &UnrolledIntervalCtx,
+        pre_state: &UnrolledIntervalEnv,
+    ) -> UnrolledIntervalEnv {
+        UnrollWiden(IntervalAnalysis.operation(pos, op, cfg, &ctx.1, &pre_state.0))
+    }
+
+    fn edge(
+        &mut self,
+        from: usize,
+        to: usize,
+        cfg: &Cfg,
+        ctx: &UnrolledIntervalCtx,
+        pre_state: &UnrolledIntervalEnv,
+    ) -> Option<UnrolledIntervalEnv> {
+        IntervalAnalysis
+            .edge(from, to, cfg, &ctx.1, &pre_state.0)
+            .map(UnrollWiden)
+    }
+}
+
+impl Analysis for UnrolledIntervalAnalysis {
+    fn analyze(&self, cfg: &Cfg, unit: &Unit) -> Annotations {
+        let solver = SolveMonotone::default();
+
+        let ctx = (self.0, MapCtx(HashSet::new(), ()));
+        let mut seed = UnrolledIntervalEnv::bottom(&ctx);
+        // Values for the formal parameters.
+        for Variable { id, ty } in cfg.get_formals() {
+            seed.insert(
+                *id,
+                match ty {
+                    Type::Bool => BOOL_RANGE,
+                    _ => Interval::top(&()),
+                },
+            );
+        }
+
+        let mut transfer = TransferLogger::new(unit, UnrolledIntervalAnalysis(0));
         solver.solve(cfg, seed, &ctx, &mut transfer);
         transfer.get_annotations()
     }

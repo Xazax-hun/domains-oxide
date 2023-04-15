@@ -340,6 +340,9 @@ pub static BOOL_RANGE: Interval = Interval { min: 0, max: 1 };
 pub static TRUE_RANGE: Interval = Interval { min: 1, max: 1 };
 pub static FALSE_RANGE: Interval = Interval { min: 0, max: 0 };
 
+// TODO: figure out a way to add thresholds to widening?
+//       maybe using the domain context as an object to store thresholds.
+
 impl Interval {
     /// Returns [n, inf].
     pub fn greater(n: i64) -> Self {

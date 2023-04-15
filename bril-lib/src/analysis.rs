@@ -3,7 +3,7 @@ use std::{collections::HashMap, marker::PhantomData};
 
 use analysis::{
     cfg::OpPos,
-    domains::{JoinSemiLattice, Map, MapCtx},
+    domains::{JoinSemiLattice, Map, MapCtx, UnrollWiden},
     solvers::TransferFunction,
 };
 
@@ -32,6 +32,7 @@ pub trait Analysis: Send + Sync {
 pub enum Analyses {
     Sign,
     Interval,
+    UnrolledInterval,
     Congruence,
 }
 
@@ -41,6 +42,10 @@ static ANALYSES: Lazy<HashMap<Analyses, Box<dyn Analysis>>> = Lazy::new(|| {
     m.insert(
         Analyses::Interval,
         Box::new(interval_analysis::IntervalAnalysis),
+    );
+    m.insert(
+        Analyses::UnrolledInterval,
+        Box::new(interval_analysis::UnrolledIntervalAnalysis(3)),
     );
     m.insert(
         Analyses::Congruence,
@@ -54,11 +59,7 @@ pub fn get_analysis_results(analysis: Analyses, unit: &Unit) -> AnnotationMap {
     analysis.analyze_all(unit)
 }
 
-pub struct TransferLogger<'unit, D, Transfer>
-where
-    D: JoinSemiLattice,
-    Transfer: TransferFunction<Cfg, Map<Identifier, D>>,
-{
+pub struct TransferLogger<'unit, D, Transfer> {
     unit: &'unit Unit,
     anns: Annotations,
     transfer: Transfer,
@@ -80,19 +81,8 @@ where
         pre_state: &Map<Identifier, D>,
     ) -> Map<Identifier, D> {
         let post_state = self.transfer.operation(pos, op, cfg, ctx, pre_state);
-        let mut changed_values = post_state.changed_values(pre_state);
-        if let Some(result) = op.get_result() {
-            if let Some(val) = post_state.get(&result.id) {
-                changed_values.insert(result.id, val.clone());
-            }
-        }
-        if !changed_values.is_empty() {
-            let printed: Vec<_> = changed_values
-                .iter()
-                .map(|(id, val)| format!("{}: {:?}", self.unit.identifiers.get_name(*id), val))
-                .collect();
-            self.anns.post.insert(pos, printed);
-        }
+        let changed_values = post_state.changed_values(pre_state);
+        self.annotate(op, &post_state, changed_values, pos);
         post_state
     }
 
@@ -108,10 +98,41 @@ where
     }
 }
 
+impl<'unit, D, Transfer> TransferFunction<Cfg, UnrollWiden<Map<Identifier, D>>>
+    for TransferLogger<'unit, D, Transfer>
+where
+    D: JoinSemiLattice,
+    Transfer: TransferFunction<Cfg, UnrollWiden<Map<Identifier, D>>>,
+{
+    fn operation(
+        &mut self,
+        pos: OpPos,
+        op: &Operation,
+        cfg: &Cfg,
+        ctx: &(usize, MapCtx<Identifier, D>),
+        pre_state: &UnrollWiden<Map<Identifier, D>>,
+    ) -> UnrollWiden<Map<Identifier, D>> {
+        let post_state = self.transfer.operation(pos, op, cfg, ctx, pre_state);
+        let changed_values = post_state.changed_values(pre_state);
+        self.annotate(op, &post_state, changed_values, pos);
+        post_state
+    }
+
+    fn edge(
+        &mut self,
+        from: usize,
+        to: usize,
+        cfg: &Cfg,
+        ctx: &(usize, MapCtx<Identifier, D>),
+        pre_state: &UnrollWiden<Map<Identifier, D>>,
+    ) -> Option<UnrollWiden<Map<Identifier, D>>> {
+        self.transfer.edge(from, to, cfg, ctx, pre_state)
+    }
+}
+
 impl<'unit, D, Transfer> TransferLogger<'unit, D, Transfer>
 where
     D: JoinSemiLattice,
-    Transfer: TransferFunction<Cfg, Map<Identifier, D>>,
 {
     pub fn new(unit: &'unit Unit, transfer: Transfer) -> Self {
         Self {
@@ -124,6 +145,27 @@ where
 
     pub fn get_annotations(self) -> Annotations {
         self.anns
+    }
+
+    fn annotate(
+        &mut self,
+        op: &Operation,
+        post_state: &Map<Identifier, D>,
+        mut changed_values: Map<Identifier, D>,
+        pos: OpPos,
+    ) {
+        if let Some(result) = op.get_result() {
+            if let Some(val) = post_state.get(&result.id) {
+                changed_values.insert(result.id, val.clone());
+            }
+        }
+        if !changed_values.is_empty() {
+            let printed: Vec<_> = changed_values
+                .iter()
+                .map(|(id, val)| format!("{}: {:?}", self.unit.identifiers.get_name(*id), val))
+                .collect();
+            self.anns.post.insert(pos, printed);
+        }
     }
 }
 

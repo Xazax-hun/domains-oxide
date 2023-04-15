@@ -11,7 +11,7 @@ use paste::paste;
 // Add operations to build lattices
 // * Reduced product
 // * Immutable versions of the containers
-// * Loop widening can be implemented via a transformer that
+// * Loop unrolling can be implemented via a transformer that
 //   does join instead of widen in the first couple of iterations
 //   but does widen later on.
 
@@ -126,6 +126,60 @@ impl<T: Lattice> Lattice for Option<T> {
                 .as_ref()
                 .map_or_else(|| inner.clone(), |prev| inner.narrow(prev, ctx, iteration))
         })
+    }
+}
+
+/// A wrapper for a domain that will only start widening after
+/// approximately N iterations where N is coming from the
+/// [`JoinSemiLattice::LatticeContext`].
+#[derive(Debug, Clone, PartialOrd, PartialEq, Eq)]
+pub struct UnrollWiden<T>(pub T);
+
+impl<T> Deref for UnrollWiden<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> DerefMut for UnrollWiden<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<T: JoinSemiLattice> JoinSemiLattice for UnrollWiden<T> {
+    type LatticeContext = (usize, T::LatticeContext);
+
+    fn bottom(ctx: &Self::LatticeContext) -> Self {
+        UnrollWiden(T::bottom(&ctx.1))
+    }
+
+    fn join(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
+        UnrollWiden(self.0.join(&other.0, &ctx.1))
+    }
+
+    fn widen(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+        if iteration < ctx.0 {
+            self.clone()
+        } else {
+            UnrollWiden(self.0.widen(&previous.0, &ctx.1, iteration))
+        }
+    }
+}
+
+impl<T: Lattice> Lattice for UnrollWiden<T> {
+    fn top(ctx: &Self::LatticeContext) -> Self {
+        UnrollWiden(T::top(&ctx.1))
+    }
+
+    fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
+        UnrollWiden(self.0.meet(&other.0, &ctx.1))
+    }
+
+    fn narrow(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+        UnrollWiden(self.0.narrow(previous, &ctx.1, iteration))
     }
 }
 
