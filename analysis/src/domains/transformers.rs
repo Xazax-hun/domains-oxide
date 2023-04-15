@@ -11,9 +11,6 @@ use paste::paste;
 // Add operations to build lattices
 // * Reduced product
 // * Immutable versions of the containers
-// * Loop unrolling can be implemented via a transformer that
-//   does join instead of widen in the first couple of iterations
-//   but does widen later on.
 
 /// A lattice with a height of 3, where all non-equal elements have top
 /// and bottom as their least upper bound and greatest lower bound
