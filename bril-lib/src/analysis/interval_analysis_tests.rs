@@ -129,3 +129,47 @@ fn factorial() {
 ";
     check_expected_results(IntervalAnalysis, source, expected)
 }
+
+#[test]
+fn interesting_loop() {
+    let source = r"@main {
+  x: int = const 1;
+  y: int = const 1;
+  one: int = const 1;
+  zero: int = const 0;
+  jmp .head;
+
+.head:
+  y: int = add y one;
+  jmp .next;
+
+.next:
+  x: int = id x;
+  x: int = id zero;
+  jmp .head;
+}
+";
+
+    let expected = r"@main {
+  x: int = const 1; /* x: [1, 1] */
+  y: int = const 1; /* y: [1, 1] */
+  one: int = const 1; /* one: [1, 1] */
+  zero: int = const 0; /* zero: [0, 0] */
+  jmp .head;
+
+.head:
+  y: int = add y one; /* y: [2, inf] */
+  jmp .next;
+
+.next:
+  x: int = id x; /* x: [-inf, 1] */
+  x: int = id zero; /* x: [0, 0] */
+  jmp .head;
+}
+";
+
+    // This is an interesting case for a couple of reasons:
+    // * Here, the interval analysis is less precise than the sign analysis
+    // * Loop unrolling can help with it the imprecision
+    check_expected_results(IntervalAnalysis, source, expected)
+}
