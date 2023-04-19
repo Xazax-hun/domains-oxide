@@ -2,47 +2,32 @@ use core::fmt::Display;
 use std::io::BufWriter;
 use std::io::Cursor;
 use std::io::Write;
+use std::ops::Deref;
+use std::ops::DerefMut;
 
 enum LogOrWrite {
     Log(Cursor<Vec<u8>>),
     Write(BufWriter<Box<dyn Write>>),
 }
 
-impl Write for LogOrWrite {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        match self {
-            LogOrWrite::Log(inner) => inner.write(buf),
-            LogOrWrite::Write(inner) => inner.write(buf),
-        }
-    }
+impl Deref for LogOrWrite {
+   type Target = dyn Write; 
 
-    fn flush(&mut self) -> std::io::Result<()> {
+   fn deref(&self) -> &Self::Target {
         match self {
-            LogOrWrite::Log(_) => Ok(()),
-            LogOrWrite::Write(inner) => inner.flush(),
+            LogOrWrite::Log(inner) => inner,
+            LogOrWrite::Write(inner) => inner,
         }
-    }
+   }
+}
 
-    fn write_all(&mut self, buf: &[u8]) -> std::io::Result<()> {
+impl DerefMut for LogOrWrite {
+   fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
-            LogOrWrite::Log(inner) => inner.write_all(buf),
-            LogOrWrite::Write(inner) => inner.write_all(buf),
+            LogOrWrite::Log(inner) => inner,
+            LogOrWrite::Write(inner) => inner,
         }
-    }
-
-    fn write_fmt(&mut self, fmt: std::fmt::Arguments<'_>) -> std::io::Result<()> {
-        match self {
-            LogOrWrite::Log(inner) => inner.write_fmt(fmt),
-            LogOrWrite::Write(inner) => inner.write_fmt(fmt),
-        }
-    }
-
-    fn write_vectored(&mut self, bufs: &[std::io::IoSlice<'_>]) -> std::io::Result<usize> {
-        match self {
-            LogOrWrite::Log(inner) => inner.write_vectored(bufs),
-            LogOrWrite::Write(inner) => inner.write_vectored(bufs),
-        }
-    }
+   }
 }
 
 pub struct DiagnosticEmitter {
