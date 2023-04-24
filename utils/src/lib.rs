@@ -103,9 +103,9 @@ impl DiagnosticEmitter {
     }
 
     pub fn report(&mut self, line: u32, item: &str, message: &str) {
-        self.err
-            .write(format!("[line {line}] Error {item}: {message}\n").as_bytes())
-            .unwrap();
+        let _ = self
+            .err
+            .write(format!("[line {line}] Error {item}: {message}\n").as_bytes());
     }
 
     pub fn flush(&mut self) {
