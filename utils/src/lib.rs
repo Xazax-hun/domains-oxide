@@ -11,23 +11,23 @@ enum LogOrWrite {
 }
 
 impl Deref for LogOrWrite {
-   type Target = dyn Write; 
+    type Target = dyn Write;
 
-   fn deref(&self) -> &Self::Target {
+    fn deref(&self) -> &Self::Target {
         match self {
             LogOrWrite::Log(inner) => inner,
             LogOrWrite::Write(inner) => inner,
         }
-   }
+    }
 }
 
 impl DerefMut for LogOrWrite {
-   fn deref_mut(&mut self) -> &mut Self::Target {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
             LogOrWrite::Log(inner) => inner,
             LogOrWrite::Write(inner) => inner,
         }
-   }
+    }
 }
 
 pub struct DiagnosticEmitter {
@@ -103,9 +103,9 @@ impl DiagnosticEmitter {
     }
 
     pub fn report(&mut self, line: u32, item: &str, message: &str) {
-        let _ = self
-            .err
-            .write(format!("[line {line}] Error {item}: {message}\n").as_bytes());
+        self.err
+            .write(format!("[line {line}] Error {item}: {message}\n").as_bytes())
+            .unwrap();
     }
 
     pub fn flush(&mut self) {

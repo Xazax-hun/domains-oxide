@@ -113,40 +113,46 @@ impl ASTContext {
     }
 
     pub fn get_root(&self) -> Node {
-        Node::Sequence((self.sequences.len() - 1) as u32)
+        Node::Sequence(u32::try_from(self.sequences.len() - 1).unwrap())
     }
 
     pub fn make_init(&mut self, n: Init) -> Node {
         self.inits.push(n);
-        Node::Operation(Operation::Init((self.inits.len() - 1) as u32))
+        Node::Operation(Operation::Init(
+            u32::try_from(self.inits.len() - 1).unwrap(),
+        ))
     }
 
     pub fn make_translation(&mut self, n: Translation) -> Node {
         self.translations.push(n);
-        Node::Operation(Operation::Translation((self.translations.len() - 1) as u32))
+        Node::Operation(Operation::Translation(
+            u32::try_from(self.translations.len() - 1).unwrap(),
+        ))
     }
 
     pub fn make_rotation(&mut self, n: Rotation) -> Node {
         self.rotations.push(n);
-        Node::Operation(Operation::Rotation((self.rotations.len() - 1) as u32))
+        Node::Operation(Operation::Rotation(
+            u32::try_from(self.rotations.len() - 1).unwrap(),
+        ))
     }
 
     pub fn make_sequence(&mut self, n: Sequence) -> Node {
         self.sequences.push(n);
-        Node::Sequence((self.sequences.len() - 1) as u32)
+        Node::Sequence(u32::try_from(self.sequences.len() - 1).unwrap())
     }
 
     pub fn make_branch(&mut self, n: Branch) -> Node {
         assert!(matches!(n.lhs, Node::Sequence(_)));
         assert!(matches!(n.rhs, Node::Sequence(_)));
         self.branches.push(n);
-        Node::Branch((self.branches.len() - 1) as u32)
+        Node::Branch(u32::try_from(self.branches.len() - 1).unwrap())
     }
 
     pub fn make_loop(&mut self, n: Loop) -> Node {
         assert!(matches!(n.body, Node::Sequence(_)));
         self.loops.push(n);
-        Node::Loop((self.loops.len() - 1) as u32)
+        Node::Loop(u32::try_from(self.loops.len() - 1).unwrap())
     }
 
     pub fn node_to_ref(&self, n: Node) -> NodeRef {
