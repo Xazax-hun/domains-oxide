@@ -16,7 +16,7 @@ use super::{Analysis, TransferLogger};
 type SignEnv = Map<Identifier, Sign>;
 type SignCtx = MapCtx<Identifier, Sign>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SignAnalysis;
 
 impl SignAnalysis {
@@ -73,7 +73,7 @@ impl TransferFunction<Cfg, SignEnv> for SignAnalysis {
         _pos: OpPos,
         op: &Operation,
         _cfg: &Cfg,
-        _: &SignCtx,
+        ctx: &SignCtx,
         pre_state: &SignEnv,
     ) -> SignEnv {
         match op {
@@ -84,8 +84,8 @@ impl TransferFunction<Cfg, SignEnv> for SignAnalysis {
                 rhs,
             } => {
                 let op_type = lhs.ty;
-                let lhs = *pre_state.get(&lhs.id).unwrap_or(&Sign::Bottom);
-                let rhs = *pre_state.get(&rhs.id).unwrap_or(&Sign::Bottom);
+                let lhs = pre_state.get_or_bottom(&lhs.id, ctx);
+                let rhs = pre_state.get_or_bottom(&rhs.id, ctx);
                 let result_sign = Self::transfer_binary_op(*token, lhs, rhs, op_type);
                 let mut new_state = pre_state.clone();
                 new_state.insert(result.id, result_sign);
@@ -96,7 +96,7 @@ impl TransferFunction<Cfg, SignEnv> for SignAnalysis {
                 result,
                 operand,
             } => {
-                let operand = *pre_state.get(&operand.id).unwrap_or(&Sign::Bottom);
+                let operand = pre_state.get_or_bottom(&operand.id, ctx);
                 let result_sign = Self::transfer_unary_op(*token, operand);
                 let mut new_state = pre_state.clone();
                 new_state.insert(result.id, result_sign);
@@ -127,19 +127,17 @@ impl TransferFunction<Cfg, SignEnv> for SignAnalysis {
         from: usize,
         to: usize,
         cfg: &Cfg,
-        _: &SignCtx,
+        ctx: &SignCtx,
         pre_state: &SignEnv,
     ) -> Option<SignEnv> {
         let is_true_branch = *cfg.blocks()[from].successors().first().unwrap() == to;
         let last_op = cfg.blocks()[from].operations().last().unwrap();
         match last_op {
-            Operation::Branch { cond, .. } => {
-                match *pre_state.get(&cond.id).unwrap_or(&Sign::Top) {
-                    Sign::Zero if is_true_branch => None,
-                    Sign::Positive if !is_true_branch => None,
-                    _ => Some(pre_state.clone()),
-                }
-            }
+            Operation::Branch { cond, .. } => match pre_state.get_or_top(&cond.id, ctx) {
+                Sign::Zero if is_true_branch => None,
+                Sign::Positive if !is_true_branch => None,
+                _ => Some(pre_state.clone()),
+            },
             _ => Some(pre_state.clone()),
         }
     }

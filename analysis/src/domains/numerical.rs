@@ -17,7 +17,7 @@ use crate::domains::*;
 ///      Bottom
 /// ```
 /// For more precision, consider using [`Interval`].
-#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash)]
 pub enum Sign {
     Top,
     Bottom,
@@ -330,7 +330,7 @@ pub const NEG_INF: i64 = i64::MIN;
 /// The lattice is ordered by inclusion and has very long ascending and
 /// descending chains, thus it implements widening. It also implements
 /// some basic arithmetic operations.
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Interval {
     pub min: i64,
     pub max: i64,
@@ -530,9 +530,9 @@ impl From<Sign> for Interval {
 impl Debug for Interval {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let to_str = |x: i64| match x {
-            INF => "inf".to_owned(),
-            NEG_INF => "-inf".to_owned(),
-            _ => x.to_string(),
+            INF => std::borrow::Cow::from("inf"),
+            NEG_INF => std::borrow::Cow::from("-inf"),
+            _ => std::borrow::Cow::Owned(x.to_string()),
         };
         write!(f, "[{}, {}]", to_str(self.min), to_str(self.max))
     }
@@ -726,16 +726,24 @@ impl Rem for Interval {
 /// and parity. `5 mod 0` represents the constant `5`, `0 mod 1` represents
 /// all the integers, `0 mod 2` represents even numbers, `1 mod 2` represents
 /// odd numbers.
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Congruence {
-    pub constant: i64,
-    pub modulus: i64,
+    constant: i64,
+    modulus: i64,
 }
 
 impl Congruence {
     pub fn from(constant: i64, modulus: i64) -> Self {
         debug_assert!(modulus == 0 || constant < modulus);
         Self { constant, modulus }
+    }
+
+    pub fn constant(&self) -> i64 {
+        self.constant
+    }
+
+    pub fn modulus(&self) -> i64 {
+        self.modulus
     }
 
     pub fn disjoint(self, other: Congruence) -> bool {
@@ -933,10 +941,7 @@ impl Neg for Congruence {
         if self == Self::bottom(&()) {
             return self;
         }
-        Self {
-            constant: -self.constant,
-            modulus: self.modulus,
-        }
+        Congruence::from(-self.constant, self.modulus)
     }
 }
 
@@ -1002,4 +1007,4 @@ impl Div for Congruence {
 
 // TODO: Optimistic division for intervals.
 
-// TODO: add relational domains like octagons and polyhedra.
+// TODO: add relational domains like zones, octagons and polyhedra.

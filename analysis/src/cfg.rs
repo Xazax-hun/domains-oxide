@@ -99,7 +99,7 @@ pub fn reverse_in_place<Cfg: BlockMutableCfg>(cfg: &Cfg, empty: &mut Cfg) {
 
 // TODO: add other helpers like cleaning up unreachable nodes.
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct OpPos {
     pub block_id: usize,
     pub op_id: usize,
@@ -141,7 +141,7 @@ pub fn indent(indent: u32) -> String {
     str::repeat(" ", indent as usize)
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Hash)]
 enum Color {
     White,
     Gray,
@@ -158,8 +158,7 @@ pub fn get_back_edges(cfg: &impl ControlFlowGraph) -> HashSet<(usize, usize)> {
 
     processing.push(0_usize);
 
-    while !processing.is_empty() {
-        let current = processing.pop().unwrap();
+    while let Some(current) = processing.pop() {
         match color[current] {
             Color::White => {
                 color[current] = Color::Gray;
@@ -168,13 +167,13 @@ pub fn get_back_edges(cfg: &impl ControlFlowGraph) -> HashSet<(usize, usize)> {
                 // finished processing its successor subgraph are the back edges.
                 let (mut back_succs, mut fwd_succs) = (Vec::new(), Vec::new());
 
-                for succ in cfg.blocks()[current].successors() {
+                for &succ in cfg.blocks()[current].successors() {
                     // Gray successors are back edges. Black successors are already processed
                     // on a different path. We only need continue processing unexplored (White)
                     // nodes.
-                    match color[*succ] {
-                        Color::White => fwd_succs.push(*succ),
-                        Color::Gray => back_succs.push(*succ),
+                    match color[succ] {
+                        Color::White => fwd_succs.push(succ),
+                        Color::Gray => back_succs.push(succ),
                         Color::Black => continue,
                     }
                 }
@@ -184,9 +183,7 @@ pub fn get_back_edges(cfg: &impl ControlFlowGraph) -> HashSet<(usize, usize)> {
                 processing.push(current);
                 processing.extend(fwd_succs);
 
-                let new_back_edges: HashSet<(usize, usize)> =
-                    back_succs.iter().map(|succ| (current, *succ)).collect();
-                back_edges.extend(new_back_edges);
+                back_edges.extend(back_succs.into_iter().map(|succ| (current, succ)));
             }
             Color::Gray => color[current] = Color::Black,
             Color::Black => continue,
@@ -223,16 +220,15 @@ impl<'cfg, Cfg: ControlFlowGraph> RPOWorklist<Cfg> {
 
         processing.push(0_usize);
 
-        while !processing.is_empty() {
-            let current = processing.pop().unwrap();
+        while let Some(current) = processing.pop() {
             match color[current] {
                 Color::White => {
                     color[current] = Color::Gray;
                     processing.push(current);
 
-                    for succ in cfg.blocks()[current].successors() {
-                        if color[*succ] == Color::White {
-                            processing.push(*succ);
+                    for &succ in cfg.blocks()[current].successors() {
+                        if color[succ] == Color::White {
+                            processing.push(succ);
                         }
                     }
                 }

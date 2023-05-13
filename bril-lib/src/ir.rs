@@ -42,7 +42,7 @@ pub struct FunctionType {
     pub formals: Vec<Type>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Variable {
     pub id: Identifier,
     pub ty: Type,
@@ -251,7 +251,7 @@ impl Cfg {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SymbolTable(HashMap<Identifier, Variable>);
 
 impl SymbolTable {

@@ -35,8 +35,7 @@ pub fn create_random_walks(cfg: &Cfg, ctx: &ASTContext, loopiness: u32, num: usi
 
     let mut rng = rand::thread_rng();
     let back_edges = analysis::cfg::get_back_edges(cfg);
-    let mut result = Vec::new();
-    result.reserve(num);
+    let mut result = Vec::with_capacity(num);
 
     for _ in 1..=num {
         result.push(create_random_walk_impl(

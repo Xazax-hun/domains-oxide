@@ -16,7 +16,7 @@ use super::{Analysis, TransferLogger};
 type CongruenceEnv = Map<Identifier, Congruence>;
 type CongruenceCtx = MapCtx<Identifier, Congruence>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CongruenceAnalysis;
 
 impl CongruenceAnalysis {
@@ -83,12 +83,8 @@ impl TransferFunction<Cfg, CongruenceEnv> for CongruenceAnalysis {
                 lhs,
                 rhs,
             } => {
-                let lhs = *pre_state
-                    .get(&lhs.id)
-                    .unwrap_or(&Congruence::bottom(&ctx.1));
-                let rhs = *pre_state
-                    .get(&rhs.id)
-                    .unwrap_or(&Congruence::bottom(&ctx.1));
+                let lhs = pre_state.get_or_bottom(&lhs.id, ctx);
+                let rhs = pre_state.get_or_bottom(&rhs.id, ctx);
                 let result_cong = Self::transfer_binary_op(*token, lhs, rhs);
                 let mut new_state = pre_state.clone();
                 new_state.insert(result.id, result_cong);
@@ -99,9 +95,7 @@ impl TransferFunction<Cfg, CongruenceEnv> for CongruenceAnalysis {
                 result,
                 operand,
             } => {
-                let operand = *pre_state
-                    .get(&operand.id)
-                    .unwrap_or(&Congruence::bottom(&ctx.1));
+                let operand = pre_state.get_or_bottom(&operand.id, ctx);
                 let result_cong = Self::transfer_unary_op(*token, operand);
                 let mut new_state = pre_state.clone();
                 new_state.insert(result.id, result_cong);
@@ -139,7 +133,7 @@ impl TransferFunction<Cfg, CongruenceEnv> for CongruenceAnalysis {
         let last_op = cfg.blocks()[from].operations().last().unwrap();
         match last_op {
             Operation::Branch { cond, .. } => {
-                let cond_cong = *pre_state.get(&cond.id).unwrap_or(&Congruence::top(&ctx.1));
+                let cond_cong = pre_state.get_or_top(&cond.id, ctx);
                 if cond_cong == Congruence::from(0, 0) && is_true_branch {
                     return None;
                 }

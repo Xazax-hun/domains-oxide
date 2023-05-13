@@ -77,8 +77,7 @@ where
     ) -> D,
 {
     func: F,
-    cfg: PhantomData<Cfg>,
-    d: PhantomData<D>,
+    phantom: PhantomData<(Cfg, D)>,
 }
 
 impl<F, Cfg, D> TransferFunction<Cfg, D> for OpTransfer<F, Cfg, D>
@@ -121,8 +120,7 @@ where
     pub fn new(func: F) -> Self {
         Self {
             func,
-            cfg: PhantomData,
-            d: PhantomData,
+            phantom: PhantomData,
         }
     }
 }
@@ -136,8 +134,7 @@ where
     F: FnMut(usize, &Cfg, &D::LatticeContext, &D) -> D,
 {
     func: F,
-    cfg: PhantomData<Cfg>,
-    d: PhantomData<D>,
+    phantom: PhantomData<(Cfg, D)>,
 }
 
 impl<F, Cfg, D> TransferFunction<Cfg, D> for BlockTransfer<F, Cfg, D>
@@ -167,8 +164,7 @@ where
     pub fn new(func: F) -> Self {
         Self {
             func,
-            cfg: PhantomData,
-            d: PhantomData,
+            phantom: PhantomData,
         }
     }
 }
@@ -180,7 +176,7 @@ where
 /// Requirements:
 /// * All the back edges must target the loop head (node dominating every
 ///   node within the loop.)
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SolveMonotone {
     /// Set the approximate iteration limit per node. If the limit is reached
     /// (the analysis did not converge in the permitted number of steps),

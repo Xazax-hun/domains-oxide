@@ -13,7 +13,7 @@ use crate::eval::rotate;
 
 type Vec2Interval = Vec2Domain<Interval>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IntervalAnalysis;
 
 impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Interval> for IntervalAnalysis {

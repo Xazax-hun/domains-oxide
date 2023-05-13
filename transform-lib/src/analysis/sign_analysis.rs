@@ -14,7 +14,7 @@ use super::Analysis;
 
 type Vec2Sign = Vec2Domain<Sign>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SignAnalysis;
 
 impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Sign> for SignAnalysis {

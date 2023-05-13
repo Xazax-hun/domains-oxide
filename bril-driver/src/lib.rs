@@ -58,11 +58,11 @@ fn parse_value(arg: &str) -> Result<Value, std::num::ParseIntError> {
 
 pub fn process_source(src: &str, diag: &mut DiagnosticEmitter, opts: &Opt) -> Option<()> {
     let lexer = Lexer::new(src, diag);
-    let tokens = lexer.lex_all();
-    if tokens.tokens.is_empty() {
+    let lex_result = lexer.lex_all();
+    if lex_result.tokens.is_empty() {
         return None;
     }
-    let parser = Parser::new(tokens, diag);
+    let parser = Parser::new(lex_result, diag);
     let unit = parser.parse()?;
 
     if opts.dump_cfg {

@@ -23,7 +23,7 @@ use paste::paste;
 ///     \  |  /
 ///      Bottom
 /// ```
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub enum Flat<T: Eq + Clone + Debug> {
     Top,
     Element(T),
@@ -129,7 +129,7 @@ impl<T: Lattice> Lattice for Option<T> {
 /// A wrapper for a domain that will only start widening after
 /// approximately N iterations where N is coming from the
 /// [`JoinSemiLattice::LatticeContext`].
-#[derive(Debug, Clone, PartialOrd, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialOrd, PartialEq, Eq, Hash)]
 pub struct UnrollWiden<T>(pub T);
 
 impl<T> AsRef<T> for UnrollWiden<T> {
@@ -188,7 +188,7 @@ impl<T: Lattice> Lattice for UnrollWiden<T> {
 
 /// A simple homogenous pair. It can be useful to represent the analysis
 /// state for small vectors.
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Hash)]
 pub struct Vec2Domain<T: JoinSemiLattice> {
     pub x: T,
     pub y: T,
@@ -230,10 +230,10 @@ impl<T: JoinSemiLattice> JoinSemiLattice for Vec2Domain<T> {
         }
     }
 
-    fn widen(&self, other: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+    fn widen(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
         Self {
-            x: self.x.widen(&other.x, ctx, iteration),
-            y: self.y.widen(&other.y, ctx, iteration),
+            x: self.x.widen(&previous.x, ctx, iteration),
+            y: self.y.widen(&previous.y, ctx, iteration),
         }
     }
 }
@@ -253,17 +253,17 @@ impl<T: Lattice> Lattice for Vec2Domain<T> {
         }
     }
 
-    fn narrow(&self, other: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
+    fn narrow(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
         Self {
-            x: self.x.narrow(&other.x, ctx, iteration),
-            y: self.y.narrow(&other.y, ctx, iteration),
+            x: self.x.narrow(&previous.x, ctx, iteration),
+            y: self.y.narrow(&previous.y, ctx, iteration),
         }
     }
 }
 
 /// Flip a lattice by swapping the join and meet operations,
 /// and the top and bottom elements.
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub struct Flipped<T: Lattice>(pub T);
 
 impl<T: Lattice> Deref for Flipped<T> {
@@ -316,7 +316,7 @@ impl<T: Lattice> Lattice for Flipped<T> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Array<T: JoinSemiLattice, const N: usize>(pub [T; N]);
 
 impl<T: JoinSemiLattice, const N: usize> Deref for Array<T, N> {
@@ -362,23 +362,16 @@ impl<T: JoinSemiLattice, const N: usize> JoinSemiLattice for Array<T, N> {
     }
 
     fn join(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
-        let mut result = self.clone();
-        result
-            .0
-            .iter_mut()
-            .zip(other.iter())
-            .for_each(|(s, o)| *s = s.join(o, ctx));
-        result
+        let mut it = self.iter().zip(other.iter()).map(|(s, o)| s.join(o, ctx));
+        Self([(); N].map(|()| it.next().unwrap()))
     }
 
     fn widen(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
-        let mut result = self.clone();
-        result
-            .0
-            .iter_mut()
+        let mut it = self
+            .iter()
             .zip(previous.iter())
-            .for_each(|(s, p)| *s = s.widen(p, ctx, iteration));
-        result
+            .map(|(s, p)| s.widen(p, ctx, iteration));
+        Self([(); N].map(|()| it.next().unwrap()))
     }
 }
 
@@ -388,23 +381,16 @@ impl<T: Lattice, const N: usize> Lattice for Array<T, N> {
     }
 
     fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
-        let mut result = self.clone();
-        result
-            .0
-            .iter_mut()
-            .zip(other.iter())
-            .for_each(|(s, o)| *s = s.meet(o, ctx));
-        result
+        let mut it = self.iter().zip(other.iter()).map(|(s, o)| s.meet(o, ctx));
+        Self([(); N].map(|()| it.next().unwrap()))
     }
 
     fn narrow(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
-        let mut result = self.clone();
-        result
-            .0
-            .iter_mut()
+        let mut it = self
+            .iter()
             .zip(previous.iter())
-            .for_each(|(s, p)| *s = s.narrow(p, ctx, iteration));
-        result
+            .map(|(s, p)| s.narrow(p, ctx, iteration));
+        Self([(); N].map(|()| it.next().unwrap()))
     }
 }
 
@@ -418,18 +404,18 @@ impl<T: Lattice, const N: usize> Lattice for Array<T, N> {
 #[derive(PartialEq, Eq, Clone)]
 pub struct Map<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice>(pub HashMap<K, V>);
 
-impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> AsRef<Map<K, V>> for Map<K, V> {
-    fn as_ref(&self) -> &Self {
-        self
-    }
-}
-
 /// Contains all the keys for top value, can leave it empty for
 /// join semi-lattices.
 pub struct MapCtx<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice>(
     pub HashSet<K>,
     pub V::LatticeContext,
 );
+
+impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> AsRef<Map<K, V>> for Map<K, V> {
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
 
 impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> Default for Map<K, V> {
     fn default() -> Self {
@@ -449,6 +435,16 @@ impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> Map<K, V> {
         }
         result
     }
+
+    pub fn get_or_bottom(&self, k: &K, ctx: &MapCtx<K, V>) -> V {
+        self.get(k).unwrap_or(&V::bottom(&ctx.1)).clone()
+    }
+}
+
+impl<K: Eq + Clone + Hash + Debug, V: Lattice> Map<K, V> {
+    pub fn get_or_top(&self, k: &K, ctx: &MapCtx<K, V>) -> V {
+        self.get(k).unwrap_or(&V::top(&ctx.1)).clone()
+    }
 }
 
 impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> Deref for Map<K, V> {
@@ -467,10 +463,7 @@ impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> DerefMut for Map<K, V> {
 
 impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> Debug for Map<K, V> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let mut elements = self
-            .iter()
-            .map(|x| format!("{x:?}"))
-            .collect::<Vec<String>>();
+        let mut elements: Vec<String> = self.iter().map(|x| format!("{x:?}")).collect();
         elements.sort();
         write!(f, "Map({})", elements.join(", "))
     }
@@ -600,7 +593,7 @@ macro_rules! tuple_lattice {
     ( $prod:ident $( $name:ident )+ ) => {
         paste! {
             /// Product lattice with point-wise ordering.
-            #[derive(Clone, PartialEq, Eq, Debug)]
+            #[derive(Clone, PartialEq, Eq, Debug, Hash)]
             pub struct $prod<$($name: JoinSemiLattice),+>($(pub $name,)+);
 
             impl<$($name: JoinSemiLattice),+> PartialOrd for $prod<$($name),+> {
@@ -689,7 +682,7 @@ macro_rules! stack_lattice {
             /// Stack lattice, the generic arguments are ordered:
             /// elements of the type to the left are smaller than the
             /// elements of the type to the right.
-            #[derive(Clone, PartialEq, Eq, Debug, PartialOrd)]
+            #[derive(Clone, PartialEq, Eq, Debug, PartialOrd, Hash)]
             pub enum $stack<$([<T $name>]: JoinSemiLattice),+>{
                 Bottom,
                 $([<S $name>]([<T $name>])),+
@@ -768,7 +761,7 @@ macro_rules! distjoint_union_lattice {
     ( $union:ident $( $name:tt )+ ) => {
         paste! {
             /// A disjoint union lattice.
-            #[derive(Clone, PartialEq, Eq, Debug)]
+            #[derive(Clone, PartialEq, Eq, Debug, Hash)]
             pub enum $union<$([<T $name>]: JoinSemiLattice),+>{
                 Bottom,
                 $([<U $name>]([<T $name>])),+,

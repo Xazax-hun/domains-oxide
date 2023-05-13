@@ -18,7 +18,7 @@ use super::{Analysis, TransferLogger};
 type IntervalEnv = Map<Identifier, Interval>;
 type IntervalCtx = MapCtx<Identifier, Interval>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IntervalAnalysis;
 
 impl IntervalAnalysis {
@@ -85,8 +85,8 @@ impl TransferFunction<Cfg, IntervalEnv> for IntervalAnalysis {
                 lhs,
                 rhs,
             } => {
-                let lhs = *pre_state.get(&lhs.id).unwrap_or(&Interval::bottom(&ctx.1));
-                let rhs = *pre_state.get(&rhs.id).unwrap_or(&Interval::bottom(&ctx.1));
+                let lhs = pre_state.get_or_bottom(&lhs.id, ctx);
+                let rhs = pre_state.get_or_bottom(&rhs.id, ctx);
                 let result_range = Self::transfer_binary_op(*token, lhs, rhs);
                 let mut new_state = pre_state.clone();
                 new_state.insert(result.id, result_range);
@@ -97,9 +97,7 @@ impl TransferFunction<Cfg, IntervalEnv> for IntervalAnalysis {
                 result,
                 operand,
             } => {
-                let operand = *pre_state
-                    .get(&operand.id)
-                    .unwrap_or(&Interval::bottom(&ctx.1));
+                let operand = pre_state.get_or_bottom(&operand.id, ctx);
                 let result_range = Self::transfer_unary_op(*token, operand);
                 let mut new_state = pre_state.clone();
                 new_state.insert(result.id, result_range);
@@ -137,7 +135,7 @@ impl TransferFunction<Cfg, IntervalEnv> for IntervalAnalysis {
         let last_op = cfg.blocks()[from].operations().last().unwrap();
         match last_op {
             Operation::Branch { cond, .. } => {
-                let cond_range = *pre_state.get(&cond.id).unwrap_or(&Interval::top(&ctx.1));
+                let cond_range = pre_state.get_or_top(&cond.id, ctx);
                 if cond_range == FALSE_RANGE && is_true_branch {
                     return None;
                 }
@@ -176,6 +174,9 @@ impl Analysis for IntervalAnalysis {
 
 type UnrolledIntervalEnv = UnrollWiden<Map<Identifier, Interval>>;
 type UnrolledIntervalCtx = (usize, MapCtx<Identifier, Interval>);
+
+// TODO: remove boilerplate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UnrolledIntervalAnalysis(pub usize);
 impl TransferFunction<Cfg, UnrolledIntervalEnv> for UnrolledIntervalAnalysis {
     fn operation(
@@ -220,7 +221,7 @@ impl Analysis for UnrolledIntervalAnalysis {
             );
         }
 
-        let mut transfer = TransferLogger::new(unit, UnrolledIntervalAnalysis(0));
+        let mut transfer = TransferLogger::new(unit, UnrolledIntervalAnalysis(2));
         solver.solve(cfg, seed, &ctx, &mut transfer);
         transfer.get_annotations()
     }

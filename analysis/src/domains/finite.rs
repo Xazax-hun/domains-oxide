@@ -28,6 +28,14 @@ pub enum FiniteDomainError {
     NonExistentEdge,
 }
 
+impl std::fmt::Display for FiniteDomainError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
+impl std::error::Error for FiniteDomainError {}
+
 impl<T: Clone + Debug + Eq, const N: usize> FiniteCtx<T, N> {
     /// Similar to [`FiniteCtx::new`], but edges are defined by indices into the first parameter.
     pub fn new_idx(elements: &[T; N], less: &[(usize, usize)]) -> Result<Self, FiniteDomainError> {
@@ -64,15 +72,11 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteCtx<T, N> {
 
         #[cfg(debug_assertions)]
         {
-            if let Some(err) = result.is_lattice() {
-                return Err(err);
-            }
-            if result.smaller_matrix[0] != Finite::<T, N>::top(&result).smaller_than {
+            result.is_lattice()?;
+            if result.smaller_matrix[0] != Finite::top(&result).smaller_than {
                 return Err(FiniteDomainError::TopNotFirst);
             }
-            if *result.smaller_matrix.last().unwrap()
-                != Finite::<T, N>::bottom(&result).smaller_than
-            {
+            if *result.smaller_matrix.last().unwrap() != Finite::bottom(&result).smaller_than {
                 return Err(FiniteDomainError::BottomNotLast);
             }
         }
@@ -113,8 +117,7 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteCtx<T, N> {
     /// * `elements`: List of lattice elements
     /// * `less`: pairs of elements, the first element is smaller than the second.
     pub fn new(elements: &[T; N], less: &[(T, T)]) -> Result<Self, FiniteDomainError> {
-        let mut less_indices = Vec::new();
-        less_indices.reserve(less.len());
+        let mut less_indices = Vec::with_capacity(less.len());
 
         for (x, y) in less {
             let Some(from) = elements.iter().position(|i| i == x)
@@ -177,22 +180,22 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteCtx<T, N> {
             .expect("Missing element!")
     }
 
-    fn is_lattice(&self) -> Option<FiniteDomainError> {
+    fn is_lattice(&self) -> Result<(), FiniteDomainError> {
         for i in 0..N {
             for j in (i + 1)..N {
                 let mut lub = self.smaller_matrix[i].clone();
                 lub.intersect_with(&self.smaller_matrix[j]);
                 if !self.smaller_matrix.iter().any(|r| *r == lub) {
-                    return Some(FiniteDomainError::NoLeastUpperBound(i, j));
+                    return Err(FiniteDomainError::NoLeastUpperBound(i, j));
                 }
                 let mut glb = self.greater_matrix[i].clone();
                 glb.intersect_with(&self.greater_matrix[j]);
                 if !self.greater_matrix.iter().any(|r| *r == glb) {
-                    return Some(FiniteDomainError::NoGreatestLowerBound(i, j));
+                    return Err(FiniteDomainError::NoGreatestLowerBound(i, j));
                 }
             }
         }
-        None
+        Ok(())
     }
 }
 
@@ -201,7 +204,7 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteCtx<T, N> {
 /// algorithms are running on the encoded representation, the result needs
 /// to be decoded. The encoding is really efficient up to 64 elements,
 /// the join operation is cheaper than meet.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Finite<T: Clone + Eq, const N: usize> {
     smaller_than: FixedBitSet,
     phantom: PhantomData<T>,

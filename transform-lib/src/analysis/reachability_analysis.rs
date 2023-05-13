@@ -48,7 +48,7 @@ pub fn collect_operation_kind(
     result
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PastOperations;
 
 impl PastOperations {

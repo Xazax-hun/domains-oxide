@@ -166,8 +166,11 @@ impl JoinSemiLattice for u64 {
 /// efficient implementation by using a bit set lattice by creating
 /// a mapping between the natural numbers and the elements of the
 /// set.
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Default)]
 pub struct PowerSet<T: Eq + Hash>(pub HashSet<T>);
+
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub struct PowerSetTop<T: Eq + Hash>(pub PowerSet<T>);
 
 impl<T: Eq + Hash> Deref for PowerSet<T> {
     type Target = HashSet<T>;
@@ -183,9 +186,6 @@ impl<T: Eq + Hash> DerefMut for PowerSet<T> {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Debug)]
-pub struct PowerSetTop<T: Eq + Hash>(pub PowerSet<T>);
-
 impl<T: Eq + Hash> PartialOrd for PowerSet<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self.is_superset(other), other.is_superset(self)) {
@@ -199,10 +199,7 @@ impl<T: Eq + Hash> PartialOrd for PowerSet<T> {
 
 impl<T: Eq + Hash + Debug> Debug for PowerSet<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let mut elements = self
-            .iter()
-            .map(|x| format!("{x:?}"))
-            .collect::<Vec<String>>();
+        let mut elements: Vec<String> = self.iter().map(|x| format!("{x:?}")).collect();
         elements.sort();
         write!(f, "{{{}}}", elements.join(", "))
     }
@@ -216,7 +213,7 @@ impl<T: Eq + Hash + Debug + Clone> JoinSemiLattice for PowerSet<T> {
     }
 
     fn join(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
-        Self(self.union(other).cloned().collect::<HashSet<T>>())
+        Self(self.union(other).cloned().collect())
     }
 }
 
@@ -229,7 +226,7 @@ impl<T: Eq + Hash + Debug + Clone> Lattice for PowerSet<T> {
     }
 
     fn meet(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
-        Self(self.intersection(other).cloned().collect::<HashSet<T>>())
+        Self(self.intersection(other).cloned().collect())
     }
 }
 
@@ -278,14 +275,8 @@ impl PartialOrd for BitSet {
 
 impl Debug for BitSet {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "{{{}}}",
-            self.ones()
-                .map(|x| x.to_string())
-                .collect::<Vec<String>>()
-                .join(", ")
-        )
+        let elements: Vec<String> = self.ones().map(|x| x.to_string()).collect();
+        write!(f, "{{{}}}", elements.join(", "))
     }
 }
 
