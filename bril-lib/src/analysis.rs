@@ -3,7 +3,7 @@ use std::{collections::HashMap, marker::PhantomData};
 
 use analysis::{
     cfg::OpPos,
-    domains::{JoinSemiLattice, Map, MapCtx, UnrollWiden},
+    domains::{JoinSemiLattice, Map},
     solvers::TransferFunction,
 };
 
@@ -66,23 +66,23 @@ pub struct TransferLogger<'unit, D, Transfer> {
     d: PhantomData<D>,
 }
 
-impl<'unit, D, Transfer> TransferFunction<Cfg, Map<Identifier, D>>
-    for TransferLogger<'unit, D, Transfer>
+impl<'unit, D, EnvD, Transfer> TransferFunction<Cfg, EnvD> for TransferLogger<'unit, D, Transfer>
 where
     D: JoinSemiLattice,
-    Transfer: TransferFunction<Cfg, Map<Identifier, D>>,
+    EnvD: AsRef<Map<Identifier, D>> + JoinSemiLattice,
+    Transfer: TransferFunction<Cfg, EnvD>,
 {
     fn operation(
         &mut self,
         pos: OpPos,
         op: &Operation,
         cfg: &Cfg,
-        ctx: &MapCtx<Identifier, D>,
-        pre_state: &Map<Identifier, D>,
-    ) -> Map<Identifier, D> {
+        ctx: &<EnvD as JoinSemiLattice>::LatticeContext,
+        pre_state: &EnvD,
+    ) -> EnvD {
         let post_state = self.transfer.operation(pos, op, cfg, ctx, pre_state);
-        let changed_values = post_state.changed_values(pre_state);
-        self.annotate(op, &post_state, changed_values, pos);
+        let changed_values = post_state.as_ref().changed_values(pre_state.as_ref());
+        self.annotate(op, post_state.as_ref(), changed_values, pos);
         post_state
     }
 
@@ -91,41 +91,9 @@ where
         from: usize,
         to: usize,
         cfg: &Cfg,
-        ctx: &MapCtx<Identifier, D>,
-        pre_state: &Map<Identifier, D>,
-    ) -> Option<Map<Identifier, D>> {
-        self.transfer.edge(from, to, cfg, ctx, pre_state)
-    }
-}
-
-impl<'unit, D, Transfer> TransferFunction<Cfg, UnrollWiden<Map<Identifier, D>>>
-    for TransferLogger<'unit, D, Transfer>
-where
-    D: JoinSemiLattice,
-    Transfer: TransferFunction<Cfg, UnrollWiden<Map<Identifier, D>>>,
-{
-    fn operation(
-        &mut self,
-        pos: OpPos,
-        op: &Operation,
-        cfg: &Cfg,
-        ctx: &(usize, MapCtx<Identifier, D>),
-        pre_state: &UnrollWiden<Map<Identifier, D>>,
-    ) -> UnrollWiden<Map<Identifier, D>> {
-        let post_state = self.transfer.operation(pos, op, cfg, ctx, pre_state);
-        let changed_values = post_state.changed_values(pre_state);
-        self.annotate(op, &post_state, changed_values, pos);
-        post_state
-    }
-
-    fn edge(
-        &mut self,
-        from: usize,
-        to: usize,
-        cfg: &Cfg,
-        ctx: &(usize, MapCtx<Identifier, D>),
-        pre_state: &UnrollWiden<Map<Identifier, D>>,
-    ) -> Option<UnrollWiden<Map<Identifier, D>>> {
+        ctx: &<EnvD as JoinSemiLattice>::LatticeContext,
+        pre_state: &EnvD,
+    ) -> Option<EnvD> {
         self.transfer.edge(from, to, cfg, ctx, pre_state)
     }
 }

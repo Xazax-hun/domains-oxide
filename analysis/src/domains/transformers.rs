@@ -132,6 +132,12 @@ impl<T: Lattice> Lattice for Option<T> {
 #[derive(Debug, Clone, PartialOrd, PartialEq, Eq)]
 pub struct UnrollWiden<T>(pub T);
 
+impl<T> AsRef<T> for UnrollWiden<T> {
+    fn as_ref(&self) -> &T {
+        &self.0
+    }
+}
+
 impl<T> Deref for UnrollWiden<T> {
     type Target = T;
 
@@ -411,6 +417,12 @@ impl<T: Lattice, const N: usize> Lattice for Array<T, N> {
 /// make sure all keys are populated.
 #[derive(PartialEq, Eq, Clone)]
 pub struct Map<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice>(pub HashMap<K, V>);
+
+impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> AsRef<Map<K, V>> for Map<K, V> {
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
 
 /// Contains all the keys for top value, can leave it empty for
 /// join semi-lattices.
