@@ -1,4 +1,5 @@
 use core::marker::PhantomData;
+use core::array;
 
 use crate::domains::*;
 
@@ -61,8 +62,8 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteCtx<T, N> {
 
         let mut result = Self {
             elements: elements.clone(),
-            smaller_matrix: [(); N].map(|()| FixedBitSet::with_capacity(N)),
-            greater_matrix: [(); N].map(|()| FixedBitSet::with_capacity(N)),
+            smaller_matrix: array::from_fn(|_| FixedBitSet::with_capacity(N)),
+            greater_matrix: array::from_fn(|_| FixedBitSet::with_capacity(N)),
         };
 
         edge_list_to_matrix(&mut result.smaller_matrix, less);

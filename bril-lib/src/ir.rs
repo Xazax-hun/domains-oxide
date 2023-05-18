@@ -401,7 +401,7 @@ pub fn print_operation(pos: OpPos, op: &Operation, unit: &Unit, anns: &Annotatio
             get_name(result),
             result.ty,
             get_name(callee),
-            args.iter().map(|v| get_name(v)).join(" ")
+            args.iter().map(get_name).join(" ")
         )),
         Operation::Call {
             callee,
@@ -411,7 +411,7 @@ pub fn print_operation(pos: OpPos, op: &Operation, unit: &Unit, anns: &Annotatio
         } => printed.push_str(&format!(
             "call {} {};",
             get_name(callee),
-            args.iter().map(|v| get_name(v)).join(" ")
+            args.iter().map(get_name).join(" ")
         )),
         Operation::Print(_, v) => printed.push_str(&format!("print {};", get_name(v))),
         Operation::Nop(_) => printed.push_str("nop;"),

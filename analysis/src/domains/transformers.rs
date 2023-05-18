@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use core::array;
 
 use crate::domains::*;
 use paste::paste;
@@ -358,12 +359,12 @@ impl<T: JoinSemiLattice, const N: usize> JoinSemiLattice for Array<T, N> {
     type LatticeContext = T::LatticeContext;
 
     fn bottom(ctx: &Self::LatticeContext) -> Self {
-        Self([(); N].map(|()| T::bottom(ctx)))
+        Self(array::from_fn(|_| T::bottom(ctx)))
     }
 
     fn join(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
         let mut it = self.iter().zip(other.iter()).map(|(s, o)| s.join(o, ctx));
-        Self([(); N].map(|()| it.next().unwrap()))
+        Self(array::from_fn(|_| it.next().unwrap()))
     }
 
     fn widen(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
@@ -371,18 +372,18 @@ impl<T: JoinSemiLattice, const N: usize> JoinSemiLattice for Array<T, N> {
             .iter()
             .zip(previous.iter())
             .map(|(s, p)| s.widen(p, ctx, iteration));
-        Self([(); N].map(|()| it.next().unwrap()))
+        Self(array::from_fn(|_| it.next().unwrap()))
     }
 }
 
 impl<T: Lattice, const N: usize> Lattice for Array<T, N> {
     fn top(ctx: &Self::LatticeContext) -> Self {
-        Self([(); N].map(|()| T::top(ctx)))
+        Self(array::from_fn(|_| T::top(ctx)))
     }
 
     fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
         let mut it = self.iter().zip(other.iter()).map(|(s, o)| s.meet(o, ctx));
-        Self([(); N].map(|()| it.next().unwrap()))
+        Self(array::from_fn(|_| it.next().unwrap()))
     }
 
     fn narrow(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
@@ -390,7 +391,7 @@ impl<T: Lattice, const N: usize> Lattice for Array<T, N> {
             .iter()
             .zip(previous.iter())
             .map(|(s, p)| s.narrow(p, ctx, iteration));
-        Self([(); N].map(|()| it.next().unwrap()))
+        Self(array::from_fn(|_| it.next().unwrap()))
     }
 }
 
