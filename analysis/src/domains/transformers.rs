@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use core::array;
+use std::collections::HashMap;
 
 use crate::domains::*;
 use paste::paste;

@@ -1,5 +1,5 @@
-use core::marker::PhantomData;
 use core::array;
+use core::marker::PhantomData;
 
 use crate::domains::*;
 
