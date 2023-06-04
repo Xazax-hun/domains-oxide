@@ -8,8 +8,8 @@ use analysis::{
 };
 use utils::Polygon;
 
-use once_cell::sync::Lazy;
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 use crate::{
     ast::{Annotations, Node},
@@ -35,7 +35,8 @@ pub enum Analyses {
     FutureOperations,
 }
 
-static ANALYSES: Lazy<HashMap<Analyses, Box<dyn Analysis>>> = Lazy::new(|| {
+static ANALYSES: OnceLock<HashMap<Analyses, Box<dyn Analysis>>> = OnceLock::new();
+fn init_analyses() -> HashMap<Analyses, Box<dyn Analysis>> {
     let mut m = HashMap::<Analyses, Box<dyn Analysis>>::new();
     m.insert(Analyses::Sign, Box::new(sign_analysis::SignAnalysis));
     m.insert(
@@ -51,10 +52,13 @@ static ANALYSES: Lazy<HashMap<Analyses, Box<dyn Analysis>>> = Lazy::new(|| {
         Box::new(reachability_analysis::FutureOperations),
     );
     m
-});
+}
 
 pub fn get_analysis_results(analysis: Analyses, cfg: &Cfg) -> AnalysisResult {
-    let analysis = ANALYSES.get(&analysis).expect("Unimplemented analysis!");
+    let analysis = ANALYSES
+        .get_or_init(init_analyses)
+        .get(&analysis)
+        .expect("Unimplemented analysis!");
     analysis.analyze(cfg)
 }
 

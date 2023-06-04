@@ -1,4 +1,4 @@
-use once_cell::sync::Lazy;
+use std::sync::OnceLock;
 use std::{collections::HashMap, marker::PhantomData};
 
 use analysis::{
@@ -36,7 +36,8 @@ pub enum Analyses {
     Congruence,
 }
 
-static ANALYSES: Lazy<HashMap<Analyses, Box<dyn Analysis>>> = Lazy::new(|| {
+static ANALYSES: OnceLock<HashMap<Analyses, Box<dyn Analysis>>> = OnceLock::new();
+fn init_analyses() -> HashMap<Analyses, Box<dyn Analysis>> {
     let mut m = HashMap::<Analyses, Box<dyn Analysis>>::new();
     m.insert(Analyses::Sign, Box::new(sign_analysis::SignAnalysis));
     m.insert(
@@ -52,10 +53,13 @@ static ANALYSES: Lazy<HashMap<Analyses, Box<dyn Analysis>>> = Lazy::new(|| {
         Box::new(congruence_analysis::CongruenceAnalysis),
     );
     m
-});
+}
 
 pub fn get_analysis_results(analysis: Analyses, unit: &Unit) -> AnnotationMap {
-    let analysis = ANALYSES.get(&analysis).expect("Unimplemented analysis!");
+    let analysis = ANALYSES
+        .get_or_init(init_analyses)
+        .get(&analysis)
+        .expect("Unimplemented analysis!");
     analysis.analyze_all(unit)
 }
 

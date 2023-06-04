@@ -1,7 +1,7 @@
 #![allow(clippy::explicit_auto_deref)] // False positive with LAT_CTX
 
-use once_cell::sync::Lazy;
 use std::collections::HashSet;
+use std::sync::OnceLock;
 
 use analysis::cfg::OpPos;
 use analysis::domains::{JoinSemiLattice, PowerSet, PowerSetTop};
@@ -24,13 +24,14 @@ pub enum OpKind {
 
 type OperationKindsDomain = PowerSet<OpKind>;
 
-static LAT_CTX: Lazy<PowerSetTop<OpKind>> = Lazy::new(|| {
+static LAT_CTX: OnceLock<PowerSetTop<OpKind>> = OnceLock::new();
+fn init_lat_ctx() -> PowerSetTop<OpKind> {
     PowerSetTop(PowerSet::<OpKind>(HashSet::from([
         OpKind::Init,
         OpKind::Translation,
         OpKind::Rotation,
     ])))
-});
+}
 
 pub fn collect_operation_kind(
     _pos: OpPos,
@@ -54,11 +55,12 @@ pub struct PastOperations;
 impl PastOperations {
     pub fn get_results(cfg: &Cfg) -> Vec<OperationKindsDomain> {
         let solver = SolveMonotone::default();
-        let seed = OperationKindsDomain::bottom(&LAT_CTX);
+        let lat_ctx = LAT_CTX.get_or_init(init_lat_ctx);
+        let seed = OperationKindsDomain::bottom(lat_ctx);
         solver.solve(
             cfg,
             seed,
-            &LAT_CTX,
+            lat_ctx,
             &mut OpTransfer::new(collect_operation_kind),
         )
     }
@@ -67,10 +69,11 @@ impl PastOperations {
 impl Analysis for PastOperations {
     fn analyze(&self, cfg: &Cfg) -> AnalysisResult {
         let results = Self::get_results(cfg);
+        let lat_ctx = LAT_CTX.get_or_init(init_lat_ctx);
         AnalysisResult {
             annotations: annotations_from_forward_analysis_results(
                 cfg,
-                &*LAT_CTX,
+                lat_ctx,
                 &mut OpTransfer::new(collect_operation_kind),
                 &results,
             ),
@@ -90,11 +93,12 @@ impl FutureOperations {
 
     fn get_results_impl(cfg: &Cfg) -> Vec<OperationKindsDomain> {
         let solver = SolveMonotone::default();
-        let seed = OperationKindsDomain::bottom(&LAT_CTX);
+        let lat_ctx = LAT_CTX.get_or_init(init_lat_ctx);
+        let seed = OperationKindsDomain::bottom(lat_ctx);
         solver.solve(
             cfg,
             seed,
-            &LAT_CTX,
+            lat_ctx,
             &mut OpTransfer::new(collect_operation_kind),
         )
     }
@@ -104,10 +108,11 @@ impl Analysis for FutureOperations {
     fn analyze(&self, cfg: &Cfg) -> AnalysisResult {
         let reversed = reverse(cfg);
         let results = Self::get_results_impl(&reversed);
+        let lat_ctx = LAT_CTX.get_or_init(init_lat_ctx);
         AnalysisResult {
             annotations: annotations_from_backward_analysis_results(
                 &reversed,
-                &*LAT_CTX,
+                lat_ctx,
                 &mut OpTransfer::new(collect_operation_kind),
                 &results,
             ),
