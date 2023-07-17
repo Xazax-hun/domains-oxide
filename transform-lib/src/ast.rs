@@ -1,5 +1,6 @@
 use analysis::cfg::indent;
 use core::fmt::Write;
+use itertools::Itertools;
 use std::collections::HashMap;
 use utils::Vec2;
 
@@ -221,11 +222,10 @@ fn print_impl(ind: u32, n: Node, ctx: &ASTContext, ann: &Annotations) -> String 
             .unwrap();
         }
         NodeRef::Sequence(seq) => {
-            let v: Vec<_> = seq
+            let mut v = seq
                 .nodes
                 .iter()
-                .map(|n: &Node| print_impl(ind, *n, ctx, ann))
-                .collect();
+                .map(|n: &Node| print_impl(ind, *n, ctx, ann));
             result.push_str(&v.join(";\n"));
         }
         NodeRef::Branch(branch) => {

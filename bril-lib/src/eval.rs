@@ -195,7 +195,7 @@ impl<'u> Interpreter<'u> {
                             token.error(self.diag, &format!("Function '{}' not found.", self.unit.identifiers.get_name(callee.id)));
                             return None;
                         };
-                        let mut vals = Vec::new();
+                        let mut vals = Vec::with_capacity(args.len());
                         for arg in args {
                             vals.push(self.env.lookup(arg.id, self.diag, self.unit)?);
                         }

@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::usize;
 
 use super::cfg::*;
@@ -103,7 +102,7 @@ fn test_cfg_print() {
     let mut cfg = TestCfg::new(5);
     cfg.add_edges(&[(0, 1), (0, 2), (1, 4), (2, 3), (3, 4)]);
 
-    let printed = print(None, &cfg, |_, _| "".to_owned());
+    let printed = print(None, &cfg, |_, _| String::new());
     let expected = r#"digraph CFG {
   Node_0[label=""]
   Node_1[label=""]
@@ -141,7 +140,7 @@ fn test_cfg_reverse() {
     //   \   /
     //     4
     let reversed = reverse(&cfg);
-    let printed = print(None, &reversed, |_, _| "".to_owned());
+    let printed = print(None, &reversed, |_, _| String::new());
     let expected = r#"digraph CFG {
   Node_0[label=""]
   Node_1[label=""]
@@ -316,11 +315,9 @@ fn basic_solver_visit_nodes() {
             dom
         }),
     );
+    visited.sort_unstable();
 
     assert_eq!(result.len(), cfg.blocks().len());
     assert_eq!(visited.len(), 5);
-    assert_eq!(
-        visited.iter().collect::<HashSet<_>>(),
-        vec![0, 1, 2, 3, 4].iter().collect::<HashSet<_>>()
-    );
+    assert_eq!(&visited, &[0, 1, 2, 3, 4]);
 }

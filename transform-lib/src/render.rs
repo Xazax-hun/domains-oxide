@@ -246,9 +246,9 @@ impl<T: JoinSemiLattice + RenderableDomain> RenderableDomain for Vec2Domain<T> {
         let ys = self.y.render();
 
         assert!(xs.len() == ys.len());
-        let mut polys = Vec::new();
+        let mut polys = Vec::with_capacity(xs.len());
         for i in 0..xs.len() {
-            polys.push(Vec::new());
+            polys.push(Vec::with_capacity(xs[i].len() * ys[i].len()));
             let mut first = true;
             for x in &xs[i] {
                 let mut y_coords = ys[i].clone();

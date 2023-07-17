@@ -465,7 +465,7 @@ impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> DerefMut for Map<K, V> {
 impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> Debug for Map<K, V> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let mut elements: Vec<String> = self.iter().map(|x| format!("{x:?}")).collect();
-        elements.sort();
+        elements.sort_unstable();
         write!(f, "Map({})", elements.join(", "))
     }
 }

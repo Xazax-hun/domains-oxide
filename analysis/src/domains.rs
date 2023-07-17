@@ -200,7 +200,7 @@ impl<T: Eq + Hash> PartialOrd for PowerSet<T> {
 impl<T: Eq + Hash + Debug> Debug for PowerSet<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let mut elements: Vec<String> = self.iter().map(|x| format!("{x:?}")).collect();
-        elements.sort();
+        elements.sort_unstable();
         write!(f, "{{{}}}", elements.join(", "))
     }
 }

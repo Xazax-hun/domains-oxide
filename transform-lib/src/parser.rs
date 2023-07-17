@@ -221,9 +221,9 @@ impl<'src> Parser<'src> {
             return Some(self.advance());
         }
         let msg = if s.is_empty() {
-            format!("'{tok_val}' expected.")
+            std::borrow::Cow::from(format!("'{tok_val}' expected."))
         } else {
-            s.to_owned()
+            std::borrow::Cow::from(s)
         };
         self.error(self.peek(), &msg);
         None

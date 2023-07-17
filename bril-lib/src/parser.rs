@@ -347,9 +347,9 @@ impl<'src> Parser<'src> {
             return Some(self.advance());
         }
         let msg = if s.is_empty() {
-            format!("'{tok_val}' expected.")
+            std::borrow::Cow::from(format!("'{tok_val}' expected."))
         } else {
-            s.to_owned()
+            std::borrow::Cow::from(s)
         };
         self.peek().error(self.diag, &msg);
         None
@@ -592,7 +592,7 @@ impl<'unit, 'src> Sema<'unit, 'src> {
             return None;
         }
 
-        let mut elaborated_args = Vec::new();
+        let mut elaborated_args = Vec::with_capacity(args.len());
         for arg in args {
             elaborated_args.push(syms.get(
                 self.diag,
@@ -698,8 +698,9 @@ impl<'unit, 'src> Sema<'unit, 'src> {
         // Processing the Cfg in RPO order ensures that we see definitions of the
         // values before their use.
         while let Some(block_id) = w.pop() {
-            let mut elaborated_ops = Vec::new();
-            for op in cfg.remove_ops(block_id) {
+            let ops = cfg.remove_ops(block_id);
+            let mut elaborated_ops = Vec::with_capacity(ops.len());
+            for op in ops {
                 elaborated_ops.push(self.analyze_op(op, &mut symbols, cfg.get_type(self.unit))?);
             }
             let last_op = elaborated_ops.last()?;

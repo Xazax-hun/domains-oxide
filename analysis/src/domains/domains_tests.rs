@@ -162,9 +162,9 @@ fn vec2_domain_tests() {
         let all_signs = [
             Bottom, Top, Negative, Zero, Positive, NonNeg, NonZero, NonPos,
         ];
-        let mut all = Vec::new();
-        for (x, y) in all_signs.iter().cartesian_product(all_signs) {
-            all.push(SignVec { x: *x, y });
+        let mut all = Vec::with_capacity(all_signs.len().pow(2));
+        for (x, y) in all_signs.into_iter().cartesian_product(all_signs) {
+            all.push(SignVec { x, y });
         }
         finite_domain_properties(&all, &());
 
@@ -441,12 +441,9 @@ fn bitset_domain_tests() {
     assert_eq!(small_set.meet(&small_set2, &ctx), intersection);
     assert_eq!(small_set2.meet(&small_set, &ctx), intersection);
 
-    assert_eq!(format!("{bottom:?}"), "{}".to_owned());
-    assert_eq!(format!("{small_set:?}"), "{1, 2, 3}".to_owned());
-    assert_eq!(
-        format!("{:?}", BitSet::top(&ctx)),
-        "{0, 1, 2, 3, 4}".to_owned()
-    );
+    assert_eq!(&format!("{bottom:?}"), "{}");
+    assert_eq!(&format!("{small_set:?}"), "{1, 2, 3}");
+    assert_eq!(&format!("{:?}", BitSet::top(&ctx)), "{0, 1, 2, 3, 4}");
 
     {
         let ctx = BitSetTop(2);
@@ -533,9 +530,9 @@ fn array_domain_test() {
         let all_signs = [
             Bottom, Top, Negative, Zero, Positive, NonNeg, NonZero, NonPos,
         ];
-        let mut all = Vec::new();
-        for (x, y) in all_signs.iter().cartesian_product(all_signs) {
-            all.push(Array([*x, y]));
+        let mut all = Vec::with_capacity(all_signs.len().pow(2));
+        for (x, y) in all_signs.into_iter().cartesian_product(all_signs) {
+            all.push(Array([x, y]));
         }
         finite_domain_properties(&all, &());
     }
@@ -571,9 +568,9 @@ fn product_domain_test() {
         let all_signs = [
             Bottom, Top, Negative, Zero, Positive, NonNeg, NonZero, NonPos,
         ];
-        let mut all = Vec::new();
-        for (x, y) in all_signs.iter().cartesian_product(all_signs) {
-            all.push(Prod2(*x, y));
+        let mut all = Vec::with_capacity(all_signs.len().pow(2));
+        for (x, y) in all_signs.into_iter().cartesian_product(all_signs) {
+            all.push(Prod2(x, y));
         }
         finite_domain_properties(&all, &((), ()));
     }

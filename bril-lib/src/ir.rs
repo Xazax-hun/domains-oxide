@@ -347,7 +347,7 @@ pub fn print_operation(pos: OpPos, op: &Operation, unit: &Unit, anns: &Annotatio
     let mut printed = String::new();
     if let Some(mut ann_list) = anns.pre.get(&pos).cloned() {
         if !ann_list.is_empty() {
-            ann_list.sort();
+            ann_list.sort_unstable();
             printed.push_str(&format!("/* {} */ ", ann_list.join(", ")));
         }
     }
@@ -420,7 +420,7 @@ pub fn print_operation(pos: OpPos, op: &Operation, unit: &Unit, anns: &Annotatio
     };
     if let Some(mut ann_list) = anns.post.get(&pos).cloned() {
         if !ann_list.is_empty() {
-            ann_list.sort();
+            ann_list.sort_unstable();
             printed.push_str(&format!(" /* {} */", ann_list.join(", ")));
         }
     }

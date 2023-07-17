@@ -3,6 +3,7 @@ use std::collections::HashSet;
 
 use analysis::cfg::CfgBlock;
 use analysis::cfg::ControlFlowGraph;
+use itertools::Itertools;
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use utils::Vec2;
@@ -136,10 +137,7 @@ pub fn annotate_with_walks(walks: &[Walk]) -> Annotations {
     fn print_set(v: &[Vec2]) -> String {
         let mut result = "{".to_owned();
 
-        let positions: Vec<String> = v
-            .iter()
-            .map(|v| format!("{{x: {}, y: {}}}", v.x, v.y))
-            .collect();
+        let mut positions = v.iter().map(|v| format!("{{x: {}, y: {}}}", v.x, v.y));
 
         result.push_str(&positions.join(", "));
         result.push('}');
