@@ -398,7 +398,7 @@ impl<T: Lattice, const N: usize> Lattice for Array<T, N> {
 /// The map lattice is often used to encode information about multiple
 /// elements of the program state like variables. In those cases the key
 /// would be the unique resolutions of the variables (e.g., fully qualified name),
-/// and the value would be the tracked state for each variable (e.g., [`IntervalDomain`]).
+/// and the value would be the tracked state for each variable (e.g., [`Interval`]).
 ///
 /// Warning: M1 without K compares less than M2 with K => Bottom. if this is undesired,
 /// make sure all keys are populated.

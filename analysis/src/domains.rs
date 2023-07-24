@@ -231,7 +231,7 @@ impl<T: Eq + Hash + Debug + Clone> Lattice for PowerSet<T> {
 }
 
 /// An efficient implementation of a power set lattice. Use this over
-/// the [`PowerSetDomain`] whenever possible.
+/// the [`PowerSet`] whenever possible.
 #[derive(PartialEq, Eq, Clone)]
 pub struct BitSet(pub FixedBitSet);
 
