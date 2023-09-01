@@ -240,8 +240,7 @@ impl<'src> Parser<'src> {
         }
 
         if let Some(const_tok) = self.try_consume(Const) {
-            let Some(tok) = self.match_tokens(&[True, False, Integer(0)])
-            else {
+            let Some(tok) = self.match_tokens(&[True, False, Integer(0)]) else {
                 const_tok.error(self.diag, "Integer or boolean constant expected.");
                 return None;
             };

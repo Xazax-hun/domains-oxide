@@ -14,8 +14,7 @@ pub fn parse_string(source: &str) -> Result<Unit, String> {
         return Err(diag.out_buffer().unwrap() + &diag.err_buffer().unwrap());
     }
     let parser = Parser::new(tokens, &mut diag);
-    let Some(unit) = parser.parse()
-    else {
+    let Some(unit) = parser.parse() else {
         return Err(diag.out_buffer().unwrap() + &diag.err_buffer().unwrap());
     };
     Ok(unit)

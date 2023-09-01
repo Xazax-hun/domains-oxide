@@ -218,11 +218,10 @@ impl Mul for Sign {
 impl Div for Sign {
     type Output = Self;
     fn div(self, rhs: Self) -> Self::Output {
-        use Sign::*;
         #[allow(clippy::suspicious_arithmetic_impl)]
         match self * rhs {
-            Positive => NonNeg,
-            Negative => NonPos,
+            Sign::Positive => Sign::NonNeg,
+            Sign::Negative => Sign::NonPos,
             res => res,
         }
     }

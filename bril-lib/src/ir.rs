@@ -92,30 +92,32 @@ pub enum Operation {
 impl Operation {
     pub fn get_token(&self) -> Token {
         // TODO: hoist token into a struct.
-        use Operation::*;
+        use Operation as O;
         match self {
-            BinaryOp { token, .. }
-            | UnaryOp { token, .. }
-            | Branch { token, .. }
-            | Call { token, .. }
-            | Jump(token, _)
-            | Ret(token, _)
-            | Print(token, _)
-            | Nop(token)
-            | Const(token, _) => *token,
+            O::BinaryOp { token, .. }
+            | O::UnaryOp { token, .. }
+            | O::Branch { token, .. }
+            | O::Call { token, .. }
+            | O::Jump(token, _)
+            | O::Ret(token, _)
+            | O::Print(token, _)
+            | O::Nop(token)
+            | O::Const(token, _) => *token,
         }
     }
 
     pub fn is_terminator(&self) -> bool {
-        use Operation::*;
-        matches!(self, Branch { .. } | Jump(_, _) | Ret(_, _))
+        use Operation as O;
+        matches!(self, O::Branch { .. } | O::Jump(_, _) | O::Ret(_, _))
     }
 
     pub fn get_result(&self) -> Option<Variable> {
-        use Operation::*;
+        use Operation as O;
         match self {
-            BinaryOp { result, .. } | UnaryOp { result, .. } | Const(_, result) => Some(*result),
-            Call { result, .. } => *result,
+            O::BinaryOp { result, .. } | O::UnaryOp { result, .. } | O::Const(_, result) => {
+                Some(*result)
+            }
+            O::Call { result, .. } => *result,
             _ => None,
         }
     }
@@ -231,16 +233,14 @@ impl Cfg {
 
     pub fn get_function(&self) -> Identifier {
         let tok = self.get_function_token();
-        let TokenValue::Global(id) = tok.value
-        else {
+        let TokenValue::Global(id) = tok.value else {
             panic!("Unexpected function name.");
         };
         id
     }
 
     pub fn get_type<'ctx>(&self, unit: &'ctx Unit) -> &'ctx FunctionType {
-        let Type::Fn(id) = self.ty
-        else {
+        let Type::Fn(id) = self.ty else {
             panic!("Function type expected.");
         };
         &unit.function_types[id]

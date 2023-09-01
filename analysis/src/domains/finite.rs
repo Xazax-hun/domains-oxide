@@ -121,12 +121,10 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteCtx<T, N> {
         let mut less_indices = Vec::with_capacity(less.len());
 
         for (x, y) in less {
-            let Some(from) = elements.iter().position(|i| i == x)
-            else {
+            let Some(from) = elements.iter().position(|i| i == x) else {
                 return Err(FiniteDomainError::NonExistentEdge);
             };
-            let Some(to) = elements.iter().position(|i| i == y)
-            else {
+            let Some(to) = elements.iter().position(|i| i == y) else {
                 return Err(FiniteDomainError::NonExistentEdge);
             };
 

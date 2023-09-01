@@ -90,8 +90,7 @@ impl<'u> Interpreter<'u> {
     }
 
     pub fn eval_main(&mut self, args: &[Value]) -> Option<Value> {
-        let Some(func) = self.unit.identifiers.lookup("@main")
-        else {
+        let Some(func) = self.unit.identifiers.lookup("@main") else {
             self.diag.err_ln("'@main' function not found.");
             return None;
         };
@@ -190,9 +189,14 @@ impl<'u> Interpreter<'u> {
                         args,
                         ..
                     } => {
-                        let Some(cfg) = self.unit.get_function(callee.id)
-                        else {
-                            token.error(self.diag, &format!("Function '{}' not found.", self.unit.identifiers.get_name(callee.id)));
+                        let Some(cfg) = self.unit.get_function(callee.id) else {
+                            token.error(
+                                self.diag,
+                                &format!(
+                                    "Function '{}' not found.",
+                                    self.unit.identifiers.get_name(callee.id)
+                                ),
+                            );
                             return None;
                         };
                         let mut vals = Vec::with_capacity(args.len());
@@ -205,8 +209,7 @@ impl<'u> Interpreter<'u> {
                         }
                         let returned = sub_interp.eval_func(cfg);
                         if let Some(res) = result {
-                            let Some(returned_unwrapped) = returned
-                            else {
+                            let Some(returned_unwrapped) = returned else {
                                 token.error(self.diag, "Function failed to return a value.");
                                 return None;
                             };

@@ -11,13 +11,11 @@ fn eval_string(source: &str, args: &[Value]) -> Result<(Value, String), String> 
         return Err(diag.out_buffer().unwrap() + &diag.err_buffer().unwrap());
     }
     let parser = Parser::new(tokens, &mut diag);
-    let Some(unit) = parser.parse()
-    else {
+    let Some(unit) = parser.parse() else {
         return Err(diag.out_buffer().unwrap() + &diag.err_buffer().unwrap());
     };
     let mut interp = Interpreter::new(&unit, &mut diag);
-    let Some(result) = interp.eval_main(args)
-    else {
+    let Some(result) = interp.eval_main(args) else {
         return Err(diag.out_buffer().unwrap() + &diag.err_buffer().unwrap());
     };
     Ok((result, diag.out_buffer().unwrap()))
