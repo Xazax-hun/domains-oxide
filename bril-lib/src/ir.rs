@@ -438,7 +438,7 @@ pub fn print_cfg_dot(cfg: &Cfg, unit: &Unit) -> String {
 
 fn get_block_name<'u>(unit: &'u Unit, cfg: &Cfg, block_id: usize) -> Option<&'u str> {
     let block = &cfg.blocks()[block_id];
-    for pred_id in block.predecessors() {
+    if let Some(pred_id) = block.predecessors().iter().next() {
         let pred = &cfg.blocks()[*pred_id];
         let terminator = pred.operations().last().unwrap();
         match terminator {
