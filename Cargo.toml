@@ -12,3 +12,6 @@ members = [
 exclude = [
   "transform-parser-fuzz"
 ]
+
+[patch.crates-io]
+number-theory = { git = 'https://github.com/JASory/ENT.git' }
