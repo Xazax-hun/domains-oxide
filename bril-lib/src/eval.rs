@@ -17,7 +17,7 @@ pub enum Value {
 }
 
 impl Display for Value {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Value::I(i) => write!(f, "{i}"),
             Value::B(b) => write!(f, "{b}"),
@@ -74,14 +74,14 @@ impl Environment {
     }
 }
 
-pub struct Interpreter<'u> {
-    unit: &'u Unit,
-    diag: &'u mut DiagnosticEmitter,
+pub struct Interpreter<'unit> {
+    unit: &'unit Unit,
+    diag: &'unit mut DiagnosticEmitter,
     env: Environment,
 }
 
-impl<'u> Interpreter<'u> {
-    pub fn new(unit: &'u Unit, diag: &'u mut DiagnosticEmitter) -> Self {
+impl<'unit> Interpreter<'unit> {
+    pub fn new(unit: &'unit Unit, diag: &'unit mut DiagnosticEmitter) -> Self {
         Self {
             unit,
             diag,

@@ -1,4 +1,5 @@
-use std::{cmp::Ordering, collections::HashSet};
+use core::cmp::Ordering;
+use std::collections::HashSet;
 
 use analysis::{
     cfg::{CfgBlock, ControlFlowGraph, OpPos},

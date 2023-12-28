@@ -157,33 +157,33 @@ impl<T: JoinSemiLattice> JoinSemiLattice for UnrollWiden<T> {
     type LatticeContext = (usize, T::LatticeContext);
 
     fn bottom(ctx: &Self::LatticeContext) -> Self {
-        UnrollWiden(T::bottom(&ctx.1))
+        Self(T::bottom(&ctx.1))
     }
 
     fn join(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
-        UnrollWiden(self.0.join(&other.0, &ctx.1))
+        Self(self.0.join(&other.0, &ctx.1))
     }
 
     fn widen(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
         if iteration < ctx.0 {
             self.clone()
         } else {
-            UnrollWiden(self.0.widen(&previous.0, &ctx.1, iteration))
+            Self(self.0.widen(&previous.0, &ctx.1, iteration))
         }
     }
 }
 
 impl<T: Lattice> Lattice for UnrollWiden<T> {
     fn top(ctx: &Self::LatticeContext) -> Self {
-        UnrollWiden(T::top(&ctx.1))
+        Self(T::top(&ctx.1))
     }
 
     fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
-        UnrollWiden(self.0.meet(&other.0, &ctx.1))
+        Self(self.0.meet(&other.0, &ctx.1))
     }
 
     fn narrow(&self, previous: &Self, ctx: &Self::LatticeContext, iteration: usize) -> Self {
-        UnrollWiden(self.0.narrow(previous, &ctx.1, iteration))
+        Self(self.0.narrow(previous, &ctx.1, iteration))
     }
 }
 

@@ -111,15 +111,15 @@ pub trait Lattice: JoinSemiLattice {
 impl JoinSemiLattice for () {
     type LatticeContext = ();
 
-    fn bottom(_: &Self::LatticeContext) -> Self {}
+    fn bottom(&(): &Self::LatticeContext) -> Self {}
 
-    fn join(&self, _: &Self, _: &Self::LatticeContext) -> Self {}
+    fn join(&self, &(): &Self, &(): &Self::LatticeContext) -> Self {}
 }
 
 impl Lattice for () {
-    fn top(_: &Self::LatticeContext) -> Self {}
+    fn top(&(): &Self::LatticeContext) -> Self {}
 
-    fn meet(&self, _: &Self, _: &Self::LatticeContext) -> Self {}
+    fn meet(&self, &(): &Self, &(): &Self::LatticeContext) -> Self {}
 }
 
 /// Bool is a lattice, where false is bottom and true is top,

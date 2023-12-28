@@ -301,22 +301,22 @@ impl Sign {
 impl JoinSemiLattice for Sign {
     type LatticeContext = ();
 
-    fn bottom(_: &Self::LatticeContext) -> Self {
+    fn bottom(&(): &Self::LatticeContext) -> Self {
         Sign::Bottom
     }
 
-    fn join(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
+    fn join(&self, other: &Self, &(): &Self::LatticeContext) -> Self {
         use sign_tables::*;
         JOIN[index_of(*self)][index_of(*other)]
     }
 }
 
 impl Lattice for Sign {
-    fn top(_: &Self::LatticeContext) -> Self {
+    fn top(&(): &Self::LatticeContext) -> Self {
         Sign::Top
     }
 
-    fn meet(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
+    fn meet(&self, other: &Self, &(): &Self::LatticeContext) -> Self {
         use sign_tables::*;
         MEET[index_of(*self)][index_of(*other)]
     }
@@ -357,14 +357,10 @@ impl Interval {
     }
 
     pub fn singleton(&self) -> Option<i64> {
-        if self.min == self.max {
-            Some(self.min)
-        } else {
-            None
-        }
+        (self.min == self.max).then_some(self.min)
     }
 
-    pub fn logical_and(self, other: Interval) -> Self {
+    pub fn logical_and(self, other: Self) -> Self {
         match (self.singleton(), other.singleton()) {
             (Some(0), _) | (_, Some(0)) => FALSE_RANGE,
             (Some(1), Some(1)) => TRUE_RANGE,
@@ -372,7 +368,7 @@ impl Interval {
         }
     }
 
-    pub fn logical_or(self, other: Interval) -> Self {
+    pub fn logical_or(self, other: Self) -> Self {
         match (self.singleton(), other.singleton()) {
             (Some(1), _) | (_, Some(1)) => TRUE_RANGE,
             (Some(0), Some(0)) => FALSE_RANGE,
@@ -388,8 +384,8 @@ impl Interval {
         }
     }
 
-    pub fn strict_cmp(self, other: Interval) -> Option<Ordering> {
-        if self == Interval::bottom(&()) || other == Interval::bottom(&()) {
+    pub fn strict_cmp(self, other: Self) -> Option<Ordering> {
+        if self == Self::bottom(&()) || other == Self::bottom(&()) {
             return None;
         }
 
@@ -407,8 +403,8 @@ impl Interval {
         }
     }
 
-    pub fn weak_cmp(self, other: Interval) -> Option<Ordering> {
-        if self == Interval::bottom(&()) || other == Interval::bottom(&()) {
+    pub fn weak_cmp(self, other: Self) -> Option<Ordering> {
+        if self == Self::bottom(&()) || other == Self::bottom(&()) {
             return None;
         }
 
@@ -426,7 +422,7 @@ impl Interval {
         }
     }
 
-    pub fn equals(self, other: Interval) -> Interval {
+    pub fn equals(self, other: Self) -> Self {
         match self.strict_cmp(other) {
             Some(Ordering::Less | Ordering::Greater) => FALSE_RANGE,
             Some(Ordering::Equal) => TRUE_RANGE,
@@ -436,8 +432,8 @@ impl Interval {
 
     /// Returns a subinterval for the inputs where the equality may hold
     /// (and cannot hold outside).
-    pub fn may_equal_when(self, other: Interval) -> Interval {
-        let bot = Interval::bottom(&());
+    pub fn may_equal_when(self, other: Self) -> Self {
+        let bot = Self::bottom(&());
         if self == bot || other == bot {
             return bot;
         }
@@ -452,8 +448,8 @@ impl Interval {
 
     /// Returns a pair of subintervals for the inputs where the less then relation may
     /// hold (and cannot hold outside).
-    pub fn maybe_less_when(self, other: Interval) -> (Interval, Interval) {
-        let bot = Interval::bottom(&());
+    pub fn maybe_less_when(self, other: Self) -> (Self, Self) {
+        let bot = Self::bottom(&());
         if self == bot || other == bot || self.min > other.max {
             return (bot, bot);
         }
@@ -473,8 +469,8 @@ impl Interval {
 
     /// Returns a pair of subintervals for the inputs where the less then or equal
     /// relation may hold (and cannot hold outside).
-    pub fn maybe_le_when(self, other: Interval) -> (Interval, Interval) {
-        let bot = Interval::bottom(&());
+    pub fn maybe_le_when(self, other: Self) -> (Self, Self) {
+        let bot = Self::bottom(&());
         if self == bot || other == bot || self.min > other.max {
             return (bot, bot);
         }
@@ -492,9 +488,9 @@ impl Interval {
         )
     }
 
-    fn normalize(self) -> Interval {
+    fn normalize(self) -> Self {
         if self.min > self.max {
-            return Interval::bottom(&());
+            return Self::bottom(&());
         }
         self
     }
@@ -509,16 +505,16 @@ impl From<i64> for Interval {
 impl From<Sign> for Interval {
     fn from(value: Sign) -> Self {
         match value {
-            Sign::Top | Sign::NonZero => Interval::top(&()),
-            Sign::Bottom => Interval::bottom(&()),
-            Sign::Zero => Interval::from(0),
-            Sign::Positive => Interval { min: 1, max: INF },
-            Sign::Negative => Interval {
+            Sign::Top | Sign::NonZero => Self::top(&()),
+            Sign::Bottom => Self::bottom(&()),
+            Sign::Zero => Self::from(0),
+            Sign::Positive => Self { min: 1, max: INF },
+            Sign::Negative => Self {
                 min: NEG_INF,
                 max: -1,
             },
-            Sign::NonNeg => Interval { min: 0, max: INF },
-            Sign::NonPos => Interval {
+            Sign::NonNeg => Self { min: 0, max: INF },
+            Sign::NonPos => Self {
                 min: NEG_INF,
                 max: 0,
             },
@@ -556,14 +552,14 @@ impl PartialOrd for Interval {
 impl JoinSemiLattice for Interval {
     type LatticeContext = ();
 
-    fn bottom(_: &Self::LatticeContext) -> Self {
+    fn bottom(&(): &Self::LatticeContext) -> Self {
         Self {
             min: INF,
             max: NEG_INF,
         }
     }
 
-    fn join(&self, other: &Self, _ctx: &Self::LatticeContext) -> Self {
+    fn join(&self, other: &Self, &(): &Self::LatticeContext) -> Self {
         Self {
             min: self.min.min(other.min),
             max: self.max.max(other.max),
@@ -571,8 +567,8 @@ impl JoinSemiLattice for Interval {
     }
 
     /// Extrapolate unstable bounds to infinity.
-    fn widen(&self, prev: &Self, ctx: &Self::LatticeContext, _: usize) -> Self {
-        if *prev == Self::bottom(ctx) {
+    fn widen(&self, prev: &Self, &(): &Self::LatticeContext, _: usize) -> Self {
+        if *prev == Self::bottom(&()) {
             return *self;
         }
         Self {
@@ -587,31 +583,31 @@ impl JoinSemiLattice for Interval {
 }
 
 impl Lattice for Interval {
-    fn top(_: &Self::LatticeContext) -> Self {
+    fn top(&(): &Self::LatticeContext) -> Self {
         Self {
             min: NEG_INF,
             max: INF,
         }
     }
 
-    fn meet(&self, other: &Self, ctx: &Self::LatticeContext) -> Self {
-        let result = Interval {
+    fn meet(&self, other: &Self, &(): &Self::LatticeContext) -> Self {
+        let result = Self {
             min: self.min.max(other.min),
             max: self.max.min(other.max),
         };
 
         // We only want one canonical representation for bottom.
         if result.min > result.max {
-            Self::bottom(ctx)
+            Self::bottom(&())
         } else {
             result
         }
     }
 
     /// Improve infinite bounds.
-    fn narrow(&self, prev: &Self, ctx: &Self::LatticeContext, _: usize) -> Self {
-        if *prev == Self::bottom(ctx) || *self == Self::bottom(ctx) {
-            return Self::bottom(ctx);
+    fn narrow(&self, prev: &Self, &(): &Self::LatticeContext, _: usize) -> Self {
+        if *prev == Self::bottom(&()) || *self == Self::bottom(&()) {
+            return Self::bottom(&());
         }
         Self {
             min: if prev.min == NEG_INF {
@@ -627,7 +623,7 @@ impl Lattice for Interval {
 impl Add for Interval {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
-        let bot = Interval::bottom(&());
+        let bot = Self::bottom(&());
         if self == bot || rhs == bot {
             return bot;
         }
@@ -649,8 +645,8 @@ impl Add for Interval {
 impl Neg for Interval {
     type Output = Self;
     fn neg(self) -> Self {
-        if self == Interval::bottom(&()) {
-            return Interval::bottom(&());
+        if self == Self::bottom(&()) {
+            return self;
         }
         Self {
             min: if self.max == INF { NEG_INF } else { -self.max },
@@ -669,7 +665,7 @@ impl Sub for Interval {
 impl Mul for Interval {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
-        let bot = Interval::bottom(&());
+        let bot = Self::bottom(&());
         if self == bot || rhs == bot {
             return bot;
         }
@@ -679,7 +675,7 @@ impl Mul for Interval {
             self.max.saturating_mul(rhs.min),
             self.max.saturating_mul(rhs.max),
         ];
-        Interval {
+        Self {
             min: *candidates.iter().min().unwrap(),
             max: *candidates.iter().max().unwrap(),
         }
@@ -690,20 +686,20 @@ impl Rem for Interval {
     type Output = Self;
 
     fn rem(self, rhs: Self) -> Self::Output {
-        let bot = Interval::bottom(&());
-        if self == bot || rhs == bot || rhs == Interval::from(0) {
+        let bot = Self::bottom(&());
+        if self == bot || rhs == bot || rhs == Self::from(0) {
             return bot;
         }
         if let (Some(x), Some(y)) = (self.singleton(), rhs.singleton()) {
-            return Interval::from(x % y);
+            return Self::from(x % y);
         }
         let largest_mod = rhs.min.abs().max(rhs.max.abs());
-        match self.weak_cmp(Interval::from(0)) {
+        match self.weak_cmp(Self::from(0)) {
             Some(Ordering::Greater) => Self {
                 min: 0,
                 max: largest_mod - 1,
             },
-            Some(Ordering::Equal) => Interval::from(0),
+            Some(Ordering::Equal) => Self::from(0),
             Some(Ordering::Less) => Self {
                 min: -largest_mod + 1,
                 max: 0,
@@ -745,7 +741,7 @@ impl Congruence {
         self.modulus
     }
 
-    pub fn disjoint(self, other: Congruence) -> bool {
+    pub fn disjoint(self, other: Self) -> bool {
         if self.modulus == 0 && other.modulus == 0 {
             return self.constant != other.constant;
         }
@@ -776,42 +772,42 @@ impl Congruence {
         None
     }
 
-    pub fn equals(self, other: Congruence) -> Congruence {
+    pub fn equals(self, other: Self) -> Self {
         if self.disjoint(other) {
-            return Congruence::from(0, 0);
+            return Self::from(0, 0);
         }
 
         match (self.singleton(), other.singleton()) {
-            (Some(x), Some(y)) if y == x => Congruence::from(1, 0),
-            _ => Congruence::top(&()),
+            (Some(x), Some(y)) if y == x => Self::from(1, 0),
+            _ => Self::top(&()),
         }
     }
 
-    pub fn logical_and(self, other: Congruence) -> Congruence {
+    pub fn logical_and(self, other: Self) -> Self {
         match (self.singleton(), other.singleton()) {
-            (Some(0), _) | (_, Some(0)) => Congruence::from(0, 0),
-            (Some(1), Some(1)) => Congruence::from(1, 0),
-            _ => Congruence::top(&()),
+            (Some(0), _) | (_, Some(0)) => Self::from(0, 0),
+            (Some(1), Some(1)) => Self::from(1, 0),
+            _ => Self::top(&()),
         }
     }
 
-    pub fn logical_or(self, other: Congruence) -> Congruence {
+    pub fn logical_or(self, other: Self) -> Self {
         match (self.singleton(), other.singleton()) {
-            (Some(1), _) | (_, Some(1)) => Congruence::from(1, 0),
-            (Some(0), Some(0)) => Congruence::from(0, 0),
-            _ => Congruence::top(&()),
+            (Some(1), _) | (_, Some(1)) => Self::from(1, 0),
+            (Some(0), Some(0)) => Self::from(0, 0),
+            _ => Self::top(&()),
         }
     }
 
-    pub fn logical_not(self) -> Congruence {
+    pub fn logical_not(self) -> Self {
         match self.singleton() {
-            Some(1) => Congruence::from(0, 0),
-            Some(0) => Congruence::from(1, 0),
-            _ => Congruence::top(&()),
+            Some(1) => Self::from(0, 0),
+            Some(0) => Self::from(1, 0),
+            _ => Self::top(&()),
         }
     }
 
-    pub fn strict_cmp(self, other: Congruence) -> Option<Ordering> {
+    pub fn strict_cmp(self, other: Self) -> Option<Ordering> {
         match (self.singleton(), other.singleton()) {
             (Some(x), Some(y)) => Some(x.cmp(&y)),
             _ => None,
@@ -831,11 +827,11 @@ impl PartialOrd for Congruence {
             return Some(Ordering::Equal);
         }
 
-        if *self == Congruence::bottom(&()) {
+        if *self == Self::bottom(&()) {
             return Some(Ordering::Less);
         }
 
-        if *other == Congruence::bottom(&()) {
+        if *other == Self::bottom(&()) {
             return Some(Ordering::Greater);
         }
 
@@ -860,7 +856,7 @@ impl PartialOrd for Congruence {
 impl JoinSemiLattice for Congruence {
     type LatticeContext = ();
 
-    fn bottom(_ctx: &()) -> Self {
+    fn bottom(&(): &Self::LatticeContext) -> Self {
         // In the representation when modulus is non-zero,
         // constant needs to be less than modulus. Using
         // an specific value where this invariant does not hold
@@ -871,11 +867,11 @@ impl JoinSemiLattice for Congruence {
         }
     }
 
-    fn join(&self, other: &Self, ctx: &()) -> Self {
-        if *self == Congruence::bottom(ctx) {
+    fn join(&self, other: &Self, &(): &Self::LatticeContext) -> Self {
+        if *self == Self::bottom(&()) {
             return *other;
         }
-        if *other == Congruence::bottom(ctx) {
+        if *other == Self::bottom(&()) {
             return *self;
         }
         let new_modulus = self
@@ -893,15 +889,15 @@ impl JoinSemiLattice for Congruence {
 }
 
 impl Lattice for Congruence {
-    fn top(_ctx: &()) -> Self {
-        Congruence {
+    fn top(&(): &Self::LatticeContext) -> Self {
+        Self {
             constant: 0,
             modulus: 1,
         }
     }
 
-    fn meet(&self, other: &Self, ctx: &()) -> Self {
-        let bot = Self::bottom(ctx);
+    fn meet(&self, other: &Self, &(): &Self::LatticeContext) -> Self {
+        let bot = Self::bottom(&());
         if *self == bot || *other == bot {
             return bot;
         }
@@ -925,8 +921,8 @@ impl Lattice for Congruence {
         }
     }
 
-    fn narrow(&self, previous: &Self, ctx: &Self::LatticeContext, _iteration: usize) -> Self {
-        if *previous == Self::top(ctx) {
+    fn narrow(&self, previous: &Self, &(): &Self::LatticeContext, _iteration: usize) -> Self {
+        if *previous == Self::top(&()) {
             return *self;
         }
         *previous
@@ -940,7 +936,7 @@ impl Neg for Congruence {
         if self == Self::bottom(&()) {
             return self;
         }
-        Congruence::from(-self.constant, self.modulus)
+        Self::from(-self.constant, self.modulus)
     }
 }
 
@@ -948,7 +944,7 @@ impl Add for Congruence {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        let bot = Congruence::bottom(&());
+        let bot = Self::bottom(&());
         if self == bot || rhs == bot {
             return bot;
         }
@@ -973,7 +969,7 @@ impl Mul for Congruence {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        let bot = Congruence::bottom(&());
+        let bot = Self::bottom(&());
         if self == bot || rhs == bot {
             return bot;
         }
@@ -992,15 +988,15 @@ impl Div for Congruence {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
-        let bot = Congruence::bottom(&());
-        if self == bot || rhs == bot || rhs == Congruence::from(0, 0) {
+        let bot = Self::bottom(&());
+        if self == bot || rhs == bot || rhs == Self::from(0, 0) {
             return bot;
         }
         if rhs.modulus == 0 && self.constant % rhs.constant == 0 && self.modulus % rhs.constant == 0
         {
-            return Congruence::from(self.constant / rhs.constant, self.modulus / rhs.constant);
+            return Self::from(self.constant / rhs.constant, self.modulus / rhs.constant);
         }
-        Congruence::top(&())
+        Self::top(&())
     }
 }
 

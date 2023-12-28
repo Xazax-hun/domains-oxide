@@ -1,5 +1,6 @@
+use core::marker::PhantomData;
+use std::collections::HashMap;
 use std::sync::OnceLock;
-use std::{collections::HashMap, marker::PhantomData};
 
 use analysis::{
     cfg::OpPos,

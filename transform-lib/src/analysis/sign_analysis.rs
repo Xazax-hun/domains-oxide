@@ -23,7 +23,7 @@ impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Sign> for SignAnalysis {
         _: OpPos,
         &op: &Operation,
         cfg: &Cfg,
-        _: &(),
+        &(): &(),
         pre_state: &Vec2Sign,
     ) -> Vec2Sign {
         use Sign::*;
@@ -101,7 +101,7 @@ impl SignAnalysis {
     pub fn get_results(cfg: &Cfg) -> Vec<Vec2Sign> {
         let solver = SolveMonotone::default();
         let seed = Vec2Sign::bottom(&());
-        solver.solve(cfg, seed, &(), &mut SignAnalysis)
+        solver.solve(cfg, seed, &(), &mut Self)
     }
 }
 
@@ -109,13 +109,8 @@ impl Analysis for SignAnalysis {
     fn analyze(&self, cfg: &Cfg) -> AnalysisResult {
         let results = Self::get_results(cfg);
         AnalysisResult {
-            annotations: annotations_from_forward_analysis_results(
-                cfg,
-                &(),
-                &mut SignAnalysis,
-                &results,
-            ),
-            covered: covered_area_from_analysis_results(cfg, &(), &mut SignAnalysis, &results),
+            annotations: annotations_from_forward_analysis_results(cfg, &(), &mut Self, &results),
+            covered: covered_area_from_analysis_results(cfg, &(), &mut Self, &results),
         }
     }
 }

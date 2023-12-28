@@ -166,7 +166,7 @@ impl Analysis for IntervalAnalysis {
             );
         }
 
-        let mut transfer = TransferLogger::new(unit, IntervalAnalysis);
+        let mut transfer = TransferLogger::new(unit, Self);
         solver.solve(cfg, seed, &ctx, &mut transfer);
         transfer.get_annotations()
     }
@@ -221,7 +221,7 @@ impl Analysis for UnrolledIntervalAnalysis {
             );
         }
 
-        let mut transfer = TransferLogger::new(unit, UnrolledIntervalAnalysis(2));
+        let mut transfer = TransferLogger::new(unit, Self(2));
         solver.solve(cfg, seed, &ctx, &mut transfer);
         transfer.get_annotations()
     }

@@ -1,6 +1,7 @@
 use core::fmt::Write;
+use core::marker::PhantomData;
 use priority_queue::PriorityQueue;
-use std::{collections::HashSet, marker::PhantomData};
+use std::collections::HashSet;
 
 /// Trait for an immutable basic block of a control flow graph.
 pub trait CfgBlock {

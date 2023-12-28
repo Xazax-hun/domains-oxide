@@ -1,5 +1,5 @@
+use core::marker::PhantomData;
 use std::collections::HashSet;
-use std::marker::PhantomData;
 
 use super::cfg::{get_back_edges, CfgBlock, ControlFlowGraph, OpPos, RPOWorklist};
 use super::domains::JoinSemiLattice;

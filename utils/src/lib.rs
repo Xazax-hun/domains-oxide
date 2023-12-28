@@ -1,9 +1,9 @@
 use core::fmt::Display;
+use core::ops::Deref;
+use core::ops::DerefMut;
 use std::io::BufWriter;
 use std::io::Cursor;
 use std::io::Write;
-use std::ops::Deref;
-use std::ops::DerefMut;
 
 enum LogOrWrite {
     Log(Cursor<Vec<u8>>),
@@ -15,8 +15,8 @@ impl Deref for LogOrWrite {
 
     fn deref(&self) -> &Self::Target {
         match self {
-            LogOrWrite::Log(inner) => inner,
-            LogOrWrite::Write(inner) => inner,
+            Self::Log(inner) => inner,
+            Self::Write(inner) => inner,
         }
     }
 }
@@ -24,8 +24,8 @@ impl Deref for LogOrWrite {
 impl DerefMut for LogOrWrite {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
-            LogOrWrite::Log(inner) => inner,
-            LogOrWrite::Write(inner) => inner,
+            Self::Log(inner) => inner,
+            Self::Write(inner) => inner,
         }
     }
 }
@@ -76,11 +76,9 @@ impl DiagnosticEmitter {
     /// [`DiagnosticEmitter::log_to_buffer`].
     pub fn out_buffer(&self) -> Option<String> {
         if let LogOrWrite::Log(inner) = &self.out {
-            return Some(
-                core::str::from_utf8(inner.get_ref())
-                    .expect("Failed to convert bytes to utf-8 string")
-                    .to_owned(),
-            );
+            return core::str::from_utf8(inner.get_ref())
+                .ok()
+                .map(ToOwned::to_owned);
         }
         None
     }
@@ -89,11 +87,9 @@ impl DiagnosticEmitter {
     /// [`DiagnosticEmitter::log_to_buffer`].
     pub fn err_buffer(&self) -> Option<String> {
         if let LogOrWrite::Log(inner) = &self.err {
-            return Some(
-                core::str::from_utf8(inner.get_ref())
-                    .expect("Failed to convert bytes to utf-8 string")
-                    .to_owned(),
-            );
+            return core::str::from_utf8(inner.get_ref())
+                .ok()
+                .map(ToOwned::to_owned);
         }
         None
     }

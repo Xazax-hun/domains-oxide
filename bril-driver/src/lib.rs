@@ -19,10 +19,10 @@ pub enum CLIAnalyses {
 impl From<CLIAnalyses> for Analyses {
     fn from(value: CLIAnalyses) -> Self {
         match value {
-            CLIAnalyses::Sign => Analyses::Sign,
-            CLIAnalyses::Interval => Analyses::Interval,
-            CLIAnalyses::UnrolledInterval => Analyses::UnrolledInterval,
-            CLIAnalyses::Congruence => Analyses::Congruence,
+            CLIAnalyses::Sign => Self::Sign,
+            CLIAnalyses::Interval => Self::Interval,
+            CLIAnalyses::UnrolledInterval => Self::UnrolledInterval,
+            CLIAnalyses::Congruence => Self::Congruence,
         }
     }
 }

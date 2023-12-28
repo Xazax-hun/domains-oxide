@@ -1,4 +1,5 @@
 use core::fmt::Display;
+use core::fmt::Write;
 use std::collections::HashMap;
 use utils::DiagnosticEmitter;
 
@@ -25,7 +26,7 @@ impl Type {
 }
 
 impl Display for Type {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Type::Placeholder => write!(f, "placeholder"),
             Type::Int => write!(f, "int"),
@@ -348,7 +349,7 @@ pub fn print_operation(pos: OpPos, op: &Operation, unit: &Unit, anns: &Annotatio
     if let Some(mut ann_list) = anns.pre.get(&pos).cloned() {
         if !ann_list.is_empty() {
             ann_list.sort_unstable();
-            printed.push_str(&format!("/* {} */ ", ann_list.join(", ")));
+            write!(printed, "/* {} */ ", ann_list.join(", ")).expect("");
         }
     }
     match op {
@@ -357,71 +358,83 @@ pub fn print_operation(pos: OpPos, op: &Operation, unit: &Unit, anns: &Annotatio
             result,
             lhs,
             rhs,
-        } => printed.push_str(&format!(
+        } => write!(
+            printed,
             "{}: {} = {} {} {};",
             get_name(result),
             result.ty,
             token.value,
             get_name(lhs),
             get_name(rhs)
-        )),
+        )
+        .expect(""),
         Operation::UnaryOp {
             token,
             result,
             operand,
-        } => printed.push_str(&format!(
+        } => write!(
+            printed,
             "{}: {} = {} {};",
             get_name(result),
             result.ty,
             token.value,
             get_name(operand)
-        )),
+        )
+        .expect(""),
         Operation::Branch {
             cond, then, els, ..
-        } => printed.push_str(&format!(
+        } => write!(
+            printed,
             "br {} {} {};",
             get_name(cond),
             get_label_name(then),
             get_label_name(els)
-        )),
-        Operation::Jump(_, id) => printed.push_str(&format!("jmp {};", get_label_name(id))),
-        Operation::Const(tok, var) => printed.push_str(&format!(
+        )
+        .expect(""),
+        Operation::Jump(_, id) => write!(printed, "jmp {};", get_label_name(id)).expect(""),
+        Operation::Const(tok, var) => write!(
+            printed,
             "{}: {} = const {};",
             get_name(var),
             var.ty,
             tok.value
-        )),
+        )
+        .expect(""),
         Operation::Call {
             callee,
             result: Some(result),
             args,
             ..
-        } => printed.push_str(&format!(
+        } => write!(
+            printed,
             "{}: {} = call {} {};",
             get_name(result),
             result.ty,
             get_name(callee),
             args.iter().map(get_name).join(" ")
-        )),
+        )
+        .expect(""),
         Operation::Call {
             callee,
             result: None,
             args,
             ..
-        } => printed.push_str(&format!(
+        } => write!(
+            printed,
             "call {} {};",
             get_name(callee),
             args.iter().map(get_name).join(" ")
-        )),
-        Operation::Print(_, v) => printed.push_str(&format!("print {};", get_name(v))),
+        )
+        .expect(""),
+        Operation::Print(_, v) => write!(printed, "print {};", get_name(v)).expect(""),
         Operation::Nop(_) => printed.push_str("nop;"),
-        Operation::Ret(_, Some(v)) => printed.push_str(&format!("ret {};", get_name(v))),
+        Operation::Ret(_, Some(v)) => write!(printed, "ret {};", get_name(v)).expect(""),
         Operation::Ret(_, None) => printed.push_str("ret;"),
     };
     if let Some(mut ann_list) = anns.post.get(&pos).cloned() {
         if !ann_list.is_empty() {
             ann_list.sort_unstable();
-            printed.push_str(&format!(" /* {} */", ann_list.join(", ")));
+            write!(printed, " /* {} */", ann_list.join(", ")).expect("");
         }
     }
     printed
@@ -436,7 +449,7 @@ pub fn print_cfg_dot(cfg: &Cfg, unit: &Unit) -> String {
     })
 }
 
-fn get_block_name<'u>(unit: &'u Unit, cfg: &Cfg, block_id: usize) -> Option<&'u str> {
+fn get_block_name<'unit>(unit: &'unit Unit, cfg: &Cfg, block_id: usize) -> Option<&'unit str> {
     let block = &cfg.blocks()[block_id];
     if let Some(pred_id) = block.predecessors().iter().next() {
         let pred = &cfg.blocks()[*pred_id];

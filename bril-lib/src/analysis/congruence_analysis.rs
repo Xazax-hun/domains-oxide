@@ -1,4 +1,5 @@
-use std::{cmp::Ordering, collections::HashSet};
+use core::cmp::Ordering;
+use std::collections::HashSet;
 
 use analysis::{
     cfg::{CfgBlock, ControlFlowGraph, OpPos},
@@ -158,7 +159,7 @@ impl Analysis for CongruenceAnalysis {
             seed.insert(*id, Congruence::top(&()));
         }
 
-        let mut transfer = TransferLogger::new(unit, CongruenceAnalysis);
+        let mut transfer = TransferLogger::new(unit, Self);
         solver.solve(cfg, seed, &ctx, &mut transfer);
         transfer.get_annotations()
     }

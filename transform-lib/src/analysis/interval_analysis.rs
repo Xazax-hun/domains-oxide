@@ -149,16 +149,15 @@ impl IntervalAnalysis {
     pub fn get_results(cfg: &Cfg) -> Vec<Vec2Interval> {
         let solver = SolveMonotone::default();
         let seed = Vec2Interval::bottom(&());
-        solver.solve(cfg, seed, &(), &mut IntervalAnalysis)
+        solver.solve(cfg, seed, &(), &mut Self)
     }
 }
 
 impl Analysis for IntervalAnalysis {
     fn analyze(&self, cfg: &Cfg) -> AnalysisResult {
         let results = Self::get_results(cfg);
-        let annotations =
-            annotations_from_forward_analysis_results(cfg, &(), &mut IntervalAnalysis, &results);
-        let covered = covered_area_from_analysis_results(cfg, &(), &mut IntervalAnalysis, &results);
+        let annotations = annotations_from_forward_analysis_results(cfg, &(), &mut Self, &results);
+        let covered = covered_area_from_analysis_results(cfg, &(), &mut Self, &results);
         AnalysisResult {
             annotations,
             covered,
