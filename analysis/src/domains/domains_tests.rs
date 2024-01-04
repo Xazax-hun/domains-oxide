@@ -41,11 +41,11 @@ fn sign_domain_tests() {
     use Sign::*;
 
     // Join, meet
-    assert_eq!(Negative.join(&Positive, &()), NonZero);
-    assert_eq!(Bottom.join(&Negative, &()), Negative);
-    assert_eq!(Bottom.meet(&Zero, &()), Bottom);
-    assert_eq!(Top.meet(&Zero, &()), Zero);
-    assert_eq!(Negative.meet(&Zero, &()), Bottom);
+    assert_eq!(Negative.join_(&Positive), NonZero);
+    assert_eq!(Bottom.join_(&Negative), Negative);
+    assert_eq!(Bottom.meet_(&Zero), Bottom);
+    assert_eq!(Top.meet_(&Zero), Zero);
+    assert_eq!(Negative.meet_(&Zero), Bottom);
 
     // Properties
     let all = [
@@ -129,7 +129,7 @@ fn vec2_domain_tests() {
     {
         type SignVec = Vec2Domain<Sign>;
         use Sign::*;
-        let bottom = SignVec::bottom(&());
+        let bottom = SignVec::bottom_();
         let pos_pos = SignVec {
             x: Positive,
             y: Positive,
@@ -155,9 +155,9 @@ fn vec2_domain_tests() {
         assert!(pos_pos <= pos_non_zero);
         assert!(!(pos_pos <= pos_neg));
         assert!(!(pos_pos >= pos_neg));
-        assert_eq!(pos_pos.join(&pos_neg, &()), pos_non_zero);
-        assert_eq!(top_top, SignVec::top(&()));
-        assert_eq!(pos_pos.meet(&pos_neg, &()), pos_bot);
+        assert_eq!(pos_pos.join_(&pos_neg), pos_non_zero);
+        assert_eq!(top_top, SignVec::top_());
+        assert_eq!(pos_pos.meet_(&pos_neg), pos_bot);
 
         let all_signs = [
             Bottom, Top, Negative, Zero, Positive, NonNeg, NonZero, NonPos,
@@ -176,8 +176,8 @@ fn vec2_domain_tests() {
     {
         type IntervalVec = Vec2Domain<Interval>;
 
-        let bottom = IntervalVec::bottom(&());
-        let top = IntervalVec::top(&());
+        let bottom = IntervalVec::bottom_();
+        let top = IntervalVec::top_();
         let singleton = IntervalVec {
             x: Interval::from(5),
             y: Interval::from(15),
@@ -187,9 +187,9 @@ fn vec2_domain_tests() {
             y: Interval { min: 10, max: 20 },
         };
 
-        assert_eq!(range.widen(&singleton, &(), 0), top);
-        assert_eq!(singleton.widen(&range, &(), 0), range);
-        assert_eq!(singleton.widen(&bottom, &(), 0), singleton);
+        assert_eq!(range.widen_(&singleton, 0), top);
+        assert_eq!(singleton.widen_(&range, 0), range);
+        assert_eq!(singleton.widen_(&bottom, 0), singleton);
 
         assert_eq!(format!("{range:?}"), "{ x: [0, 10], y: [10, 20] }")
     }
@@ -197,8 +197,8 @@ fn vec2_domain_tests() {
 
 #[test]
 fn interval_domain_tests() {
-    let bottom = Interval::bottom(&());
-    let top = Interval::top(&());
+    let bottom = Interval::bottom_();
+    let top = Interval::top_();
     let singleton = Interval::from(5);
     let small_range_a = Interval { min: 0, max: 10 };
     let small_range_b = Interval { min: 11, max: 20 };
@@ -221,26 +221,26 @@ fn interval_domain_tests() {
     assert!(!(small_range_b <= singleton));
 
     // Merging / join
-    assert_eq!(bottom.join(&singleton, &()), singleton);
-    assert_eq!(bottom.join(&small_range_a, &()), small_range_a);
-    assert_eq!(small_range_a.join(&bottom, &()), small_range_a);
+    assert_eq!(bottom.join_(&singleton), singleton);
+    assert_eq!(bottom.join_(&small_range_a), small_range_a);
+    assert_eq!(small_range_a.join_(&bottom), small_range_a);
     let merged_smalls = Interval { min: 0, max: 20 };
-    assert_eq!(small_range_a.join(&small_range_b, &()), merged_smalls);
-    assert_eq!(large_range.join(&top, &()), top);
-    assert_eq!(top.join(&large_range, &()), top);
-    assert_eq!(large_range.join(&large_range, &()), large_range);
+    assert_eq!(small_range_a.join_(&small_range_b), merged_smalls);
+    assert_eq!(large_range.join_(&top), top);
+    assert_eq!(top.join_(&large_range), top);
+    assert_eq!(large_range.join_(&large_range), large_range);
 
     // Intersection / meet
-    assert_eq!(top.meet(&bottom, &()), bottom);
-    assert_eq!(bottom.meet(&singleton, &()), bottom);
-    assert_eq!(top.meet(&singleton, &()), singleton);
-    assert_eq!(singleton.meet(&small_range_a, &()), singleton);
-    assert_eq!(small_range_a.meet(&small_range_b, &()), bottom);
-    assert_eq!(large_range.meet(&small_range_b, &()), small_range_b);
+    assert_eq!(top.meet_(&bottom), bottom);
+    assert_eq!(bottom.meet_(&singleton), bottom);
+    assert_eq!(top.meet_(&singleton), singleton);
+    assert_eq!(singleton.meet_(&small_range_a), singleton);
+    assert_eq!(small_range_a.meet_(&small_range_b), bottom);
+    assert_eq!(large_range.meet_(&small_range_b), small_range_b);
 
     // Widening
-    assert_eq!(small_range_a.widen(&large_range, &(), 0), large_range);
-    assert_eq!(large_range.widen(&small_range_a, &(), 0), top);
+    assert_eq!(small_range_a.widen_(&large_range, 0), large_range);
+    assert_eq!(large_range.widen_(&small_range_a, 0), top);
     let bumped_max = Interval {
         min: small_range_a.min,
         max: small_range_a.max + 1,
@@ -257,12 +257,12 @@ fn interval_domain_tests() {
         min: NEG_INF,
         max: small_range_a.max,
     };
-    assert_eq!(bumped_max.widen(&small_range_a, &(), 0), widened_max);
-    assert_eq!(decremented_min.widen(&small_range_a, &(), 0), widened_min);
-    assert_eq!(large_range.widen(&bottom, &(), 0), large_range);
+    assert_eq!(bumped_max.widen_(&small_range_a, 0), widened_max);
+    assert_eq!(decremented_min.widen_(&small_range_a, 0), widened_min);
+    assert_eq!(large_range.widen_(&bottom, 0), large_range);
 
     // Narrowing
-    assert_eq!(large_range.narrow(&top, &(), 0), large_range);
+    assert_eq!(large_range.narrow_(&top, 0), large_range);
 
     // Conversions
     assert_eq!(Interval::from(Sign::Bottom), bottom);
@@ -331,7 +331,7 @@ fn interval_domain_tests() {
 
 #[test]
 fn congruence_domain_test() {
-    let top = Congruence::top(&());
+    let top = Congruence::top_();
     let one = Congruence::from(1, 0);
     let two = Congruence::from(2, 0);
     let c1mod2 = Congruence::from(1, 2);
@@ -340,7 +340,7 @@ fn congruence_domain_test() {
     let c1mod5 = Congruence::from(1, 5);
     let c2mod3 = Congruence::from(2, 3);
     let c1mod6 = Congruence::from(1, 6);
-    let bot = Congruence::bottom(&());
+    let bot = Congruence::bottom_();
 
     // Ordering
     assert!(c1mod2 > bot);
@@ -359,28 +359,28 @@ fn congruence_domain_test() {
     assert!(!(two > one) && !(two < one));
 
     // Join
-    assert_eq!(c1mod6.join(&c1mod4, &()), c1mod2);
-    assert_eq!(c1mod4.join(&c1mod6, &()), c1mod2);
-    assert_eq!(c1mod2.join(&c1mod3, &()), top);
-    assert_eq!(c1mod3.join(&c1mod2, &()), top);
-    assert_eq!(c1mod3.join(&one, &()), c1mod3);
-    assert_eq!(one.join(&c1mod3, &()), c1mod3);
-    assert_eq!(one.join(&c2mod3, &()), top);
-    assert_eq!(c2mod3.join(&one, &()), top);
+    assert_eq!(c1mod6.join_(&c1mod4), c1mod2);
+    assert_eq!(c1mod4.join_(&c1mod6), c1mod2);
+    assert_eq!(c1mod2.join_(&c1mod3), top);
+    assert_eq!(c1mod3.join_(&c1mod2), top);
+    assert_eq!(c1mod3.join_(&one), c1mod3);
+    assert_eq!(one.join_(&c1mod3), c1mod3);
+    assert_eq!(one.join_(&c2mod3), top);
+    assert_eq!(c2mod3.join_(&one), top);
     assert_eq!(
-        c1mod4.join(&Congruence::from(3, 6), &()),
+        c1mod4.join_(&Congruence::from(3, 6)),
         Congruence::from(1, 2)
     );
 
     // Meet
     assert_eq!(
-        Congruence::from(0, 3).meet(&Congruence::from(3, 7), &()),
+        Congruence::from(0, 3).meet_(&Congruence::from(3, 7)),
         Congruence::from(0, 21)
     );
-    assert_eq!(Congruence::from(0, 3).meet(&c1mod3, &()), bot);
-    assert_eq!(c1mod4.meet(&c1mod2, &()), c1mod4);
-    assert_eq!(one.meet(&c1mod2, &()), one);
-    assert_eq!(one.meet(&two, &()), bot);
+    assert_eq!(Congruence::from(0, 3).meet_(&c1mod3), bot);
+    assert_eq!(c1mod4.meet_(&c1mod2), c1mod4);
+    assert_eq!(one.meet_(&c1mod2), one);
+    assert_eq!(one.meet_(&two), bot);
 
     // Operations
     assert_eq!(one + two, Congruence::from(3, 0));
@@ -467,15 +467,15 @@ fn flipped_sign_domain_tests() {
     let top = Flipped(Bottom);
 
     // Comparisons, join
-    assert_eq!(zero.join(&zero, &()), zero);
-    assert_eq!(negative.join(&positive, &()), top);
-    assert_eq!(bottom.join(&negative, &()), negative);
-    assert_eq!(negative.join(&top, &()), top);
+    assert_eq!(zero.join_(&zero), zero);
+    assert_eq!(negative.join_(&positive), top);
+    assert_eq!(bottom.join_(&negative), negative);
+    assert_eq!(negative.join_(&top), top);
 
     // Meet
-    assert_eq!(bottom.meet(&zero, &()), bottom);
-    assert_eq!(top.meet(&zero, &()), zero);
-    assert_eq!(negative.meet(&zero, &()), Flipped(NonPos));
+    assert_eq!(bottom.meet_(&zero), bottom);
+    assert_eq!(top.meet_(&zero), zero);
+    assert_eq!(negative.meet_(&zero), Flipped(NonPos));
 
     // Pretty printing
     assert_eq!(format!("{bottom:?}"), "Flipped(Top)");
@@ -496,8 +496,8 @@ fn flipped_sign_domain_tests() {
 #[test]
 fn array_domain_test() {
     use Sign::*;
-    let bottom = Array::<Sign, 3>::bottom(&());
-    let top = Array::<Sign, 3>::top(&());
+    let bottom = Array::<Sign, 3>::bottom_();
+    let top = Array::<Sign, 3>::top_();
     let pos_zero_neg = Array([Positive, Zero, Negative]);
     let pos_zero_bottom = Array([Positive, Zero, Bottom]);
     let neg_zero_top = Array([Negative, Zero, Top]);
@@ -507,17 +507,17 @@ fn array_domain_test() {
     assert!(!(neg_zero_top < pos_zero_neg));
 
     assert_eq!(
-        pos_zero_neg.join(&neg_zero_top, &()),
+        pos_zero_neg.join_(&neg_zero_top),
         Array([NonZero, Zero, Top])
     );
-    assert_eq!(pos_zero_neg.join(&top, &()), top);
-    assert_eq!(bottom.join(&neg_zero_top, &()), neg_zero_top);
+    assert_eq!(pos_zero_neg.join_(&top), top);
+    assert_eq!(bottom.join_(&neg_zero_top), neg_zero_top);
     assert_eq!(
-        pos_zero_neg.meet(&neg_zero_top, &()),
+        pos_zero_neg.meet_(&neg_zero_top),
         Array([Bottom, Zero, Negative])
     );
-    assert_eq!(pos_zero_neg.meet(&top, &()), pos_zero_neg);
-    assert_eq!(bottom.meet(&neg_zero_top, &()), bottom);
+    assert_eq!(pos_zero_neg.meet_(&top), pos_zero_neg);
+    assert_eq!(bottom.meet_(&neg_zero_top), bottom);
 
     // Pretty printing
     assert_eq!(
@@ -578,18 +578,18 @@ fn product_domain_test() {
 
 #[test]
 fn flat_domain_test() {
-    let bottom = Flat::bottom(&());
-    let top = Flat::top(&());
+    let bottom = Flat::bottom_();
+    let top = Flat::top_();
     let a = Flat::Element(5);
     let b = Flat::Element(3);
 
     assert!(a != b);
     assert!(!(a < b));
     assert!(!(a > b));
-    assert_eq!(a.join(&b, &()), top);
-    assert_eq!(a.meet(&b, &()), bottom);
-    assert_eq!(a.join(&a, &()), a);
-    assert_eq!(a.meet(&a, &()), a);
+    assert_eq!(a.join_(&b), top);
+    assert_eq!(a.meet_(&b), bottom);
+    assert_eq!(a.join_(&a), a);
+    assert_eq!(a.meet_(&a), a);
     assert_eq!(format!("{top:?}"), "Top");
     assert_eq!(format!("{a:?}"), "Element(5)");
     assert_eq!(format!("{bottom:?}"), "Bottom");
@@ -615,11 +615,11 @@ fn flat_domain_test() {
 
 #[test]
 fn bool_domain_test() {
-    let bottom = bool::bottom(&());
-    let top = bool::top(&());
+    let bottom = bool::bottom_();
+    let top = bool::top_();
 
-    assert_eq!(top.join(&bottom, &()), top);
-    assert_eq!(top.meet(&bottom, &()), bottom);
+    assert_eq!(top.join_(&bottom), top);
+    assert_eq!(top.meet_(&bottom), bottom);
 
     let all = [true, false];
     finite_domain_properties(&all, &());
@@ -627,25 +627,25 @@ fn bool_domain_test() {
 
 #[test]
 fn natural_domain_test() {
-    let bottom = u64::bottom(&());
+    let bottom = u64::bottom_();
 
     assert!(5 > bottom);
-    assert_eq!(bottom.join(&bottom, &()), bottom);
-    assert_eq!(bottom.join(&5, &()), bottom);
-    assert_eq!(5.join(&3, &()), 3);
+    assert_eq!(bottom.join_(&bottom), bottom);
+    assert_eq!(bottom.join_(&5), bottom);
+    assert_eq!(5.join_(&3), 3);
 }
 
 #[test]
 fn lifted_domain_test() {
-    let bottom = Lift::<bool>::bottom(&());
+    let bottom = Lift::<bool>::bottom_();
     let false_val = Some(false);
     let true_val = Some(true);
 
     assert!(true_val > false_val);
-    assert_eq!(bottom.join(&true_val, &()), true_val);
-    assert_eq!(bottom.meet(&true_val, &()), bottom);
-    assert_eq!(false_val.join(&true_val, &()), true_val);
-    assert_eq!(false_val.meet(&true_val, &()), false_val);
+    assert_eq!(bottom.join_(&true_val), true_val);
+    assert_eq!(bottom.meet_(&true_val), bottom);
+    assert_eq!(false_val.join_(&true_val), true_val);
+    assert_eq!(false_val.meet_(&true_val), false_val);
     assert_eq!(format!("{bottom:?}"), "None");
     assert_eq!(format!("{true_val:?}"), "Some(true)");
 

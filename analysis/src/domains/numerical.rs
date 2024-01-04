@@ -41,7 +41,7 @@ impl From<i32> for Sign {
 
 impl From<Interval> for Sign {
     fn from(value: Interval) -> Self {
-        if value == Interval::bottom(&()) {
+        if value == Interval::bottom_() {
             return Sign::Bottom;
         }
         if value == Interval::from(0) {
@@ -385,7 +385,7 @@ impl Interval {
     }
 
     pub fn strict_cmp(self, other: Self) -> Option<Ordering> {
-        if self == Self::bottom(&()) || other == Self::bottom(&()) {
+        if self == Self::bottom_() || other == Self::bottom_() {
             return None;
         }
 
@@ -404,7 +404,7 @@ impl Interval {
     }
 
     pub fn weak_cmp(self, other: Self) -> Option<Ordering> {
-        if self == Self::bottom(&()) || other == Self::bottom(&()) {
+        if self == Self::bottom_() || other == Self::bottom_() {
             return None;
         }
 
@@ -433,7 +433,7 @@ impl Interval {
     /// Returns a subinterval for the inputs where the equality may hold
     /// (and cannot hold outside).
     pub fn may_equal_when(self, other: Self) -> Self {
-        let bot = Self::bottom(&());
+        let bot = Self::bottom_();
         if self == bot || other == bot {
             return bot;
         }
@@ -449,7 +449,7 @@ impl Interval {
     /// Returns a pair of subintervals for the inputs where the less then relation may
     /// hold (and cannot hold outside).
     pub fn maybe_less_when(self, other: Self) -> (Self, Self) {
-        let bot = Self::bottom(&());
+        let bot = Self::bottom_();
         if self == bot || other == bot || self.min > other.max {
             return (bot, bot);
         }
@@ -470,7 +470,7 @@ impl Interval {
     /// Returns a pair of subintervals for the inputs where the less then or equal
     /// relation may hold (and cannot hold outside).
     pub fn maybe_le_when(self, other: Self) -> (Self, Self) {
-        let bot = Self::bottom(&());
+        let bot = Self::bottom_();
         if self == bot || other == bot || self.min > other.max {
             return (bot, bot);
         }
@@ -490,7 +490,7 @@ impl Interval {
 
     fn normalize(self) -> Self {
         if self.min > self.max {
-            return Self::bottom(&());
+            return Self::bottom_();
         }
         self
     }
@@ -505,8 +505,8 @@ impl From<i64> for Interval {
 impl From<Sign> for Interval {
     fn from(value: Sign) -> Self {
         match value {
-            Sign::Top | Sign::NonZero => Self::top(&()),
-            Sign::Bottom => Self::bottom(&()),
+            Sign::Top | Sign::NonZero => Self::top_(),
+            Sign::Bottom => Self::bottom_(),
             Sign::Zero => Self::from(0),
             Sign::Positive => Self { min: 1, max: INF },
             Sign::Negative => Self {
@@ -568,7 +568,7 @@ impl JoinSemiLattice for Interval {
 
     /// Extrapolate unstable bounds to infinity.
     fn widen(&self, prev: &Self, &(): &Self::LatticeContext, _: usize) -> Self {
-        if *prev == Self::bottom(&()) {
+        if *prev == Self::bottom_() {
             return *self;
         }
         Self {
@@ -598,7 +598,7 @@ impl Lattice for Interval {
 
         // We only want one canonical representation for bottom.
         if result.min > result.max {
-            Self::bottom(&())
+            Self::bottom_()
         } else {
             result
         }
@@ -606,8 +606,8 @@ impl Lattice for Interval {
 
     /// Improve infinite bounds.
     fn narrow(&self, prev: &Self, &(): &Self::LatticeContext, _: usize) -> Self {
-        if *prev == Self::bottom(&()) || *self == Self::bottom(&()) {
-            return Self::bottom(&());
+        if *prev == Self::bottom_() || *self == Self::bottom_() {
+            return Self::bottom_();
         }
         Self {
             min: if prev.min == NEG_INF {
@@ -623,7 +623,7 @@ impl Lattice for Interval {
 impl Add for Interval {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
-        let bot = Self::bottom(&());
+        let bot = Self::bottom_();
         if self == bot || rhs == bot {
             return bot;
         }
@@ -645,7 +645,7 @@ impl Add for Interval {
 impl Neg for Interval {
     type Output = Self;
     fn neg(self) -> Self {
-        if self == Self::bottom(&()) {
+        if self == Self::bottom_() {
             return self;
         }
         Self {
@@ -665,7 +665,7 @@ impl Sub for Interval {
 impl Mul for Interval {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
-        let bot = Self::bottom(&());
+        let bot = Self::bottom_();
         if self == bot || rhs == bot {
             return bot;
         }
@@ -686,7 +686,7 @@ impl Rem for Interval {
     type Output = Self;
 
     fn rem(self, rhs: Self) -> Self::Output {
-        let bot = Self::bottom(&());
+        let bot = Self::bottom_();
         if self == bot || rhs == bot || rhs == Self::from(0) {
             return bot;
         }
@@ -779,7 +779,7 @@ impl Congruence {
 
         match (self.singleton(), other.singleton()) {
             (Some(x), Some(y)) if y == x => Self::from(1, 0),
-            _ => Self::top(&()),
+            _ => Self::top_(),
         }
     }
 
@@ -787,7 +787,7 @@ impl Congruence {
         match (self.singleton(), other.singleton()) {
             (Some(0), _) | (_, Some(0)) => Self::from(0, 0),
             (Some(1), Some(1)) => Self::from(1, 0),
-            _ => Self::top(&()),
+            _ => Self::top_(),
         }
     }
 
@@ -795,7 +795,7 @@ impl Congruence {
         match (self.singleton(), other.singleton()) {
             (Some(1), _) | (_, Some(1)) => Self::from(1, 0),
             (Some(0), Some(0)) => Self::from(0, 0),
-            _ => Self::top(&()),
+            _ => Self::top_(),
         }
     }
 
@@ -803,7 +803,7 @@ impl Congruence {
         match self.singleton() {
             Some(1) => Self::from(0, 0),
             Some(0) => Self::from(1, 0),
-            _ => Self::top(&()),
+            _ => Self::top_(),
         }
     }
 
@@ -827,11 +827,11 @@ impl PartialOrd for Congruence {
             return Some(Ordering::Equal);
         }
 
-        if *self == Self::bottom(&()) {
+        if *self == Self::bottom_() {
             return Some(Ordering::Less);
         }
 
-        if *other == Self::bottom(&()) {
+        if *other == Self::bottom_() {
             return Some(Ordering::Greater);
         }
 
@@ -868,10 +868,10 @@ impl JoinSemiLattice for Congruence {
     }
 
     fn join(&self, other: &Self, &(): &Self::LatticeContext) -> Self {
-        if *self == Self::bottom(&()) {
+        if *self == Self::bottom_() {
             return *other;
         }
-        if *other == Self::bottom(&()) {
+        if *other == Self::bottom_() {
             return *self;
         }
         let new_modulus = self
@@ -897,7 +897,7 @@ impl Lattice for Congruence {
     }
 
     fn meet(&self, other: &Self, &(): &Self::LatticeContext) -> Self {
-        let bot = Self::bottom(&());
+        let bot = Self::bottom_();
         if *self == bot || *other == bot {
             return bot;
         }
@@ -922,7 +922,7 @@ impl Lattice for Congruence {
     }
 
     fn narrow(&self, previous: &Self, &(): &Self::LatticeContext, _iteration: usize) -> Self {
-        if *previous == Self::top(&()) {
+        if *previous == Self::top_() {
             return *self;
         }
         *previous
@@ -933,7 +933,7 @@ impl Neg for Congruence {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        if self == Self::bottom(&()) {
+        if self == Self::bottom_() {
             return self;
         }
         Self::from(-self.constant, self.modulus)
@@ -944,7 +944,7 @@ impl Add for Congruence {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        let bot = Self::bottom(&());
+        let bot = Self::bottom_();
         if self == bot || rhs == bot {
             return bot;
         }
@@ -969,7 +969,7 @@ impl Mul for Congruence {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        let bot = Self::bottom(&());
+        let bot = Self::bottom_();
         if self == bot || rhs == bot {
             return bot;
         }
@@ -988,7 +988,7 @@ impl Div for Congruence {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
-        let bot = Self::bottom(&());
+        let bot = Self::bottom_();
         if self == bot || rhs == bot || rhs == Self::from(0, 0) {
             return bot;
         }
@@ -996,7 +996,7 @@ impl Div for Congruence {
         {
             return Self::from(self.constant / rhs.constant, self.modulus / rhs.constant);
         }
-        Self::top(&())
+        Self::top_()
     }
 }
 

@@ -1,5 +1,5 @@
 use analysis::cfg::OpPos;
-use analysis::domains::{self, Interval, JoinSemiLattice, Lattice, Vec2Domain};
+use analysis::domains::{self, Interval, JoinSemiLatticeNoContext, LatticeNoContext, Vec2Domain};
 use analysis::solvers::{SolveMonotone, TransferFunction};
 
 use utils::Vec2;
@@ -22,7 +22,7 @@ impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Interval> for IntervalAnalysis {
         _pos: OpPos,
         &op: &Operation,
         cfg: &Cfg,
-        lat_ctx: &(),
+        _lat_ctx: &(),
         pre_state: &Vec2Interval,
     ) -> Vec2Interval {
         let ctx = cfg.context();
@@ -87,7 +87,7 @@ impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Interval> for IntervalAnalysis {
                     || pre_state.y.max == domains::INF
                     || pre_state.y.min == domains::NEG_INF
                 {
-                    return Vec2Domain::top(lat_ctx);
+                    return Vec2Domain::top_();
                 }
 
                 // The two intervals describe a rectangle aligned with the axes:
@@ -148,7 +148,7 @@ impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Interval> for IntervalAnalysis {
 impl IntervalAnalysis {
     pub fn get_results(cfg: &Cfg) -> Vec<Vec2Interval> {
         let solver = SolveMonotone::default();
-        let seed = Vec2Interval::bottom(&());
+        let seed = Vec2Interval::bottom_();
         solver.solve(cfg, seed, &(), &mut Self)
     }
 }

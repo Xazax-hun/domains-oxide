@@ -69,6 +69,35 @@ pub trait JoinSemiLattice: Eq + PartialOrd + Clone + Debug {
     }
 }
 
+pub trait JoinSemiLatticeNoContext: JoinSemiLattice {
+    /// See [JoinSemiLattice::bottom] for details. This version does not
+    /// require a context.
+    fn bottom_() -> Self;
+
+    /// See [JoinSemiLattice::join] for details. This version does not
+    /// require a context.
+    fn join_(&self, other: &Self) -> Self;
+
+    /// See [JoinSemiLattice::widen] for details. This version does not
+    /// require a context.
+    fn widen_(&self, previous: &Self, iteration: usize) -> Self;
+}
+
+// TODO: also implement it for contexts like ((), ())
+impl<L: JoinSemiLattice<LatticeContext = ()>> JoinSemiLatticeNoContext for L {
+    fn bottom_() -> Self {
+        <L as JoinSemiLattice>::bottom(&())
+    }
+
+    fn join_(&self, other: &Self) -> Self {
+        self.join(other, &())
+    }
+
+    fn widen_(&self, previous: &Self, iteration: usize) -> Self {
+        self.widen(previous, &(), iteration)
+    }
+}
+
 /// A lattice is a join semi-lattice that is also a meet semi-lattice, i.e.,
 /// the greatest lower bound (meet) also exists for all subsets.
 pub trait Lattice: JoinSemiLattice {
@@ -96,6 +125,34 @@ pub trait Lattice: JoinSemiLattice {
     /// chains.
     fn narrow(&self, _previous: &Self, _ctx: &Self::LatticeContext, _iteration: usize) -> Self {
         self.clone()
+    }
+}
+
+pub trait LatticeNoContext: Lattice {
+    /// See [Lattice::top] for details. This version does not
+    /// require a context.
+    fn top_() -> Self;
+
+    /// See [Lattice::meet] for details. This version does not
+    /// require a context.
+    fn meet_(&self, other: &Self) -> Self;
+
+    /// See [Lattice::meet] for details. This version does not
+    /// require a context.
+    fn narrow_(&self, previous: &Self, iteration: usize) -> Self;
+}
+
+impl<L: Lattice<LatticeContext = ()>> LatticeNoContext for L {
+    fn top_() -> Self {
+        <L as Lattice>::top(&())
+    }
+
+    fn meet_(&self, other: &Self) -> Self {
+        self.meet(other, &())
+    }
+
+    fn narrow_(&self, previous: &Self, iteration: usize) -> Self {
+        self.narrow(previous, &(), iteration)
     }
 }
 

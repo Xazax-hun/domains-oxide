@@ -406,11 +406,23 @@ impl<T: Lattice, const N: usize> Lattice for Array<T, N> {
 pub struct Map<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice>(pub HashMap<K, V>);
 
 /// Contains all the keys for top value, can leave it empty for
-/// join semi-lattices.
+/// join semi lattices.
 pub struct MapCtx<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice>(
     pub HashSet<K>,
     pub V::LatticeContext,
 );
+
+impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> MapCtx<K, V>
+where
+    <V as JoinSemiLattice>::LatticeContext: Default,
+{
+    pub fn for_join_semi_lattice() -> Self {
+        MapCtx(
+            HashSet::new(),
+            <V as JoinSemiLattice>::LatticeContext::default(),
+        )
+    }
+}
 
 impl<K: Eq + Clone + Hash + Debug, V: JoinSemiLattice> AsRef<Map<K, V>> for Map<K, V> {
     fn as_ref(&self) -> &Self {

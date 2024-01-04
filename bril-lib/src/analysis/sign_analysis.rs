@@ -1,5 +1,4 @@
 use core::cmp::Ordering;
-use std::collections::HashSet;
 
 use analysis::{
     cfg::{CfgBlock, ControlFlowGraph, OpPos},
@@ -148,7 +147,7 @@ impl Analysis for SignAnalysis {
     fn analyze(&self, cfg: &Cfg, unit: &Unit) -> Annotations {
         let solver = SolveMonotone::default();
 
-        let ctx = MapCtx(HashSet::new(), ());
+        let ctx = MapCtx::for_join_semi_lattice();
         let mut seed = SignEnv::bottom(&ctx);
         // Values for the formal parameters.
         for Variable { id, ty } in cfg.get_formals() {

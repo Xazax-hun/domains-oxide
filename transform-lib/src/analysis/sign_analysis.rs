@@ -1,5 +1,5 @@
 use analysis::cfg::OpPos;
-use analysis::domains::{JoinSemiLattice, Sign, Vec2Domain};
+use analysis::domains::{JoinSemiLatticeNoContext, Sign, Vec2Domain};
 use analysis::solvers::{SolveMonotone, TransferFunction};
 
 use utils::Vec2;
@@ -100,7 +100,7 @@ impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Sign> for SignAnalysis {
 impl SignAnalysis {
     pub fn get_results(cfg: &Cfg) -> Vec<Vec2Sign> {
         let solver = SolveMonotone::default();
-        let seed = Vec2Sign::bottom(&());
+        let seed = Vec2Sign::bottom_();
         solver.solve(cfg, seed, &(), &mut Self)
     }
 }

@@ -1,9 +1,8 @@
 use core::cmp::Ordering;
-use std::collections::HashSet;
 
 use analysis::{
     cfg::{CfgBlock, ControlFlowGraph, OpPos},
-    domains::{Congruence, JoinSemiLattice, Lattice, Map, MapCtx},
+    domains::{Congruence, JoinSemiLattice, LatticeNoContext, Map, MapCtx},
     solvers::{SolveMonotone, TransferFunction},
 };
 
@@ -27,29 +26,29 @@ impl CongruenceAnalysis {
             TokenValue::Mul => lhs * rhs,
             TokenValue::Sub => lhs - rhs,
             TokenValue::Div => lhs / rhs,
-            TokenValue::Mod => Congruence::top(&()),
+            TokenValue::Mod => Congruence::top_(),
             TokenValue::Equal => lhs.equals(rhs),
             TokenValue::And => lhs.logical_and(rhs),
             TokenValue::Or => lhs.logical_or(rhs),
             TokenValue::LessThan => match lhs.strict_cmp(rhs) {
                 Some(Ordering::Less) => Congruence::from(1, 0),
                 Some(_) => Congruence::from(0, 0),
-                _ => Congruence::top(&()),
+                _ => Congruence::top_(),
             },
             TokenValue::GreaterThan => match lhs.strict_cmp(rhs) {
                 Some(Ordering::Greater) => Congruence::from(1, 0),
                 Some(_) => Congruence::from(0, 0),
-                _ => Congruence::top(&()),
+                _ => Congruence::top_(),
             },
             TokenValue::LessThanOrEq => match lhs.strict_cmp(rhs) {
                 Some(Ordering::Greater) => Congruence::from(0, 0),
                 Some(_) => Congruence::from(1, 0),
-                _ => Congruence::top(&()),
+                _ => Congruence::top_(),
             },
             TokenValue::GreaterThanOrEq => match lhs.strict_cmp(rhs) {
                 Some(Ordering::Less) => Congruence::from(0, 0),
                 Some(_) => Congruence::from(1, 0),
-                _ => Congruence::top(&()),
+                _ => Congruence::top_(),
             },
             _ => {
                 panic!("Unexpected binary operator.")
@@ -152,11 +151,11 @@ impl Analysis for CongruenceAnalysis {
     fn analyze(&self, cfg: &Cfg, unit: &Unit) -> Annotations {
         let solver = SolveMonotone::default();
 
-        let ctx = MapCtx(HashSet::new(), ());
+        let ctx = MapCtx::for_join_semi_lattice();
         let mut seed = CongruenceEnv::bottom(&ctx);
         // Values for the formal parameters.
         for Variable { id, .. } in cfg.get_formals() {
-            seed.insert(*id, Congruence::top(&()));
+            seed.insert(*id, Congruence::top_());
         }
 
         let mut transfer = TransferLogger::new(unit, Self);

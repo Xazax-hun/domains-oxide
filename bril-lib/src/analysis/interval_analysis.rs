@@ -7,8 +7,8 @@ use crate::{
 use analysis::{
     cfg::{CfgBlock, ControlFlowGraph},
     domains::{
-        Interval, JoinSemiLattice, Lattice, Map, MapCtx, UnrollWiden, BOOL_RANGE, FALSE_RANGE,
-        TRUE_RANGE,
+        Interval, JoinSemiLattice, LatticeNoContext, Map, MapCtx, UnrollWiden, BOOL_RANGE,
+        FALSE_RANGE, TRUE_RANGE,
     },
     solvers::{SolveMonotone, TransferFunction},
 };
@@ -27,7 +27,7 @@ impl IntervalAnalysis {
             TokenValue::Add => lhs + rhs,
             TokenValue::Mul => lhs * rhs,
             TokenValue::Sub => lhs - rhs,
-            TokenValue::Div => Interval::top(&()),
+            TokenValue::Div => Interval::top_(),
             TokenValue::Mod => lhs % rhs,
             TokenValue::Equal => lhs.equals(rhs),
             TokenValue::And => lhs.logical_and(rhs),
@@ -161,7 +161,7 @@ impl Analysis for IntervalAnalysis {
                 *id,
                 match ty {
                     Type::Bool => BOOL_RANGE,
-                    _ => Interval::top(&()),
+                    _ => Interval::top_(),
                 },
             );
         }
@@ -208,7 +208,7 @@ impl Analysis for UnrolledIntervalAnalysis {
     fn analyze(&self, cfg: &Cfg, unit: &Unit) -> Annotations {
         let solver = SolveMonotone::default();
 
-        let ctx = (self.0, MapCtx(HashSet::new(), ()));
+        let ctx = (self.0, MapCtx::for_join_semi_lattice());
         let mut seed = UnrolledIntervalEnv::bottom(&ctx);
         // Values for the formal parameters.
         for Variable { id, ty } in cfg.get_formals() {
@@ -216,7 +216,7 @@ impl Analysis for UnrolledIntervalAnalysis {
                 *id,
                 match ty {
                     Type::Bool => BOOL_RANGE,
-                    _ => Interval::top(&()),
+                    _ => Interval::top_(),
                 },
             );
         }
