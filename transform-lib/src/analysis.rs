@@ -92,7 +92,7 @@ where
     G: FnMut(&mut Annotations) -> &mut HashMap<Node, Vec<String>>,
 {
     let mut anns = Annotations::new();
-    let mut states = Vec::from(result);
+    let mut states: Box<[D]> = Box::from(result);
     if states.is_empty() {
         return anns;
     }
@@ -132,7 +132,7 @@ where
     D: JoinSemiLattice + RenderableDomain,
 {
     let mut polys = Vec::new();
-    let mut states = Vec::from(result);
+    let mut states: Box<[D]> = Box::from(result);
     if states.is_empty() {
         return polys;
     }
