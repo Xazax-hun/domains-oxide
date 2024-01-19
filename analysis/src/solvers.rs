@@ -202,9 +202,10 @@ impl SolveMonotone {
         self,
         cfg: &Cfg,
         lat_ctx: &D::LatticeContext,
-        post_states: &mut Vec<D>,
+        post_states: &mut [D],
         transfer: &mut F,
-    ) where
+    ) -> bool
+    where
         Cfg: ControlFlowGraph,
         D: JoinSemiLattice,
         F: TransferFunction<Cfg, D>,
@@ -232,8 +233,7 @@ impl SolveMonotone {
         let mut processed_nodes = 1_usize;
         while let Some(current) = worklist.pop() {
             if limit > 0 && processed_nodes >= limit {
-                post_states.clear();
-                return;
+                return false;
             }
 
             let mut pre_state = D::bottom(lat_ctx);
@@ -260,6 +260,7 @@ impl SolveMonotone {
             post_states[current] = post_state;
             worklist.push_successors(current, cfg);
         }
+        true
     }
 
     /// Run the solver on a CFG returning the analysis states at the end of
@@ -286,7 +287,10 @@ impl SolveMonotone {
     {
         let mut post_states = vec![D::bottom(lat_ctx); cfg.blocks().len()];
         post_states[0] = seed;
-        self.solve_in_place(cfg, lat_ctx, &mut post_states, transfer);
-        post_states
+        if self.solve_in_place(cfg, lat_ctx, &mut post_states, transfer) {
+            post_states
+        } else {
+            vec![]
+        }
     }
 }
