@@ -192,7 +192,7 @@ impl Default for SolveMonotone {
 
 impl SolveMonotone {
     /// Run the solver on a CFG mutating the analysis states in place. The
-    /// `post_states` vector is cleared when the analysis did not converge.
+    /// return value is false when the analysis did not converge.
     ///
     /// # Arguments
     ///
