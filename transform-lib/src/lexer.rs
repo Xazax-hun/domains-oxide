@@ -41,9 +41,10 @@ fn from_char(c: char) -> Option<TokenValue> {
 
 impl TokenValue {
     pub fn to_num(self) -> i32 {
-        match self {
-            Number(n) => n,
-            _ => panic!(),
+        if let Number(n) = self {
+            n
+        } else {
+            panic!();
         }
     }
 }

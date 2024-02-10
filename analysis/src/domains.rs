@@ -70,15 +70,15 @@ pub trait JoinSemiLattice: Eq + PartialOrd + Clone + Debug {
 }
 
 pub trait JoinSemiLatticeNoContext: JoinSemiLattice {
-    /// See [JoinSemiLattice::bottom] for details. This version does not
+    /// See [`JoinSemiLattice::bottom`] for details. This version does not
     /// require a context.
     fn bottom_() -> Self;
 
-    /// See [JoinSemiLattice::join] for details. This version does not
+    /// See [`JoinSemiLattice::join`] for details. This version does not
     /// require a context.
     fn join_(&self, other: &Self) -> Self;
 
-    /// See [JoinSemiLattice::widen] for details. This version does not
+    /// See [`JoinSemiLattice::widen`] for details. This version does not
     /// require a context.
     fn widen_(&self, previous: &Self, iteration: usize) -> Self;
 }
@@ -129,15 +129,15 @@ pub trait Lattice: JoinSemiLattice {
 }
 
 pub trait LatticeNoContext: Lattice {
-    /// See [Lattice::top] for details. This version does not
+    /// See [`Lattice::top`] for details. This version does not
     /// require a context.
     fn top_() -> Self;
 
-    /// See [Lattice::meet] for details. This version does not
+    /// See [`Lattice::meet`] for details. This version does not
     /// require a context.
     fn meet_(&self, other: &Self) -> Self;
 
-    /// See [Lattice::meet] for details. This version does not
+    /// See [`Lattice::meet`] for details. This version does not
     /// require a context.
     fn narrow_(&self, previous: &Self, iteration: usize) -> Self;
 }
