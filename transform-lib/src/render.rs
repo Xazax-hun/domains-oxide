@@ -22,6 +22,7 @@ fn clip_width(pos: i64) -> f64 {
         pos as f64
     }
 }
+
 fn clip_height(pos: i64) -> f64 {
     if pos == analysis::domains::INF {
         HEIGHT / 2_f64
