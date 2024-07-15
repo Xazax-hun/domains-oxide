@@ -16,4 +16,4 @@ utils = { path = "../utils"}
 analysis = { path = "../analysis"}
 rand = "0.8.5"
 itertools = "0.13.0"
-cairo-rs = { version = "0.19.1", features = ["svg"] }
+cairo-rs = { version = "0.20.0", features = ["svg"] }
