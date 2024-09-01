@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 use utils::DiagnosticEmitter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,14 +69,13 @@ impl core::fmt::Display for TokenValue {
     }
 }
 
-static KEYWORDS: OnceLock<HashMap<String, TokenValue>> = OnceLock::new();
-fn init_keywords() -> HashMap<String, TokenValue> {
+static KEYWORDS: LazyLock<HashMap<String, TokenValue>> = LazyLock::new(|| {
     let mut m = HashMap::new();
     for kw in [Init, Or, Translation, Rotation, Iter] {
         m.insert(kw.to_string(), kw);
     }
     m
-}
+});
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Token {
@@ -253,13 +252,10 @@ impl<'src> Lexer<'src> {
         }
 
         let text = &self.source[self.start..self.current];
-        KEYWORDS
-            .get_or_init(init_keywords)
-            .get(text)
-            .map(|value| Token {
-                value: *value,
-                line_num: self.line_num,
-            })
+        KEYWORDS.get(text).map(|value| Token {
+            value: *value,
+            line_num: self.line_num,
+        })
     }
 
     fn is_at_end(&self) -> bool {

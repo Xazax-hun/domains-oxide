@@ -9,7 +9,7 @@ use analysis::{
 use utils::Polygon;
 
 use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 use crate::{
     ast::{Annotations, Node},
@@ -35,8 +35,7 @@ pub enum Analyses {
     FutureOperations,
 }
 
-static ANALYSES: OnceLock<HashMap<Analyses, Box<dyn Analysis>>> = OnceLock::new();
-fn init_analyses() -> HashMap<Analyses, Box<dyn Analysis>> {
+static ANALYSES: LazyLock<HashMap<Analyses, Box<dyn Analysis>>> = LazyLock::new(|| {
     let mut m = HashMap::<Analyses, Box<dyn Analysis>>::new();
     m.insert(Analyses::Sign, Box::new(sign_analysis::SignAnalysis));
     m.insert(
@@ -52,13 +51,10 @@ fn init_analyses() -> HashMap<Analyses, Box<dyn Analysis>> {
         Box::new(reachability_analysis::FutureOperations),
     );
     m
-}
+});
 
 pub fn get_analysis_results(analysis: Analyses, cfg: &Cfg) -> AnalysisResult {
-    let analysis = ANALYSES
-        .get_or_init(init_analyses)
-        .get(&analysis)
-        .expect("Unimplemented analysis!");
+    let analysis = ANALYSES.get(&analysis).expect("Unimplemented analysis!");
     analysis.analyze(cfg)
 }
 

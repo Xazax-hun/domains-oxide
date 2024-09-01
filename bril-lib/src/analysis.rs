@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 use analysis::{
     cfg::OpPos,
@@ -37,8 +37,7 @@ pub enum Analyses {
     Congruence,
 }
 
-static ANALYSES: OnceLock<HashMap<Analyses, Box<dyn Analysis>>> = OnceLock::new();
-fn init_analyses() -> HashMap<Analyses, Box<dyn Analysis>> {
+static ANALYSES: LazyLock<HashMap<Analyses, Box<dyn Analysis>>> = LazyLock::new(|| {
     let mut m = HashMap::<Analyses, Box<dyn Analysis>>::new();
     m.insert(Analyses::Sign, Box::new(sign_analysis::SignAnalysis));
     m.insert(
@@ -54,13 +53,10 @@ fn init_analyses() -> HashMap<Analyses, Box<dyn Analysis>> {
         Box::new(congruence_analysis::CongruenceAnalysis),
     );
     m
-}
+});
 
 pub fn get_analysis_results(analysis: Analyses, unit: &Unit) -> AnnotationMap {
-    let analysis = ANALYSES
-        .get_or_init(init_analyses)
-        .get(&analysis)
-        .expect("Unimplemented analysis!");
+    let analysis = ANALYSES.get(&analysis).expect("Unimplemented analysis!");
     analysis.analyze_all(unit)
 }
 
