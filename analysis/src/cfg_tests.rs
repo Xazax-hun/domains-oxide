@@ -1,5 +1,3 @@
-use std::usize;
-
 use super::cfg::*;
 use super::solvers::*;
 
