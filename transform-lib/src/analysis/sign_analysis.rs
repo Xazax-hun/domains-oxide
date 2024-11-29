@@ -17,7 +17,7 @@ type Vec2Sign = Vec2Domain<Sign>;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SignAnalysis;
 
-impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Sign> for SignAnalysis {
+impl TransferFunction<Cfg<'_>, Vec2Sign> for SignAnalysis {
     fn operation(
         &mut self,
         _: OpPos,

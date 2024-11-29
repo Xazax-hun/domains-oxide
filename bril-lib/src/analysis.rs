@@ -67,7 +67,7 @@ pub struct TransferLogger<'unit, D, Transfer> {
     d: PhantomData<D>,
 }
 
-impl<'unit, D, EnvD, Transfer> TransferFunction<Cfg, EnvD> for TransferLogger<'unit, D, Transfer>
+impl<D, EnvD, Transfer> TransferFunction<Cfg, EnvD> for TransferLogger<'_, D, Transfer>
 where
     D: JoinSemiLattice,
     EnvD: AsRef<Map<Identifier, D>> + JoinSemiLattice,

@@ -16,7 +16,7 @@ type Vec2Interval = Vec2Domain<Interval>;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IntervalAnalysis;
 
-impl<'ctx> TransferFunction<Cfg<'ctx>, Vec2Interval> for IntervalAnalysis {
+impl TransferFunction<Cfg<'_>, Vec2Interval> for IntervalAnalysis {
     fn operation(
         &mut self,
         _pos: OpPos,

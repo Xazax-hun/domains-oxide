@@ -444,7 +444,7 @@ struct Sema<'unit, 'src> {
     diag: &'src mut DiagnosticEmitter,
 }
 
-impl<'unit, 'src> Sema<'unit, 'src> {
+impl Sema<'_, '_> {
     fn expect_type(&mut self, t: Token, found: Type, expected: Type) -> Option<()> {
         if found == expected {
             return Some(());

@@ -42,7 +42,7 @@ struct CfgImpl<'ctx> {
 #[derive(Clone, Debug)]
 pub struct Cfg<'ctx>(CfgImpl<'ctx>);
 
-impl<'ctx> ControlFlowGraph for CfgImpl<'ctx> {
+impl ControlFlowGraph for CfgImpl<'_> {
     type Block = BasicBlock;
 
     fn blocks(&self) -> &[Self::Block] {
@@ -50,7 +50,7 @@ impl<'ctx> ControlFlowGraph for CfgImpl<'ctx> {
     }
 }
 
-impl<'ctx> MutableCfg for CfgImpl<'ctx> {
+impl MutableCfg for CfgImpl<'_> {
     fn new_block(&mut self) -> usize {
         self.basic_blocks.push(BasicBlock::new());
         self.basic_blocks.len() - 1
@@ -78,7 +78,7 @@ impl<'ctx> MutableCfg for CfgImpl<'ctx> {
     }
 }
 
-impl<'ctx> BlockMutableCfg for CfgImpl<'ctx> {
+impl BlockMutableCfg for CfgImpl<'_> {
     fn extend_block<'cfg>(
         &'cfg mut self,
         block: usize,
@@ -95,7 +95,7 @@ impl<'ctx> BlockMutableCfg for CfgImpl<'ctx> {
     }
 }
 
-impl<'ctx> ControlFlowGraph for Cfg<'ctx> {
+impl ControlFlowGraph for Cfg<'_> {
     type Block = BasicBlock;
 
     fn blocks(&self) -> &[Self::Block] {
@@ -127,7 +127,7 @@ impl<'ctx> Cfg<'ctx> {
     }
 }
 
-impl<'ctx> CfgImpl<'ctx> {
+impl CfgImpl<'_> {
     fn add_ast_node(&mut self, mut current_block: usize, n: Node, ctx: &ASTContext) -> usize {
         match (n, ctx.node_to_ref(n)) {
             (Node::Operation(op), _) => {

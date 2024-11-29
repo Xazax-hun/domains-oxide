@@ -26,7 +26,7 @@ fn parse_main_arguments() {
   ret;
 }";
     let expected = "5\ntrue\n";
-    let opts = Opt::parse_from(vec!["bril-driver", "source", "5", "true"].iter());
+    let opts = Opt::parse_from(["bril-driver", "source", "5", "true"].iter());
     let output = run_driver(source, opts).unwrap();
     assert_eq!(output, expected);
 }

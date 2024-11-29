@@ -204,11 +204,11 @@ pub struct RPOWorklist<Cfg: ControlFlowGraph> {
     phantom: PhantomData<Cfg>,
 }
 
-impl<'cfg, Cfg: ControlFlowGraph> RPOWorklist<Cfg> {
+impl<Cfg: ControlFlowGraph> RPOWorklist<Cfg> {
     /// Creates a new [`RPOWorklist`] by computing the reverse-post order.
     /// It is more efficient to clear a [`RPOWorklist`] and reuse it for
     /// another traversal than creating it from scratch.
-    pub fn new(cfg: &'cfg Cfg) -> Self {
+    pub fn new(cfg: &Cfg) -> Self {
         // TODO: look into deduplicating this and get_back_edges
         let mut counter = 0_usize;
         let mut color = vec![Color::White; cfg.blocks().len()];

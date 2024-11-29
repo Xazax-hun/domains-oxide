@@ -5,9 +5,9 @@ use super::ast::Operation;
 use super::cfg::Cfg;
 use super::eval::*;
 
-fn eval_ast<'ctx>(ctx: &'ctx ASTContext) -> (Cfg<'ctx>, Walk) {
-    let cfg = Cfg::new(&ctx);
-    let walk = create_random_walk(&cfg, &ctx, 1);
+fn eval_ast(ctx: &ASTContext) -> (Cfg<'_>, Walk) {
+    let cfg = Cfg::new(ctx);
+    let walk = create_random_walk(&cfg, ctx, 1);
     (cfg, walk)
 }
 
