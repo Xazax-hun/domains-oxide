@@ -1,6 +1,6 @@
 use crate::solvers::BlockTransfer;
 
-use super::cfg::{reverse, BlockMutableCfg, ControlFlowGraph};
+use super::cfg::{BlockMutableCfg, ControlFlowGraph, reverse};
 use super::domains::*;
 use super::solvers::SolveMonotone;
 
@@ -37,8 +37,8 @@ pub fn calculate_post_dominators<Cfg: BlockMutableCfg + Default>(
         .iter()
         .map(|dom| {
             let mut result = Flipped::<BitSet>::top(&ctx);
-            for item in dom.0 .0.ones() {
-                result.0 .0.insert(node_num - 1 - item);
+            for item in dom.0.0.ones() {
+                result.0.0.insert(node_num - 1 - item);
             }
             result
         })

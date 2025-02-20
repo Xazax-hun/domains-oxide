@@ -4,9 +4,9 @@ use analysis::solvers::{SolveMonotone, TransferFunction};
 
 use utils::Vec2;
 
+use crate::analysis::AnalysisResult;
 use crate::analysis::annotations_from_forward_analysis_results;
 use crate::analysis::covered_area_from_analysis_results;
-use crate::analysis::AnalysisResult;
 use crate::ast::{NodeRef, Operation};
 use crate::cfg::Cfg;
 

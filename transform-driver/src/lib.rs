@@ -1,5 +1,5 @@
 use clap::{Parser as CommandLineParser, ValueEnum};
-use transform_lib::analysis::{get_analysis_results, Analyses, AnalysisResult};
+use transform_lib::analysis::{Analyses, AnalysisResult, get_analysis_results};
 use transform_lib::ast;
 use transform_lib::cfg::{self, Cfg};
 use transform_lib::eval::{annotate_with_walks, create_random_walks};

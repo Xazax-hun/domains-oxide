@@ -7,11 +7,11 @@ use analysis::cfg::OpPos;
 use analysis::domains::{JoinSemiLattice, PowerSet, PowerSetTop};
 use analysis::solvers::{OpTransfer, SolveMonotone};
 
+use crate::analysis::AnalysisResult;
 use crate::analysis::annotations_from_backward_analysis_results;
 use crate::analysis::annotations_from_forward_analysis_results;
-use crate::analysis::AnalysisResult;
 use crate::ast::Operation;
-use crate::cfg::{reverse, Cfg};
+use crate::cfg::{Cfg, reverse};
 
 use super::Analysis;
 

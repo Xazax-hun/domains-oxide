@@ -285,7 +285,7 @@ impl<'src> Lexer<'src> {
                     return Some(Token {
                         value: from_char(c).unwrap(),
                         line_num: Location(self.line_num),
-                    })
+                    });
                 }
 
                 // Whitespace

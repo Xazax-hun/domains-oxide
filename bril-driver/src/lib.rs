@@ -1,5 +1,5 @@
 use bril_lib::{
-    analysis::{get_analysis_results, Analyses},
+    analysis::{Analyses, get_analysis_results},
     eval::{Interpreter, Value},
     ir::{self, print_dot},
     lexer::Lexer,

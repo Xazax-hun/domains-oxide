@@ -4,8 +4,8 @@ use std::collections::HashSet;
 use analysis::cfg::CfgBlock;
 use analysis::cfg::ControlFlowGraph;
 use itertools::Itertools;
-use rand::prelude::ThreadRng;
 use rand::Rng;
+use rand::prelude::ThreadRng;
 use utils::Vec2;
 
 use crate::ast::*;

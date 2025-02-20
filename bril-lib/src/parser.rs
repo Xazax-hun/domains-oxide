@@ -1,4 +1,4 @@
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{HashMap, hash_map::Entry};
 
 use analysis::cfg::{BlockMutableCfg, CfgBlock, ControlFlowGraph, MutableCfg, RPOWorklist};
 use utils::DiagnosticEmitter;

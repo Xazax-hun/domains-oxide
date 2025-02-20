@@ -7,8 +7,8 @@ use crate::{
 use analysis::{
     cfg::{CfgBlock, ControlFlowGraph},
     domains::{
-        Interval, JoinSemiLattice, LatticeNoContext, Map, MapCtx, UnrollWiden, BOOL_RANGE,
-        FALSE_RANGE, TRUE_RANGE,
+        BOOL_RANGE, FALSE_RANGE, Interval, JoinSemiLattice, LatticeNoContext, Map, MapCtx,
+        TRUE_RANGE, UnrollWiden,
     },
     solvers::{SolveMonotone, TransferFunction},
 };

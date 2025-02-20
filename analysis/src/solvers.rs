@@ -1,7 +1,7 @@
 use core::marker::PhantomData;
 use std::collections::HashSet;
 
-use super::cfg::{get_back_edges, CfgBlock, ControlFlowGraph, OpPos, RPOWorklist};
+use super::cfg::{CfgBlock, ControlFlowGraph, OpPos, RPOWorklist, get_back_edges};
 use super::domains::JoinSemiLattice;
 
 /// Transfer functions need to implement this trait and define either
