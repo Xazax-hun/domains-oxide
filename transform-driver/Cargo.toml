@@ -7,7 +7,7 @@ license = "Apache-2.0"
 keywords = ["compiler", "interpreter", "static analysis", "program analysis", "language"]
 categories = ["compilers", "command-line-utilities", "development-tools"]
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 default-run = "transform-driver"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
