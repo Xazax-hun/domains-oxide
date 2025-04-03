@@ -270,7 +270,7 @@ impl SolveMonotone {
     /// # Arguments
     ///
     /// * `seed` - The initial program state for the start node. This often has
-    ///            the initial abstract values for the formal parameters of a function.
+    ///   the initial abstract values for the formal parameters of a function.
     /// * `post_states` - The analysis state after each CFG block.
     /// * `transfer` - Function to apply the effects of blocks, edges, operations.
     pub fn solve<Cfg, D, F>(
