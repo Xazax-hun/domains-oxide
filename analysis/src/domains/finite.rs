@@ -184,12 +184,12 @@ impl<T: Clone + Debug + Eq, const N: usize> FiniteCtx<T, N> {
             for j in (i + 1)..N {
                 let mut lub = self.smaller_matrix[i].clone();
                 lub.intersect_with(&self.smaller_matrix[j]);
-                if !self.smaller_matrix.iter().any(|r| *r == lub) {
+                if !self.smaller_matrix.contains(&lub) {
                     return Err(FiniteDomainError::NoLeastUpperBound(i, j));
                 }
                 let mut glb = self.greater_matrix[i].clone();
                 glb.intersect_with(&self.greater_matrix[j]);
-                if !self.greater_matrix.iter().any(|r| *r == glb) {
+                if !self.greater_matrix.contains(&glb) {
                     return Err(FiniteDomainError::NoGreatestLowerBound(i, j));
                 }
             }
