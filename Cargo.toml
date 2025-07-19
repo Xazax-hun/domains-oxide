@@ -13,8 +13,5 @@ exclude = [
   "transform-parser-fuzz"
 ]
 
-[patch.crates-io]
-number-theory = { git = 'https://github.com/JASory/ENT.git' }
-
 [workspace.lints.clippy]
 doc_lazy_continuation = "allow"

@@ -751,7 +751,7 @@ impl Congruence {
         if other.modulus == 0 {
             return (other.constant % self.modulus) != self.constant;
         }
-        let modulus = self.modulus.gcd(&other.modulus);
+        let modulus = self.modulus.gcd(other.modulus);
         (self.constant - other.constant) % modulus != 0
     }
 
@@ -876,8 +876,8 @@ impl JoinSemiLattice for Congruence {
         }
         let new_modulus = self
             .modulus
-            .gcd(&other.modulus)
-            .gcd(&(self.constant - other.constant).abs());
+            .gcd(other.modulus)
+            .gcd((self.constant - other.constant).abs());
         Self {
             constant: self.constant,
             modulus: new_modulus,
@@ -907,9 +907,10 @@ impl Lattice for Congruence {
         if other.modulus == 0 {
             return if self.disjoint(*other) { bot } else { *other };
         }
-        let modulus = self.modulus.gcd(&other.modulus);
+        let modulus = self.modulus.gcd(other.modulus);
         if (self.constant - other.constant).abs() % modulus == 0 {
-            let new_modulus = self.modulus.lcm(&other.modulus);
+            // FIXME: handle overflow case.
+            let new_modulus = self.modulus.lcm(other.modulus).unwrap();
             let new_constant = self.constant % new_modulus;
             Self {
                 constant: new_constant,
@@ -948,7 +949,7 @@ impl Add for Congruence {
         if self == bot || rhs == bot {
             return bot;
         }
-        let new_modulus = self.modulus.gcd(&rhs.modulus);
+        let new_modulus = self.modulus.gcd(rhs.modulus);
         Self {
             constant: self.constant + rhs.constant,
             modulus: new_modulus,
@@ -974,8 +975,8 @@ impl Mul for Congruence {
             return bot;
         }
         let new_modulus = (self.modulus * rhs.modulus)
-            .gcd(&(self.modulus * rhs.constant))
-            .gcd(&(rhs.modulus * self.constant));
+            .gcd(self.modulus * rhs.constant)
+            .gcd(rhs.modulus * self.constant);
         Self {
             constant: self.constant * rhs.constant,
             modulus: new_modulus,
