@@ -140,12 +140,12 @@ impl<'src> Parser<'src> {
             if prev != self.current_block {
                 cfg.extend_block(prev, ops.iter());
                 ops.clear();
-            } else if let Some(prev_op) = ops.last() {
-                if prev_op.is_terminator() {
-                    op.get_token()
-                        .error(self.diag, "Basic block must start with a label.");
-                    return None;
-                }
+            } else if let Some(prev_op) = ops.last()
+                && prev_op.is_terminator()
+            {
+                op.get_token()
+                    .error(self.diag, "Basic block must start with a label.");
+                return None;
             }
             ops.push(op);
         }

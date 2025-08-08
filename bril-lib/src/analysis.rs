@@ -123,10 +123,10 @@ where
         mut changed_values: Map<Identifier, D>,
         pos: OpPos,
     ) {
-        if let Some(result) = op.get_result() {
-            if let Some(val) = post_state.get(&result.id) {
-                changed_values.insert(result.id, val.clone());
-            }
+        if let Some(result) = op.get_result()
+            && let Some(val) = post_state.get(&result.id)
+        {
+            changed_values.insert(result.id, val.clone());
         }
         if !changed_values.is_empty() {
             let printed: Vec<_> = changed_values

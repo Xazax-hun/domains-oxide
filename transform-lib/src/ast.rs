@@ -156,7 +156,7 @@ impl ASTContext {
         Node::Loop(u32::try_from(self.loops.len() - 1).unwrap())
     }
 
-    pub fn node_to_ref(&self, n: Node) -> NodeRef {
+    pub fn node_to_ref(&self, n: Node) -> NodeRef<'_> {
         match n {
             Node::Operation(op) => self.op_to_ref(op),
             Node::Sequence(id) => NodeRef::Sequence(&self.sequences[id as usize]),
@@ -165,7 +165,7 @@ impl ASTContext {
         }
     }
 
-    pub fn op_to_ref(&self, o: Operation) -> NodeRef {
+    pub fn op_to_ref(&self, o: Operation) -> NodeRef<'_> {
         match o {
             Operation::Init(id) => NodeRef::Init(&self.inits[id as usize]),
             Operation::Translation(id) => NodeRef::Translation(&self.translations[id as usize]),
@@ -256,15 +256,15 @@ trait RenderAnnotations {
 
 impl<const PRE: bool> RenderAnnotations for IsPre<PRE> {
     fn render_annotations(n: Node, ann: &HashMap<Node, Vec<String>>) -> String {
-        if let Some(annotations) = ann.get(&n) {
-            if !annotations.is_empty() {
-                let mut result = (if PRE { "" } else { " " }).to_owned();
-                result.push_str("/* ");
-                result.push_str(&annotations.join(" "));
-                result.push_str(" */");
-                result.push_str(if PRE { " " } else { "" });
-                return result;
-            }
+        if let Some(annotations) = ann.get(&n)
+            && !annotations.is_empty()
+        {
+            let mut result = (if PRE { "" } else { " " }).to_owned();
+            result.push_str("/* ");
+            result.push_str(&annotations.join(" "));
+            result.push_str(" */");
+            result.push_str(if PRE { " " } else { "" });
+            return result;
         }
         String::new()
     }

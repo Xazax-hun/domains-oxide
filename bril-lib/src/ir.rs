@@ -346,11 +346,11 @@ pub fn print_operation(pos: OpPos, op: &Operation, unit: &Unit, anns: &Annotatio
     let get_name = |var: &Variable| unit.identifiers.get_name(var.id);
     let get_label_name = |&l: &Identifier| unit.identifiers.get_name(l);
     let mut printed = String::new();
-    if let Some(mut ann_list) = anns.pre.get(&pos).cloned() {
-        if !ann_list.is_empty() {
-            ann_list.sort_unstable();
-            write!(printed, "/* {} */ ", ann_list.join(", ")).expect("");
-        }
+    if let Some(mut ann_list) = anns.pre.get(&pos).cloned()
+        && !ann_list.is_empty()
+    {
+        ann_list.sort_unstable();
+        write!(printed, "/* {} */ ", ann_list.join(", ")).expect("");
     }
     match op {
         Operation::BinaryOp {
@@ -431,11 +431,11 @@ pub fn print_operation(pos: OpPos, op: &Operation, unit: &Unit, anns: &Annotatio
         Operation::Ret(_, Some(v)) => write!(printed, "ret {};", get_name(v)).expect(""),
         Operation::Ret(_, None) => printed.push_str("ret;"),
     };
-    if let Some(mut ann_list) = anns.post.get(&pos).cloned() {
-        if !ann_list.is_empty() {
-            ann_list.sort_unstable();
-            write!(printed, " /* {} */", ann_list.join(", ")).expect("");
-        }
+    if let Some(mut ann_list) = anns.post.get(&pos).cloned()
+        && !ann_list.is_empty()
+    {
+        ann_list.sort_unstable();
+        write!(printed, " /* {} */", ann_list.join(", ")).expect("");
     }
     printed
 }
